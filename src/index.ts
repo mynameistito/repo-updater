@@ -30,6 +30,16 @@ export function resolveRepos(args: ParsedArgs): string[] | null {
 
   if (configResult.isErr()) {
     log.error(configResult.error.message);
+    note(
+      JSON.stringify(
+        {
+          repos: ["C:\\path\\to\\repo-one", "C:\\path\\to\\repo-two"],
+        },
+        null,
+        2
+      ),
+      "Expected config format"
+    );
     return null;
   }
 

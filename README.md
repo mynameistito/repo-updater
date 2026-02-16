@@ -13,15 +13,13 @@ Replaces manually running a dependency update workflow in each repo one-by-one.
 ## Setup
 
 ```sh
-bun install
+bun install repo-updater -g
 ```
 
 ## Usage
 
 ```
-bun run src/index.ts [options] [repo paths...]
-# or
-bun start [options] [repo paths...]
+repo-updater [options] [repo paths...]
 ```
 
 ### Options
@@ -37,23 +35,23 @@ bun start [options] [repo paths...]
 Pass one or more absolute repo paths directly to override the config file:
 
 ```sh
-bun start E:\GitHub\org\repo1 E:\GitHub\org\repo2
+repo-updater C:\path\to\repo1 C:\path\to\repo2
 ```
 
 ### Examples
 
 ```sh
 # Update all repos listed in config
-bun start
+repo-updater
 
 # Preview what would happen without touching anything
-bun start --dry-run
+repo-updater --dry-run
 
 # Use a different config file
-bun start -c ./other-config.json
+repo-updater -c ./other-config.json
 
 # Update a single repo directly
-bun start E:\GitHub\mynameistito\mynameistito-site
+repo-updater C:\path\to\single-repo
 ```
 
 ## Config file
