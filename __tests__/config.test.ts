@@ -48,11 +48,22 @@ describe("loadConfig", () => {
   });
 
   test("searches default locations when no path given", () => {
-    const result = loadConfig();
-    if (result.isOk()) {
-      expect(result.value.repos).toBeInstanceOf(Array);
-    } else {
-      expect(result.error._tag).toBe("ConfigNotFoundError");
+    // Create a config in tempDir to verify it can find it via search
+    const configPath = join(tempDir, "repo-updater.config.json");
+    writeFileSync(configPath, JSON.stringify({ repos: ["/test/repo"] }));
+
+    const oldCwd = process.cwd();
+    try {
+      process.chdir(tempDir);
+      const result = loadConfig();
+      // Should succeed because we created a config in tempDir
+      expect(result.isOk()).toBe(true);
+      if (result.isOk()) {
+        expect(result.value.repos).toBeInstanceOf(Array);
+        expect(result.value.repos).toEqual(["/test/repo"]);
+      }
+    } finally {
+      process.chdir(oldCwd);
     }
   });
 

@@ -1,5 +1,13 @@
 import { basename } from "node:path";
-import { confirm, intro, log, note, outro, spinner } from "@clack/prompts";
+import {
+  confirm,
+  intro,
+  isCancel,
+  log,
+  note,
+  outro,
+  spinner,
+} from "@clack/prompts";
 import { getDate, type ParsedArgs, parseArgs } from "./args.ts";
 import { loadConfig, validateRepos } from "./config.ts";
 import { updateRepo } from "./runner.ts";
@@ -92,6 +100,50 @@ export async function processRepo(
   return result.value;
 }
 
+async function handleRepoProcessing(
+  valid: string[],
+  date: string,
+  dryRun: boolean,
+  prUrls: string[],
+  updateFn: typeof updateRepo
+) {
+  for (const repo of valid) {
+    await processRepo(repo, date, dryRun, prUrls, updateFn);
+  }
+}
+
+async function handlePRDisplay(prUrls: string[]) {
+  if (prUrls.length === 0) {
+    return false;
+  }
+
+  note(prUrls.join("\n"), "Pull Requests");
+
+  const shouldOpen = await confirm({
+    message: "Open all PR URLs in browser?",
+  });
+
+  if (isCancel(shouldOpen)) {
+    outro("Cancelled.");
+    process.exit(0);
+  }
+
+  return shouldOpen === true;
+}
+
+function openURLs(urls: string[]) {
+  for (const url of urls) {
+    const platform = process.platform;
+    if (platform === "win32") {
+      Bun.spawn(["cmd", "/c", "start", "", url], { stdout: "ignore" });
+    } else if (platform === "darwin") {
+      Bun.spawn(["open", url], { stdout: "ignore" });
+    } else {
+      Bun.spawn(["xdg-open", url], { stdout: "ignore" });
+    }
+  }
+}
+
 export async function main(
   argv?: string[],
   updateFn: typeof updateRepo = updateRepo
@@ -130,21 +182,12 @@ export async function main(
     log.info("[dry-run] No commands will be executed.\n");
   }
 
-  for (const repo of valid) {
-    await processRepo(repo, date, args.dryRun, prUrls, updateFn);
-  }
+  await handleRepoProcessing(valid, date, args.dryRun, prUrls, updateFn);
 
   if (prUrls.length > 0) {
-    note(prUrls.join("\n"), "Pull Requests");
-
-    const shouldOpen = await confirm({
-      message: "Open all PR URLs in browser?",
-    });
-
-    if (shouldOpen === true) {
-      for (const url of prUrls) {
-        Bun.spawn(["cmd", "/c", "start", url], { stdout: "ignore" });
-      }
+    const shouldOpen = await handlePRDisplay(prUrls);
+    if (shouldOpen) {
+      openURLs(prUrls);
     }
   } else if (!args.dryRun) {
     log.info("No pull requests were created.");

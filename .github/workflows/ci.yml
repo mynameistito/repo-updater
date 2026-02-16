@@ -15,6 +15,7 @@ jobs:
       matrix:
         bun-version: [latest, canary]
     runs-on: ubuntu-latest
+    continue-on-error: ${{ matrix.bun-version == 'canary' }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4

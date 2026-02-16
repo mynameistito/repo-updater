@@ -1,6 +1,8 @@
 import { Result } from "better-result";
 import { CommandFailedError } from "./errors.ts";
 
+const DEFAULT_BRANCH_REGEX = /refs\/remotes\/origin\/(.+)$/;
+
 export interface ExecOutput {
   stdout: string;
   stderr: string;
@@ -37,9 +39,11 @@ export function exec(
         stderr: "pipe",
       });
 
-      const stdout = await new Response(proc.stdout).text();
-      const stderr = await new Response(proc.stderr).text();
-      const exitCode = await proc.exited;
+      const [stdout, stderr, exitCode] = await Promise.all([
+        new Response(proc.stdout).text(),
+        new Response(proc.stderr).text(),
+        proc.exited,
+      ]);
 
       if (exitCode !== 0) {
         throw new ExecError(stdout, stderr, exitCode);
@@ -74,53 +78,74 @@ export function updateRepo(
   }
 
   return Result.gen(async function* () {
-    yield* Result.await(execFn(["git", "checkout", "main"], repo));
-    yield* Result.await(execFn(["git", "pull"], repo));
-    yield* Result.await(execFn(["git", "checkout", "-b", branch], repo));
-    yield* Result.await(execFn(["bun", "update", "--latest"], repo));
-    yield* Result.await(execFn(["bun", "install"], repo));
-
-    const status = yield* Result.await(
-      execFn(["git", "status", "--porcelain"], repo)
+    // Detect default branch dynamically
+    const defaultBranchResult = yield* Result.await(
+      execFn(["git", "symbolic-ref", "refs/remotes/origin/HEAD"], repo)
     );
+    const defaultBranchMatch =
+      defaultBranchResult.stdout.match(DEFAULT_BRANCH_REGEX);
+    const defaultBranch = defaultBranchMatch ? defaultBranchMatch[1] : "main";
 
-    if (status.stdout === "") {
-      yield* Result.await(execFn(["git", "checkout", "main"], repo));
-      yield* Result.await(execFn(["git", "branch", "-D", branch], repo));
+    let branchCreated = false;
+    try {
+      yield* Result.await(execFn(["git", "checkout", defaultBranch], repo));
+      yield* Result.await(execFn(["git", "pull"], repo));
+      yield* Result.await(execFn(["git", "checkout", "-b", branch], repo));
+      branchCreated = true;
+      yield* Result.await(execFn(["bun", "update", "--latest"], repo));
+      yield* Result.await(execFn(["bun", "install"], repo));
+
+      const status = yield* Result.await(
+        execFn(["git", "status", "--porcelain"], repo)
+      );
+
+      if (status.stdout === "") {
+        yield* Result.await(execFn(["git", "checkout", defaultBranch], repo));
+        yield* Result.await(execFn(["git", "branch", "-D", branch], repo));
+        return Result.ok<RepoResult, CommandFailedError>({
+          repo,
+          status: "no-changes",
+        });
+      }
+
+      yield* Result.await(execFn(["git", "add", "-A"], repo));
+      yield* Result.await(
+        execFn(["git", "commit", "-m", `dep updates ${date}`], repo)
+      );
+      yield* Result.await(
+        execFn(["git", "push", "-u", "origin", branch], repo)
+      );
+
+      const pr = yield* Result.await(
+        execFn(
+          [
+            "gh",
+            "pr",
+            "create",
+            "--title",
+            `Dep Updates ${date}`,
+            "--body",
+            `Dep Updates ${date}`,
+          ],
+          repo
+        )
+      );
+
+      const prUrl = pr.stdout.trim();
+
       return Result.ok<RepoResult, CommandFailedError>({
         repo,
-        status: "no-changes",
+        status: "pr-created",
+        prUrl,
       });
+    } catch (e) {
+      // Rollback on failure
+      if (branchCreated) {
+        await execFn(["git", "checkout", defaultBranch], repo);
+        await execFn(["git", "branch", "-D", branch], repo);
+      }
+      throw e;
     }
-
-    yield* Result.await(execFn(["git", "add", "-A"], repo));
-    yield* Result.await(
-      execFn(["git", "commit", "-m", `dep updates ${date}`], repo)
-    );
-    yield* Result.await(execFn(["git", "push", "-u", "origin", branch], repo));
-
-    const pr = yield* Result.await(
-      execFn(
-        [
-          "gh",
-          "pr",
-          "create",
-          "--title",
-          `Dep Updates ${date}`,
-          "--body",
-          `Dep Updates ${date}`,
-        ],
-        repo
-      )
-    );
-
-    const prUrl = pr.stdout.trim();
-
-    return Result.ok<RepoResult, CommandFailedError>({
-      repo,
-      status: "pr-created",
-      prUrl,
-    });
   });
 }
 

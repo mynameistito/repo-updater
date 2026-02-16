@@ -1,6 +1,8 @@
 {
   "repos": [
     "C:\\path\\to\\repo-one",
-    "C:\\path\\to\\repo-two"
+    "C:\\path\\to\\repo-two",
+    "/home/user/project-one",
+    "/path/to/repo-three"
   ]
 }

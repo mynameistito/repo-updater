@@ -6,7 +6,7 @@ A CLI tool to mass-update bun dependencies across multiple git repositories, com
 
 ## Project Structure
 
-```
+```text
 E:\GitHub\Tools\repo-updater\
 ├── .gitignore
 ├── biome.jsonc            # extends ultracite/biome/core

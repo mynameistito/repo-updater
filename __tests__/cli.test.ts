@@ -62,7 +62,7 @@ const errResult = (message: string, command: string, stderr: string) =>
 beforeEach(() => {
   tempDir = join(tmpdir(), `cli-test-${Date.now()}`);
   mkdirSync(tempDir, { recursive: true });
-  confirmMock.mockClear();
+  confirmMock.mockReset();
   noteMock.mockClear();
   outroMock.mockClear();
   for (const fn of Object.values(logMock)) {

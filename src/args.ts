@@ -18,8 +18,14 @@ export function parseArgs(argv: string[]): ParsedArgs {
     } else if (arg === "-n" || arg === "--dry-run") {
       dryRun = true;
     } else if (arg === "-c" || arg === "--config") {
-      configPath = iter.next().value as string | undefined;
-    } else if (!arg.startsWith("-")) {
+      const next = iter.next();
+      if (!next.done) {
+        configPath = next.value as string;
+      }
+    } else if (arg.startsWith("-")) {
+      // Unknown flag - ignore but could warn
+      console.warn(`Unknown flag: ${arg}`);
+    } else {
       positional.push(arg);
     }
   }

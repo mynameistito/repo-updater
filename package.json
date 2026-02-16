@@ -25,6 +25,9 @@
   "bin": {
     "repo-updater": "src/cli.ts"
   },
+  "engines": {
+    "bun": ">=1.0.0"
+  },
   "files": [
     "src"
   ],

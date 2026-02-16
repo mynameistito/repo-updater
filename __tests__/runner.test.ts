@@ -58,7 +58,8 @@ describe("updateRepo", () => {
       cmd: string[],
       _cwd: string
     ): Promise<Result<ExecOutput, CommandFailedError>> => {
-      if (cmd[1] === "status" && cmd[2] === "--porcelain") {
+      const cmdStr = cmd.join(" ");
+      if (cmdStr.includes("git status") && cmdStr.includes("--porcelain")) {
         return ok("");
       }
       return ok();
@@ -82,10 +83,11 @@ describe("updateRepo", () => {
       cmd: string[],
       _cwd: string
     ): Promise<Result<ExecOutput, CommandFailedError>> => {
-      if (cmd[1] === "status" && cmd[2] === "--porcelain") {
+      const cmdStr = cmd.join(" ");
+      if (cmdStr.includes("git status") && cmdStr.includes("--porcelain")) {
         return ok("M package.json");
       }
-      if (cmd[0] === "gh" && cmd[1] === "pr") {
+      if (cmd[0] === "gh" && cmd.includes("pr")) {
         return ok(prUrl);
       }
       return ok();

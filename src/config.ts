@@ -1,4 +1,4 @@
-import { existsSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
 import { Result } from "better-result";
@@ -32,15 +32,16 @@ export function loadConfig(
 
   return Result.try({
     try: () => {
-      const raw = JSON.parse(
-        require("node:fs").readFileSync(found, "utf-8")
-      ) as unknown;
+      const raw = JSON.parse(readFileSync(found, "utf-8")) as unknown;
 
       if (
         !raw ||
         typeof raw !== "object" ||
         !("repos" in raw) ||
-        !Array.isArray((raw as { repos: unknown }).repos)
+        !Array.isArray((raw as { repos: unknown }).repos) ||
+        !(raw as { repos: unknown[] }).repos.every(
+          (r: unknown) => typeof r === "string"
+        )
       ) {
         throw new Error("Config must contain a 'repos' array");
       }

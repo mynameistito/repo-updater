@@ -46,6 +46,11 @@ describe("parseArgs", () => {
     expect(args.positional).toEqual(["bar", "baz"]);
     expect(args.help).toBe(false);
   });
+
+  test("leaves configPath undefined when -c is last argument", () => {
+    const args = parseArgs(["-c"]);
+    expect(args.configPath).toBeUndefined();
+  });
 });
 
 describe("getDate", () => {
