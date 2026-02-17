@@ -153,4 +153,49 @@ describe("updateRepo", () => {
       expect(result.error._tag).toBe("CommandFailedError");
     }
   });
+
+  test("non-dry-run cleans up on failure after branch creation", async () => {
+    let branchCreatedOnce = false;
+    const mockExec = (
+      cmd: string[],
+      _cwd: string
+    ): Promise<Result<ExecOutput, CommandFailedError>> => {
+      const cmdStr = cmd.join(" ");
+      if (
+        cmdStr.includes("git symbolic-ref") &&
+        cmdStr.includes("refs/remotes/origin/HEAD")
+      ) {
+        return ok("refs/remotes/origin/main");
+      }
+      // Track when branch creation happens
+      if (cmdStr.includes("-b")) {
+        branchCreatedOnce = true;
+      }
+      // After branch creation, fail on install to trigger rollback
+      if (branchCreatedOnce && cmd[0] === "bun" && cmd[1] === "install") {
+        return Promise.resolve(
+          Result.err(
+            new CommandFailedError({
+              message: "bun install failed",
+              command: "bun install",
+              stderr: "error installing",
+            })
+          )
+        );
+      }
+      return ok();
+    };
+
+    const result = await updateRepo(
+      { repo: tempDir, date: "2025-01-01", dryRun: false },
+      mockExec
+    );
+
+    expect(result.isErr()).toBe(true);
+    if (result.isErr()) {
+      expect(result.error._tag).toBe("CommandFailedError");
+    }
+    // Verify branch was created before the failure
+    expect(branchCreatedOnce).toBe(true);
+  });
 });

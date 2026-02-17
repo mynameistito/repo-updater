@@ -108,7 +108,7 @@ Returns `Result<RepoResult, CommandFailedError>` where `RepoResult = { repo, prU
 1. `intro('repo-updater')` — session start
 2. Load config → on error: `log.error()`, `outro()`, exit
 3. Validate directories → `log.warn()` for missing ones
-4. Compute date `DD-MM-YYYY` once
+4. Compute date `YYYY-MM-DD` once
 5. For each repo sequentially:
    - `log.step(repoName)` to show which repo
    - `spinner.start('Updating dependencies...')`
@@ -117,7 +117,7 @@ Returns `Result<RepoResult, CommandFailedError>` where `RepoResult = { repo, prU
    - On no-changes: `spinner.stop()` + `log.info('No changes')`
    - On failure: `spinner.stop()` + `log.error(reason)`
 6. `note(prUrlList, 'Pull Requests')` — summary box with all PR URLs
-7. Prompt to open all PR URLs in browser via `cmd /c start <url>`
+7. Prompt to open all PR URLs in browser using platform-aware opener (cmd on Windows, open on macOS, xdg-open on Linux)
 8. `outro('Done!')` — session end
 
 ### Dry-run mode

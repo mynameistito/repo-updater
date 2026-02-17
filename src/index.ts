@@ -41,7 +41,7 @@ export function resolveRepos(args: ParsedArgs): string[] | null {
     note(
       JSON.stringify(
         {
-          repos: ["C:\\path\\to\\repo-one", "C:\\path\\to\\repo-two"],
+          repos: ["/path/to/repo-one", "/path/to/repo-two"],
         },
         null,
         2
@@ -138,11 +138,14 @@ function openURLs(urls: string[]) {
   for (const url of urls) {
     const platform = process.platform;
     if (platform === "win32") {
-      Bun.spawn(["cmd", "/c", "start", "", url], { stdout: "ignore" });
+      Bun.spawn(["cmd", "/c", "start", "", url], {
+        stdout: "ignore",
+        stderr: "ignore",
+      });
     } else if (platform === "darwin") {
-      Bun.spawn(["open", url], { stdout: "ignore" });
+      Bun.spawn(["open", url], { stdout: "ignore", stderr: "ignore" });
     } else {
-      Bun.spawn(["xdg-open", url], { stdout: "ignore" });
+      Bun.spawn(["xdg-open", url], { stdout: "ignore", stderr: "ignore" });
     }
   }
 }

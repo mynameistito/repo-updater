@@ -89,6 +89,8 @@ export function updateRepo(
       defaultBranch = defaultBranchMatch[1];
     }
 
+    console.log(`[info] Using default branch: ${defaultBranch}`);
+
     let branchCreated = false;
     try {
       yield* Result.await(execFn(["git", "checkout", defaultBranch], repo));
@@ -174,6 +176,10 @@ function dryRunRepo(
   branch: string,
   defaultBranch = "main"
 ): Result<RepoResult, CommandFailedError> {
+  console.log(
+    `  [dry-run] assuming default branch: ${defaultBranch} (actual branch will be detected at runtime)`
+  );
+
   const steps = [
     `git checkout ${defaultBranch}`,
     "git pull",

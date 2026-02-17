@@ -252,12 +252,15 @@ describe("main", () => {
       {} as ReturnType<typeof Bun.spawn>
     );
 
-    await main([tempDir], prUpdate);
+    try {
+      await main([tempDir], prUpdate);
 
-    expect(noteMock).toHaveBeenCalled();
-    expect(confirmMock).toHaveBeenCalled();
-    expect(spawnSpy).toHaveBeenCalled();
-    spawnSpy.mockRestore();
+      expect(noteMock).toHaveBeenCalled();
+      expect(confirmMock).toHaveBeenCalled();
+      expect(spawnSpy).toHaveBeenCalled();
+    } finally {
+      spawnSpy.mockRestore();
+    }
   });
 
   test("does not open browser when declined", async () => {
@@ -270,10 +273,13 @@ describe("main", () => {
       {} as ReturnType<typeof Bun.spawn>
     );
 
-    await main([tempDir], prUpdate);
+    try {
+      await main([tempDir], prUpdate);
 
-    expect(noteMock).toHaveBeenCalled();
-    expect(spawnSpy).not.toHaveBeenCalled();
-    spawnSpy.mockRestore();
+      expect(noteMock).toHaveBeenCalled();
+      expect(spawnSpy).not.toHaveBeenCalled();
+    } finally {
+      spawnSpy.mockRestore();
+    }
   });
 });
