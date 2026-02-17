@@ -1,7 +1,7 @@
 {
   "name": "repo-updater",
   "version": "0.0.8",
-  "description": "CLI tool to mass-update Bun dependencies across multiple git repositories",
+  "description": "CLI tool to mass-update dependencies across multiple git repositories with auto package manager detection (npm, pnpm, yarn, Bun)",
   "type": "module",
   "license": "MIT",
   "author": "mynameistito",
@@ -15,12 +15,17 @@
   "homepage": "https://github.com/mynameistito/repo-updater#readme",
   "keywords": [
     "bun",
+    "npm",
+    "pnpm",
+    "yarn",
     "dependencies",
     "updater",
     "cli",
     "monorepo",
     "automation",
-    "github"
+    "github",
+    "package-manager",
+    "batch-update"
   ],
   "bin": {
     "repo-updater": "src/cli.ts"
