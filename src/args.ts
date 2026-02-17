@@ -20,13 +20,13 @@ export function parseArgs(argv: string[]): ParsedArgs {
     } else if (arg === "-c" || arg === "--config") {
       const next = iter.next();
       if (next.done) {
-        console.warn(`${arg} requires a value`);
+        console.error(`${arg} requires a value`);
       } else {
         configPath = next.value as string;
       }
     } else if (arg.startsWith("-")) {
-      // Unknown flag - ignore but could warn
-      console.warn(`Unknown flag: ${arg}`);
+      // Unknown flag - ignore but warn to stderr
+      console.error(`Unknown flag: ${arg}`);
     } else {
       positional.push(arg);
     }

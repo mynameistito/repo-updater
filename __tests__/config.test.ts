@@ -80,13 +80,23 @@ describe("loadConfig", () => {
 });
 
 describe("validateRepos", () => {
-  test("splits paths into valid and missing", () => {
-    const validDir = join(tempDir, "exists");
-    mkdirSync(validDir);
+  test("splits paths into valid, missing, and non-git directories", () => {
+    const validGitDir = join(tempDir, "git-repo");
+    mkdirSync(validGitDir);
+    mkdirSync(join(validGitDir, ".git"));
+
+    const notGitDir = join(tempDir, "regular-dir");
+    mkdirSync(notGitDir);
+
     const fakePath = join(tempDir, "does-not-exist");
 
-    const { valid, missing } = validateRepos([validDir, fakePath]);
-    expect(valid).toEqual([validDir]);
+    const { valid, missing, notGit } = validateRepos([
+      validGitDir,
+      notGitDir,
+      fakePath,
+    ]);
+    expect(valid).toEqual([validGitDir]);
+    expect(notGit).toEqual([notGitDir]);
     expect(missing).toEqual([fakePath]);
   });
 });

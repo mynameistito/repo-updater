@@ -66,7 +66,7 @@ const errResult = (message: string, command: string, stderr: string) =>
 
 beforeEach(() => {
   tempDir = join(tmpdir(), `cli-test-${Date.now()}`);
-  mkdirSync(tempDir, { recursive: true });
+  mkdirSync(join(tempDir, ".git"), { recursive: true });
   originalConsoleLog = console.log;
   console.log = consoleLogMock;
   confirmMock.mockReset();
@@ -246,7 +246,7 @@ describe("main", () => {
 
   test("warns about missing repos", async () => {
     const validDir = join(tempDir, "valid");
-    mkdirSync(validDir);
+    mkdirSync(join(validDir, ".git"), { recursive: true });
     await main([validDir, join(tempDir, "nonexistent")], noopUpdate);
     expect(logMock.warn).toHaveBeenCalled();
   });

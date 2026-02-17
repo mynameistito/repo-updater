@@ -58,17 +58,22 @@ export function loadConfig(
 export function validateRepos(repos: string[]): {
   valid: string[];
   missing: string[];
+  notGit: string[];
 } {
   const valid: string[] = [];
   const missing: string[] = [];
+  const notGit: string[] = [];
 
   for (const repo of repos) {
-    if (existsSync(repo)) {
-      valid.push(repo);
-    } else {
+    if (!existsSync(repo)) {
       missing.push(repo);
+    } else if (!existsSync(join(repo, ".git"))) {
+      // Repo directory exists but is not a git repository
+      notGit.push(repo);
+    } else {
+      valid.push(repo);
     }
   }
 
-  return { valid, missing };
+  return { valid, missing, notGit };
 }

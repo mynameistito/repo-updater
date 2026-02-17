@@ -176,10 +176,14 @@ export async function main(
     process.exit(1);
   }
 
-  const { valid, missing } = validateRepos(repos);
+  const { valid, missing, notGit } = validateRepos(repos);
 
   for (const m of missing) {
     log.warn(`Directory not found: ${m}`);
+  }
+
+  for (const ng of notGit) {
+    log.warn(`Not a git repository: ${ng}`);
   }
 
   if (valid.length === 0) {

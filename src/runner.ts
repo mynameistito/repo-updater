@@ -161,7 +161,9 @@ export function updateRepo(
   execFn = exec
 ): Promise<Result<RepoResult, CommandFailedError>> {
   const { repo, date, dryRun } = options;
-  const branch = `chore/dep-updates-${date}`;
+  // Add timestamp to branch name to avoid collisions when running multiple times in one day
+  const timestamp = Date.now();
+  const branch = `chore/dep-updates-${date}-${timestamp}`;
 
   if (dryRun) {
     return Promise.resolve(dryRunRepo(repo, date, branch, "main"));

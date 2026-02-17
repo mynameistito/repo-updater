@@ -1,5 +1,16 @@
-import { describe, expect, test } from "bun:test";
+import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import { getDate, parseArgs } from "../src/args.ts";
+
+let originalConsoleError: typeof console.error;
+
+beforeEach(() => {
+  originalConsoleError = console.error;
+  console.error = () => {};
+});
+
+afterEach(() => {
+  console.error = originalConsoleError;
+});
 
 const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 
