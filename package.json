@@ -1,6 +1,6 @@
 {
   "name": "repo-updater",
-  "version": "0.0.6",
+  "version": "0.0.8",
   "description": "CLI tool to mass-update Bun dependencies across multiple git repositories",
   "type": "module",
   "license": "MIT",
