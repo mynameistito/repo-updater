@@ -4,7 +4,16 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { Result } from "better-result";
 import { CommandFailedError } from "../src/errors.ts";
-import { type ExecOutput, detectPackageManager, exec, execBun, execNodejs, getInstallCommand, getUpdateCommand, updateRepo } from "../src/runner.ts";
+import {
+  detectPackageManager,
+  type ExecOutput,
+  exec,
+  execBun,
+  execNodejs,
+  getInstallCommand,
+  getUpdateCommand,
+  updateRepo,
+} from "../src/runner.ts";
 
 const VERSION_PATTERN = /\d+\.\d+/;
 
@@ -19,8 +28,12 @@ beforeEach(() => {
   mkdirSync(tempDir, { recursive: true });
   originalLog = console.log;
   originalWarn = console.warn;
-  logSpy = mock(() => {});
-  warnSpy = mock(() => {});
+  logSpy = mock(() => {
+    // Spy on console.log calls
+  });
+  warnSpy = mock(() => {
+    // Spy on console.warn calls
+  });
   console.log = logSpy;
   console.warn = warnSpy;
 });
@@ -226,9 +239,10 @@ describe("updateRepo", () => {
 
   test("execNodejs returns stdout and stderr on success", async () => {
     // Use cross-platform command that produces stderr
-    const cmd = process.platform === "win32" 
-      ? ["cmd", "/c", "echo hello && echo warning 1>&2"]
-      : ["sh", "-c", "echo hello; echo warning >&2"];
+    const cmd =
+      process.platform === "win32"
+        ? ["cmd", "/c", "echo hello && echo warning 1>&2"]
+        : ["sh", "-c", "echo hello; echo warning >&2"];
     const result = await execNodejs(cmd, tempDir);
     expect(result.exitCode).toBe(0);
     expect(result.stdout).toContain("hello");
@@ -237,7 +251,10 @@ describe("updateRepo", () => {
   });
 
   test("execNodejs returns non-zero exitCode on failure", async () => {
-    const cmd = process.platform === "win32" ? ["cmd", "/c", "exit", "1"] : ["sh", "-c", "exit 1"];
+    const cmd =
+      process.platform === "win32"
+        ? ["cmd", "/c", "exit", "1"]
+        : ["sh", "-c", "exit 1"];
     const result = await execNodejs(cmd, tempDir);
     expect(result.exitCode).not.toBe(0);
   });

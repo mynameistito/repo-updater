@@ -67,11 +67,11 @@ export function validateRepos(repos: string[]): {
   for (const repo of repos) {
     if (!existsSync(repo)) {
       missing.push(repo);
-    } else if (!existsSync(join(repo, ".git"))) {
+    } else if (existsSync(join(repo, ".git"))) {
+      valid.push(repo);
+    } else {
       // Repo directory exists but is not a git repository
       notGit.push(repo);
-    } else {
-      valid.push(repo);
     }
   }
 

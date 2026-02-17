@@ -142,12 +142,14 @@ export async function openURLNodejs(cmd: string[]): Promise<void> {
 
 export function openURLs(urls: string[], platform: string = process.platform) {
   for (const url of urls) {
-    const cmd = 
-      platform === "win32" 
-        ? ["cmd", "/c", "start", "", url]
-        : platform === "darwin"
-          ? ["open", url]
-          : ["xdg-open", url];
+    let cmd: string[];
+    if (platform === "win32") {
+      cmd = ["cmd", "/c", "start", "", url];
+    } else if (platform === "darwin") {
+      cmd = ["open", url];
+    } else {
+      cmd = ["xdg-open", url];
+    }
 
     if (typeof Bun !== "undefined") {
       openURLBun(cmd);

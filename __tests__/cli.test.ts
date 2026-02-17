@@ -30,7 +30,7 @@ const confirmMock = mock(() => Promise.resolve(false));
 const noteMock = mock(noop);
 const outroMock = mock(noop);
 
-const isCancelMock = mock((val: unknown) => false);
+const isCancelMock = mock((_val: unknown) => false);
 const consoleLogMock = mock(noop);
 
 mock.module("@clack/prompts", () => ({
@@ -43,7 +43,15 @@ mock.module("@clack/prompts", () => ({
   spinner: () => spinnerInstance,
 }));
 
-import { main, openURLs, openURLBun, openURLNodejs, printUsage, processRepo, resolveRepos } from "../src/index.ts";
+import {
+  main,
+  openURLBun,
+  openURLNodejs,
+  openURLs,
+  printUsage,
+  processRepo,
+  resolveRepos,
+} from "../src/index.ts";
 
 let tempDir: string;
 let originalConsoleLog: typeof console.log;
@@ -328,35 +336,45 @@ describe("main", () => {
     try {
       // Test win32
       openURLs(["https://example.com/1"], "win32");
-      expect(spawnSpy).toHaveBeenLastCalledWith(["cmd", "/c", "start", "", "https://example.com/1"], {
-        stdout: "ignore",
-        stderr: "ignore",
-      });
+      expect(spawnSpy).toHaveBeenLastCalledWith(
+        ["cmd", "/c", "start", "", "https://example.com/1"],
+        {
+          stdout: "ignore",
+          stderr: "ignore",
+        }
+      );
 
       // Test darwin
       spawnSpy.mockClear();
       openURLs(["https://example.com/2"], "darwin");
-      expect(spawnSpy).toHaveBeenLastCalledWith(["open", "https://example.com/2"], {
-        stdout: "ignore",
-        stderr: "ignore",
-      });
+      expect(spawnSpy).toHaveBeenLastCalledWith(
+        ["open", "https://example.com/2"],
+        {
+          stdout: "ignore",
+          stderr: "ignore",
+        }
+      );
 
       // Test linux
       spawnSpy.mockClear();
       openURLs(["https://example.com/3"], "linux");
-      expect(spawnSpy).toHaveBeenLastCalledWith(["xdg-open", "https://example.com/3"], {
-        stdout: "ignore",
-        stderr: "ignore",
-      });
+      expect(spawnSpy).toHaveBeenLastCalledWith(
+        ["xdg-open", "https://example.com/3"],
+        {
+          stdout: "ignore",
+          stderr: "ignore",
+        }
+      );
     } finally {
       spawnSpy.mockRestore();
     }
   });
 
   test("does not display PRs when list is empty", async () => {
-    await main([tempDir], mock((opts: { repo: string }) =>
-      okResult(opts.repo, "no-changes")
-    ));
+    await main(
+      [tempDir],
+      mock((opts: { repo: string }) => okResult(opts.repo, "no-changes"))
+    );
     expect(noteMock).not.toHaveBeenCalled();
   });
 
@@ -378,15 +396,13 @@ describe("main", () => {
 
   test("openURLNodejs uses child_process spawn", async () => {
     // Use cross-platform command that exists
-    const testCmd = process.platform === "win32" ? ["cmd", "/c", "echo", "test"] : ["echo", "test"];
+    const testCmd =
+      process.platform === "win32"
+        ? ["cmd", "/c", "echo", "test"]
+        : ["echo", "test"];
 
-    try {
-      await openURLNodejs(testCmd);
-      // If it succeeds, that's fine
-    } catch (e) {
-      // Unexpected error - child_process should work
-      throw e;
-    }
+    await openURLNodejs(testCmd);
+    // If it succeeds, that's fine
   });
 
   test("openURLs handles empty URL list", () => {
