@@ -1,7 +1,48 @@
+import { existsSync } from "node:fs";
+import { join } from "node:path";
 import { Result } from "better-result";
 import { CommandFailedError } from "./errors.ts";
 
 const DEFAULT_BRANCH_REGEX = /refs\/remotes\/origin\/(.+)$/;
+
+export type PackageManager = "npm" | "pnpm" | "yarn" | "bun";
+
+export function detectPackageManager(repoPath: string): PackageManager {
+  // Check in priority order (npm first for audit)
+  const checks: Array<{ file: string; pm: PackageManager }> = [
+    { file: "package-lock.json", pm: "npm" },
+    { file: "pnpm-lock.yaml", pm: "pnpm" },
+    { file: "yarn.lock", pm: "yarn" },
+    { file: "bun.lock", pm: "bun" },
+  ];
+
+  for (const { file, pm } of checks) {
+    if (existsSync(join(repoPath, file))) {
+      return pm;
+    }
+  }
+  return "npm"; // fallback
+}
+
+export function getUpdateCommand(pm: PackageManager): string[] {
+  const commands: Record<PackageManager, string[]> = {
+    npm: ["npm", "update"],
+    pnpm: ["pnpm", "update", "--latest"],
+    yarn: ["yarn", "upgrade"],
+    bun: ["bun", "update", "--latest"],
+  };
+  return commands[pm];
+}
+
+export function getInstallCommand(pm: PackageManager): string[] {
+  const commands: Record<PackageManager, string[]> = {
+    npm: ["npm", "install"],
+    pnpm: ["pnpm", "install"],
+    yarn: ["yarn", "install"],
+    bun: ["bun", "install"],
+  };
+  return commands[pm];
+}
 
 export interface ExecOutput {
   stdout: string;
@@ -27,29 +68,78 @@ class ExecError extends Error {
   }
 }
 
+export async function execBun(
+  cmd: string[],
+  cwd: string
+): Promise<{ stdout: string; stderr: string; exitCode: number }> {
+  const proc = Bun.spawn(cmd, {
+    cwd,
+    stdout: "pipe",
+    stderr: "pipe",
+  });
+
+  const [stdout, stderr, exitCode] = await Promise.all([
+    new Response(proc.stdout).text(),
+    new Response(proc.stderr).text(),
+    proc.exited,
+  ]);
+
+  return { stdout: stdout.trim(), stderr: stderr.trim(), exitCode };
+}
+
+export async function execNodejs(
+  cmd: string[],
+  cwd: string
+): Promise<{ stdout: string; stderr: string; exitCode: number }> {
+  const { spawn } = await import("node:child_process");
+
+  let stdout = "";
+  let stderr = "";
+  let exitCode = 0;
+
+  const childProcess = spawn(cmd[0], cmd.slice(1), {
+    cwd,
+    stdio: ["pipe", "pipe", "pipe"],
+  });
+
+  await new Promise<void>((resolve, reject) => {
+    childProcess.stdout?.on("data", (data) => {
+      stdout += data.toString();
+    });
+    childProcess.stderr?.on("data", (data) => {
+      stderr += data.toString();
+    });
+
+    childProcess.on("close", (code) => {
+      exitCode = code ?? 0;
+      resolve();
+    });
+
+    childProcess.on("error", (err) => {
+      reject(err);
+    });
+  });
+
+  return { stdout: stdout.trim(), stderr: stderr.trim(), exitCode };
+}
+
 export function exec(
   cmd: string[],
   cwd: string
 ): Promise<Result<ExecOutput, CommandFailedError>> {
   return Result.tryPromise({
     try: async () => {
-      const proc = Bun.spawn(cmd, {
-        cwd,
-        stdout: "pipe",
-        stderr: "pipe",
-      });
+      // Use Bun's spawn if available, fallback to child_process
+      const result =
+        typeof Bun !== "undefined"
+          ? await execBun(cmd, cwd)
+          : await execNodejs(cmd, cwd);
 
-      const [stdout, stderr, exitCode] = await Promise.all([
-        new Response(proc.stdout).text(),
-        new Response(proc.stderr).text(),
-        proc.exited,
-      ]);
-
-      if (exitCode !== 0) {
-        throw new ExecError(stdout, stderr, exitCode);
+      if (result.exitCode !== 0) {
+        throw new ExecError(result.stdout, result.stderr, result.exitCode);
       }
 
-      return { stdout: stdout.trim(), stderr: stderr.trim() };
+      return { stdout: result.stdout, stderr: result.stderr };
     },
     catch: (e) => {
       const info = e instanceof ExecError ? e : null;
@@ -78,6 +168,10 @@ export function updateRepo(
   }
 
   return Result.gen(async function* () {
+    // Detect package manager
+    const pm = detectPackageManager(repo);
+    console.log(`[info] Detected package manager: ${pm}`);
+
     // Detect default branch dynamically
     let defaultBranch = "main";
     const defaultBranchResult = yield* Result.await(
@@ -97,8 +191,8 @@ export function updateRepo(
       yield* Result.await(execFn(["git", "pull"], repo));
       yield* Result.await(execFn(["git", "checkout", "-b", branch], repo));
       branchCreated = true;
-      yield* Result.await(execFn(["bun", "update", "--latest"], repo));
-      yield* Result.await(execFn(["bun", "install"], repo));
+      yield* Result.await(execFn(getUpdateCommand(pm), repo));
+      yield* Result.await(execFn(getInstallCommand(pm), repo));
 
       const status = yield* Result.await(
         execFn(["git", "status", "--porcelain"], repo)
@@ -176,16 +270,18 @@ function dryRunRepo(
   branch: string,
   defaultBranch = "main"
 ): Result<RepoResult, CommandFailedError> {
+  const pm = detectPackageManager(repo);
   console.log(
     `  [dry-run] assuming default branch: ${defaultBranch} (actual branch will be detected at runtime)`
   );
+  console.log(`  [dry-run] detected package manager: ${pm}`);
 
   const steps = [
     `git checkout ${defaultBranch}`,
     "git pull",
     `git checkout -b ${branch}`,
-    "bun update --latest",
-    "bun install",
+    getUpdateCommand(pm).join(" "),
+    getInstallCommand(pm).join(" "),
     "git status --porcelain",
     "git add -A",
     `git commit -m "dep updates ${date}"`,

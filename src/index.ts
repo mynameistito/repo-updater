@@ -130,17 +130,29 @@ async function handlePRDisplay(prUrls: string[]) {
   return shouldOpen === true;
 }
 
+export function openURLBun(cmd: string[]): void {
+  Bun.spawn(cmd, { stdout: "ignore", stderr: "ignore" });
+}
+
+export function openURLNodejs(cmd: string[]): void {
+  // Node.js fallback
+  const { spawn } = require("node:child_process");
+  spawn(cmd[0], cmd.slice(1), { stdio: "ignore" });
+}
+
 export function openURLs(urls: string[], platform: string = process.platform) {
   for (const url of urls) {
-    if (platform === "win32") {
-      Bun.spawn(["cmd", "/c", "start", "", url], {
-        stdout: "ignore",
-        stderr: "ignore",
-      });
-    } else if (platform === "darwin") {
-      Bun.spawn(["open", url], { stdout: "ignore", stderr: "ignore" });
+    const cmd = 
+      platform === "win32" 
+        ? ["cmd", "/c", "start", "", url]
+        : platform === "darwin"
+          ? ["open", url]
+          : ["xdg-open", url];
+
+    if (typeof Bun !== "undefined") {
+      openURLBun(cmd);
     } else {
-      Bun.spawn(["xdg-open", url], { stdout: "ignore", stderr: "ignore" });
+      openURLNodejs(cmd);
     }
   }
 }
