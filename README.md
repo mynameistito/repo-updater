@@ -93,7 +93,7 @@ For each repository, the tool runs this pipeline sequentially:
 | 10 | `git push -u origin chore/dep-updates-YYYY-MM-DD` |
 | 11 | `gh pr create --title "Dep Updates YYYY-MM-DD" --body "Dep Updates YYYY-MM-DD"` |
 
-If step 6 shows no changes, the branch is deleted and the repo is skipped (reported as "no changes").
+If step 7 shows no changes, the branch is deleted and the repo is skipped (reported as "no changes").
 
 After all repos are processed, a summary box lists every PR URL. You're then prompted to open them all in the browser.
 
