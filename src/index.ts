@@ -116,10 +116,6 @@ async function handleRepoProcessing(
 }
 
 async function handlePRDisplay(prUrls: string[]) {
-  if (prUrls.length === 0) {
-    return false;
-  }
-
   note(prUrls.join("\n"), "Pull Requests");
 
   const shouldOpen = await confirm({
@@ -134,9 +130,8 @@ async function handlePRDisplay(prUrls: string[]) {
   return shouldOpen === true;
 }
 
-function openURLs(urls: string[]) {
+export function openURLs(urls: string[], platform: string = process.platform) {
   for (const url of urls) {
-    const platform = process.platform;
     if (platform === "win32") {
       Bun.spawn(["cmd", "/c", "start", "", url], {
         stdout: "ignore",

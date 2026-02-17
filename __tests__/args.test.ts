@@ -51,6 +51,19 @@ describe("parseArgs", () => {
     const args = parseArgs(["-c"]);
     expect(args.configPath).toBeUndefined();
   });
+
+  test("ignores unknown flags", () => {
+    const args = parseArgs(["--unknown"]);
+    expect(args.help).toBe(false);
+    expect(args.dryRun).toBe(false);
+    expect(args.configPath).toBeUndefined();
+    expect(args.positional).toEqual([]);
+  });
+
+  test("handles -c without value gracefully", () => {
+    const args = parseArgs(["-c"]);
+    expect(args.configPath).toBeUndefined();
+  });
 });
 
 describe("getDate", () => {

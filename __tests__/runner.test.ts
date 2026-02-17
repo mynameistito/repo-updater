@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, test } from "bun:test";
+import { afterEach, beforeEach, describe, expect, mock, test } from "bun:test";
 import { mkdirSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -9,14 +9,22 @@ import { type ExecOutput, exec, updateRepo } from "../src/runner.ts";
 const VERSION_PATTERN = /\d+\.\d+/;
 
 let tempDir: string;
+let logSpy: ReturnType<typeof mock>;
+let warnSpy: ReturnType<typeof mock>;
 
 beforeEach(() => {
   tempDir = join(tmpdir(), `repo-updater-runner-${Date.now()}`);
   mkdirSync(tempDir, { recursive: true });
+  logSpy = mock(() => {});
+  warnSpy = mock(() => {});
+  console.log = logSpy;
+  console.warn = warnSpy;
 });
 
 afterEach(() => {
   rmSync(tempDir, { recursive: true, force: true });
+  logSpy.mockRestore();
+  warnSpy.mockRestore();
 });
 
 const ok = (stdout = ""): Promise<Result<ExecOutput, CommandFailedError>> =>

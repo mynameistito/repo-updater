@@ -30,18 +30,23 @@ const confirmMock = mock(() => Promise.resolve(false));
 const noteMock = mock(noop);
 const outroMock = mock(noop);
 
+const isCancelMock = mock((val: unknown) => false);
+const consoleLogMock = mock(noop);
+
 mock.module("@clack/prompts", () => ({
   intro: mock(noop),
   outro: outroMock,
   log: logMock,
   note: noteMock,
   confirm: confirmMock,
+  isCancel: isCancelMock,
   spinner: () => spinnerInstance,
 }));
 
-import { main, printUsage, processRepo, resolveRepos } from "../src/index.ts";
+import { main, openURLs, printUsage, processRepo, resolveRepos } from "../src/index.ts";
 
 let tempDir: string;
+let originalConsoleLog: typeof console.log;
 
 const okResult = (
   repo: string,
@@ -62,17 +67,22 @@ const errResult = (message: string, command: string, stderr: string) =>
 beforeEach(() => {
   tempDir = join(tmpdir(), `cli-test-${Date.now()}`);
   mkdirSync(tempDir, { recursive: true });
+  originalConsoleLog = console.log;
+  console.log = consoleLogMock;
   confirmMock.mockReset();
   noteMock.mockClear();
   outroMock.mockClear();
+  consoleLogMock.mockClear();
   for (const fn of Object.values(logMock)) {
     fn.mockClear();
   }
   spinnerInstance.start.mockClear();
   spinnerInstance.stop.mockClear();
+  isCancelMock.mockClear();
 });
 
 afterEach(() => {
+  console.log = originalConsoleLog;
   rmSync(tempDir, { recursive: true, force: true });
 });
 
@@ -169,6 +179,15 @@ describe("processRepo", () => {
     const result = await processRepo(tempDir, "2025-01-01", false, updateFn);
     expect(result.status).toBe("failed");
     expect(logMock.error).toHaveBeenCalledTimes(2);
+  });
+
+  test("non-dry-run pr-created without prUrl logs success with repo name", async () => {
+    const updateFn = mock((opts: { repo: string }) =>
+      okResult(opts.repo, "pr-created")
+    );
+    const result = await processRepo(tempDir, "2025-01-01", false, updateFn);
+    expect(result.status).toBe("pr-created");
+    expect(logMock.success).toHaveBeenCalled();
   });
 });
 
@@ -281,5 +300,63 @@ describe("main", () => {
     } finally {
       spawnSpy.mockRestore();
     }
+  });
+
+  test("exits when user cancels PR confirmation", async () => {
+    const url = "https://github.com/owner/repo/pull/1";
+    const prUpdate = mock((opts: { repo: string }) =>
+      okResult(opts.repo, "pr-created", url)
+    );
+    isCancelMock.mockImplementation(() => true);
+    const exitSpy = spyOn(process, "exit").mockImplementation(() => {
+      throw new Error("exit");
+    });
+
+    try {
+      await expect(main([tempDir], prUpdate)).rejects.toThrow("exit");
+      expect(exitSpy).toHaveBeenCalledWith(0);
+    } finally {
+      exitSpy.mockRestore();
+    }
+  });
+
+  test("openURLs launches correct command for each platform", () => {
+    const spawnSpy = spyOn(Bun, "spawn").mockReturnValue(
+      {} as ReturnType<typeof Bun.spawn>
+    );
+
+    try {
+      // Test win32
+      openURLs(["https://example.com/1"], "win32");
+      expect(spawnSpy).toHaveBeenLastCalledWith(["cmd", "/c", "start", "", "https://example.com/1"], {
+        stdout: "ignore",
+        stderr: "ignore",
+      });
+
+      // Test darwin
+      spawnSpy.mockClear();
+      openURLs(["https://example.com/2"], "darwin");
+      expect(spawnSpy).toHaveBeenLastCalledWith(["open", "https://example.com/2"], {
+        stdout: "ignore",
+        stderr: "ignore",
+      });
+
+      // Test linux
+      spawnSpy.mockClear();
+      openURLs(["https://example.com/3"], "linux");
+      expect(spawnSpy).toHaveBeenLastCalledWith(["xdg-open", "https://example.com/3"], {
+        stdout: "ignore",
+        stderr: "ignore",
+      });
+    } finally {
+      spawnSpy.mockRestore();
+    }
+  });
+
+  test("does not display PRs when list is empty", async () => {
+    await main([tempDir], mock((opts: { repo: string }) =>
+      okResult(opts.repo, "no-changes")
+    ));
+    expect(noteMock).not.toHaveBeenCalled();
   });
 });
