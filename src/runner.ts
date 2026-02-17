@@ -188,6 +188,7 @@ export function updateRepo(
     console.log(`[info] Using default branch: ${defaultBranch}`);
 
     let branchCreated = false;
+    let branchPushed = false;
     try {
       yield* Result.await(execFn(["git", "checkout", defaultBranch], repo));
       yield* Result.await(execFn(["git", "pull"], repo));
@@ -216,6 +217,7 @@ export function updateRepo(
       yield* Result.await(
         execFn(["git", "push", "-u", "origin", branch], repo)
       );
+      branchPushed = true;
 
       const pr = yield* Result.await(
         execFn(
@@ -250,6 +252,17 @@ export function updateRepo(
           console.warn(
             `Cleanup: Failed to checkout ${defaultBranch}: ${checkoutResult.error.message}`
           );
+        }
+        if (branchPushed) {
+          const deleteRemoteResult = await execFn(
+            ["git", "push", "origin", "--delete", branch],
+            repo
+          );
+          if (deleteRemoteResult.isErr()) {
+            console.warn(
+              `Cleanup: Could not delete remote branch ${branch}: ${deleteRemoteResult.error.message}`
+            );
+          }
         }
         const deleteResult = await execFn(
           ["git", "branch", "-D", branch],

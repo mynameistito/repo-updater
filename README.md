@@ -108,13 +108,13 @@ For each repository, the tool runs this pipeline sequentially:
 | 2 | Detect package manager from lockfiles |
 | 3 | `git checkout <default-branch>` |
 | 4 | `git pull` |
-| 5 | `git checkout -b chore/dep-updates-YYYY-MM-DD` |
+| 5 | `git checkout -b chore/dep-updates-YYYY-MM-DD-<timestamp>` |
 | 6 | `<pm> update` (or `<pm> upgrade` for yarn) |
 | 7 | `<pm> install` |
 | 8 | `git status --porcelain` |
 | 9 | `git add -A` |
 | 10 | `git commit -m "dep updates YYYY-MM-DD"` |
-| 11 | `git push -u origin chore/dep-updates-YYYY-MM-DD` |
+| 11 | `git push -u origin chore/dep-updates-YYYY-MM-DD-<timestamp>` |
 | 12 | `gh pr create --title "Dep Updates YYYY-MM-DD" --body "Dep Updates YYYY-MM-DD"` |
 
 If step 8 shows no changes, the branch is deleted and the repo is skipped (reported as "no changes").
