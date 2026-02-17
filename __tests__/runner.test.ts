@@ -243,7 +243,6 @@ describe("updateRepo", () => {
   });
 
   test("detectPackageManager returns npm for package-lock.json", () => {
-    const { writeFileSync } = require("node:fs");
     const lockFile = join(tempDir, "package-lock.json");
     writeFileSync(lockFile, "{}");
     const pm = detectPackageManager(tempDir);
@@ -251,7 +250,6 @@ describe("updateRepo", () => {
   });
 
   test("detectPackageManager returns pnpm for pnpm-lock.yaml", () => {
-    const { writeFileSync, rmSync } = require("node:fs");
     rmSync(join(tempDir, "package-lock.json"), { force: true });
     const lockFile = join(tempDir, "pnpm-lock.yaml");
     writeFileSync(lockFile, "{}");
@@ -260,7 +258,6 @@ describe("updateRepo", () => {
   });
 
   test("detectPackageManager returns yarn for yarn.lock", () => {
-    const { writeFileSync, rmSync } = require("node:fs");
     rmSync(join(tempDir, "pnpm-lock.yaml"), { force: true });
     const lockFile = join(tempDir, "yarn.lock");
     writeFileSync(lockFile, "{}");
@@ -269,7 +266,6 @@ describe("updateRepo", () => {
   });
 
   test("detectPackageManager returns bun for bun.lock", () => {
-    const { writeFileSync, rmSync } = require("node:fs");
     rmSync(join(tempDir, "yarn.lock"), { force: true });
     const lockFile = join(tempDir, "bun.lock");
     writeFileSync(lockFile, "{}");
@@ -278,7 +274,6 @@ describe("updateRepo", () => {
   });
 
   test("detectPackageManager defaults to npm when no lockfile exists", () => {
-    const { rmSync } = require("node:fs");
     rmSync(join(tempDir, "bun.lock"), { force: true });
     const pm = detectPackageManager(tempDir);
     expect(pm).toBe("npm");
