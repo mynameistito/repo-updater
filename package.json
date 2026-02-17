@@ -1,6 +1,6 @@
 {
   "name": "repo-updater",
-  "version": "0.0.9",
+  "version": "0.0.10",
   "description": "CLI tool to mass-update dependencies across multiple git repositories with auto package manager detection (npm, pnpm, yarn, Bun)",
   "type": "module",
   "license": "MIT",
@@ -31,7 +31,8 @@
     "repo-updater": "src/cli.ts"
   },
   "engines": {
-    "bun": ">=1.0.0"
+    "bun": ">=1.0.0",
+    "node": ">=18.0.0"
   },
   "files": [
     "src"

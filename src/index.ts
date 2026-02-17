@@ -134,10 +134,10 @@ export function openURLBun(cmd: string[]): void {
   Bun.spawn(cmd, { stdout: "ignore", stderr: "ignore" });
 }
 
-export function openURLNodejs(cmd: string[]): void {
+export async function openURLNodejs(cmd: string[]): Promise<void> {
   // Node.js fallback
-  const { spawn } = require("node:child_process");
-  spawn(cmd[0], cmd.slice(1), { stdio: "ignore" });
+  const childProcess = await import("node:child_process");
+  childProcess.spawn(cmd[0], cmd.slice(1), { stdio: "ignore" });
 }
 
 export function openURLs(urls: string[], platform: string = process.platform) {
