@@ -376,19 +376,16 @@ describe("main", () => {
     }
   });
 
-  test("openURLNodejs uses child_process spawn", () => {
-    // Test that openURLNodejs doesn't throw and attempts to spawn
-    // We can't fully mock require here, but we verify the function exists and is callable
-    expect(typeof openURLNodejs).toBe("function");
-    
-    // Call with a valid command that Bun/Node has
-    // This will either succeed (if child_process works) or error (which is ok for coverage test)
+  test("openURLNodejs uses child_process spawn", async () => {
+    // Use cross-platform command that exists
+    const testCmd = process.platform === "win32" ? ["cmd", "/c", "echo", "test"] : ["echo", "test"];
+
     try {
-      openURLNodejs(["cmd", "test"]);
+      await openURLNodejs(testCmd);
       // If it succeeds, that's fine
     } catch (e) {
-      // If it errors, it's because the command doesn't exist, not because the function is broken
-      expect(e).toBeDefined();
+      // Unexpected error - child_process should work
+      throw e;
     }
   });
 
