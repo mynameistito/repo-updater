@@ -74,17 +74,20 @@ export function updateRepo(
   const branch = `chore/dep-updates-${date}`;
 
   if (dryRun) {
-    return Promise.resolve(dryRunRepo(repo, date, branch));
+    return Promise.resolve(dryRunRepo(repo, date, branch, "main"));
   }
 
   return Result.gen(async function* () {
     // Detect default branch dynamically
+    let defaultBranch = "main";
     const defaultBranchResult = yield* Result.await(
       execFn(["git", "symbolic-ref", "refs/remotes/origin/HEAD"], repo)
     );
     const defaultBranchMatch =
       defaultBranchResult.stdout.match(DEFAULT_BRANCH_REGEX);
-    const defaultBranch = defaultBranchMatch ? defaultBranchMatch[1] : "main";
+    if (defaultBranchMatch) {
+      defaultBranch = defaultBranchMatch[1];
+    }
 
     let branchCreated = false;
     try {
@@ -141,8 +144,24 @@ export function updateRepo(
     } catch (e) {
       // Rollback on failure
       if (branchCreated) {
-        await execFn(["git", "checkout", defaultBranch], repo);
-        await execFn(["git", "branch", "-D", branch], repo);
+        const checkoutResult = await execFn(
+          ["git", "checkout", defaultBranch],
+          repo
+        );
+        if (checkoutResult.isErr()) {
+          console.warn(
+            `Cleanup: Failed to checkout ${defaultBranch}: ${checkoutResult.error.message}`
+          );
+        }
+        const deleteResult = await execFn(
+          ["git", "branch", "-D", branch],
+          repo
+        );
+        if (deleteResult.isErr()) {
+          console.warn(
+            `Cleanup: Failed to delete branch ${branch}: ${deleteResult.error.message}`
+          );
+        }
       }
       throw e;
     }
@@ -152,10 +171,11 @@ export function updateRepo(
 function dryRunRepo(
   repo: string,
   date: string,
-  branch: string
+  branch: string,
+  defaultBranch = "main"
 ): Result<RepoResult, CommandFailedError> {
   const steps = [
-    "git checkout main",
+    `git checkout ${defaultBranch}`,
     "git pull",
     `git checkout -b ${branch}`,
     "bun update --latest",

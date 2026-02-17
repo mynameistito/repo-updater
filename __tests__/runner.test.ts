@@ -44,7 +44,7 @@ describe("updateRepo", () => {
   test("dry-run returns pr-created status", async () => {
     const result = await updateRepo({
       repo: tempDir,
-      date: "01-01-2025",
+      date: "2025-01-01",
       dryRun: true,
     });
     expect(result.isOk()).toBe(true);
@@ -59,6 +59,12 @@ describe("updateRepo", () => {
       _cwd: string
     ): Promise<Result<ExecOutput, CommandFailedError>> => {
       const cmdStr = cmd.join(" ");
+      if (
+        cmdStr.includes("git symbolic-ref") &&
+        cmdStr.includes("refs/remotes/origin/HEAD")
+      ) {
+        return ok("refs/remotes/origin/main");
+      }
       if (cmdStr.includes("git status") && cmdStr.includes("--porcelain")) {
         return ok("");
       }
@@ -66,7 +72,7 @@ describe("updateRepo", () => {
     };
 
     const result = await updateRepo(
-      { repo: tempDir, date: "01-01-2025", dryRun: false },
+      { repo: tempDir, date: "2025-01-01", dryRun: false },
       mockExec
     );
 
@@ -84,6 +90,12 @@ describe("updateRepo", () => {
       _cwd: string
     ): Promise<Result<ExecOutput, CommandFailedError>> => {
       const cmdStr = cmd.join(" ");
+      if (
+        cmdStr.includes("git symbolic-ref") &&
+        cmdStr.includes("refs/remotes/origin/HEAD")
+      ) {
+        return ok("refs/remotes/origin/main");
+      }
       if (cmdStr.includes("git status") && cmdStr.includes("--porcelain")) {
         return ok("M package.json");
       }
@@ -94,7 +106,7 @@ describe("updateRepo", () => {
     };
 
     const result = await updateRepo(
-      { repo: tempDir, date: "01-01-2025", dryRun: false },
+      { repo: tempDir, date: "2025-01-01", dryRun: false },
       mockExec
     );
 
@@ -110,6 +122,13 @@ describe("updateRepo", () => {
       cmd: string[],
       _cwd: string
     ): Promise<Result<ExecOutput, CommandFailedError>> => {
+      const cmdStr = cmd.join(" ");
+      if (
+        cmdStr.includes("git symbolic-ref") &&
+        cmdStr.includes("refs/remotes/origin/HEAD")
+      ) {
+        return ok("refs/remotes/origin/main");
+      }
       if (cmd[1] === "pull") {
         return Promise.resolve(
           Result.err(
@@ -125,7 +144,7 @@ describe("updateRepo", () => {
     };
 
     const result = await updateRepo(
-      { repo: tempDir, date: "01-01-2025", dryRun: false },
+      { repo: tempDir, date: "2025-01-01", dryRun: false },
       mockExec
     );
 

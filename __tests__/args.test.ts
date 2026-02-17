@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { getDate, parseArgs } from "../src/args.ts";
 
-const DATE_PATTERN = /^\d{2}-\d{2}-\d{4}$/;
+const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 
 describe("parseArgs", () => {
   test("--help sets help to true", () => {
@@ -54,8 +54,15 @@ describe("parseArgs", () => {
 });
 
 describe("getDate", () => {
-  test("returns date in DD-MM-YYYY format", () => {
+  test("returns date in YYYY-MM-DD format", () => {
+    const now = new Date();
+    const dd = String(now.getDate()).padStart(2, "0");
+    const mm = String(now.getMonth() + 1).padStart(2, "0");
+    const yyyy = now.getFullYear();
+    const expectedDateString = `${yyyy}-${mm}-${dd}`;
+
     const date = getDate();
     expect(date).toMatch(DATE_PATTERN);
+    expect(date).toBe(expectedDateString);
   });
 });

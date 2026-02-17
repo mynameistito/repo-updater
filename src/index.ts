@@ -58,7 +58,6 @@ export async function processRepo(
   repo: string,
   date: string,
   dryRun: boolean,
-  prUrls: string[],
   updateFn: typeof updateRepo = updateRepo
 ): Promise<{ repo: string; status: string; prUrl?: string }> {
   const repoName = basename(repo);
@@ -91,9 +90,10 @@ export async function processRepo(
     log.info(`${repoName}: No dependency changes`);
   } else {
     s.stop(`Done: ${repoName}`);
-    log.success(`${repoName}: ${prUrl}`);
     if (prUrl) {
-      prUrls.push(prUrl);
+      log.success(`${repoName}: ${prUrl}`);
+    } else {
+      log.success(repoName);
     }
   }
 
@@ -108,7 +108,10 @@ async function handleRepoProcessing(
   updateFn: typeof updateRepo
 ) {
   for (const repo of valid) {
-    await processRepo(repo, date, dryRun, prUrls, updateFn);
+    const result = await processRepo(repo, date, dryRun, updateFn);
+    if (result.prUrl) {
+      prUrls.push(result.prUrl);
+    }
   }
 }
 

@@ -18,7 +18,7 @@ bun install repo-updater -g
 
 ## Usage
 
-```
+```text
 repo-updater [options] [repo paths...]
 ```
 
@@ -81,16 +81,17 @@ For each repository, the tool runs this pipeline sequentially:
 
 | Step | Command |
 | --- | --- |
-| 1 | `git checkout main` |
-| 2 | `git pull` |
-| 3 | `git checkout -b chore/dep-updates-DD-MM-YYYY` |
-| 4 | `bun update --latest` |
-| 5 | `bun install` |
-| 6 | `git status --porcelain` |
-| 7 | `git add -A` |
-| 8 | `git commit -m "dep updates DD-MM-YYYY"` |
-| 9 | `git push -u origin chore/dep-updates-DD-MM-YYYY` |
-| 10 | `gh pr create --title "Dep Updates DD-MM-YYYY" --body "Dep Updates DD-MM-YYYY"` |
+| 1 | Detect default branch via `git symbolic-ref refs/remotes/origin/HEAD` (fallback to `main`) |
+| 2 | `git checkout <default-branch>` |
+| 3 | `git pull` |
+| 4 | `git checkout -b chore/dep-updates-YYYY-MM-DD` |
+| 5 | `bun update --latest` |
+| 6 | `bun install` |
+| 7 | `git status --porcelain` |
+| 8 | `git add -A` |
+| 9 | `git commit -m "dep updates YYYY-MM-DD"` |
+| 10 | `git push -u origin chore/dep-updates-YYYY-MM-DD` |
+| 11 | `gh pr create --title "Dep Updates YYYY-MM-DD" --body "Dep Updates YYYY-MM-DD"` |
 
 If step 6 shows no changes, the branch is deleted and the repo is skipped (reported as "no changes").
 

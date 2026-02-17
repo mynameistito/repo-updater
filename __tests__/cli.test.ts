@@ -93,6 +93,18 @@ describe("resolveRepos", () => {
     expect(repos).toEqual(["/repo1", "/repo2"]);
   });
 
+  test("dry-run returns result without pushing prUrls", () => {
+    const prUrls: string[] = [];
+    const repos = resolveRepos({
+      help: false,
+      dryRun: true,
+      configPath: undefined,
+      positional: ["/repo1", "/repo2"],
+    });
+    expect(repos).toEqual(["/repo1", "/repo2"]);
+    expect(prUrls).toHaveLength(0);
+  });
+
   test("loads repos from config file", () => {
     const configPath = join(tempDir, "config.json");
     writeFileSync(configPath, JSON.stringify({ repos: ["/a", "/b"] }));
@@ -122,27 +134,13 @@ describe("processRepo", () => {
     const updateFn = mock((opts: { repo: string }) =>
       okResult(opts.repo, "pr-created", "https://example.com/pr/1")
     );
-    const prUrls: string[] = [];
-    const result = await processRepo(
-      tempDir,
-      "01-01-2025",
-      true,
-      prUrls,
-      updateFn
-    );
+    const result = await processRepo(tempDir, "2025-01-01", true, updateFn);
     expect(result.status).toBe("pr-created");
   });
 
   test("dry-run error returns failed", async () => {
     const updateFn = mock(() => errResult("fail", "git", "error"));
-    const prUrls: string[] = [];
-    const result = await processRepo(
-      tempDir,
-      "01-01-2025",
-      true,
-      prUrls,
-      updateFn
-    );
+    const result = await processRepo(tempDir, "2025-01-01", true, updateFn);
     expect(result.status).toBe("failed");
   });
 
@@ -150,16 +148,8 @@ describe("processRepo", () => {
     const updateFn = mock((opts: { repo: string }) =>
       okResult(opts.repo, "no-changes")
     );
-    const prUrls: string[] = [];
-    const result = await processRepo(
-      tempDir,
-      "01-01-2025",
-      false,
-      prUrls,
-      updateFn
-    );
+    const result = await processRepo(tempDir, "2025-01-01", false, updateFn);
     expect(result.status).toBe("no-changes");
-    expect(prUrls).toHaveLength(0);
   });
 
   test("non-dry-run pr-created pushes URL", async () => {
@@ -167,30 +157,16 @@ describe("processRepo", () => {
     const updateFn = mock((opts: { repo: string }) =>
       okResult(opts.repo, "pr-created", url)
     );
-    const prUrls: string[] = [];
-    const result = await processRepo(
-      tempDir,
-      "01-01-2025",
-      false,
-      prUrls,
-      updateFn
-    );
+    const result = await processRepo(tempDir, "2025-01-01", false, updateFn);
     expect(result.status).toBe("pr-created");
-    expect(prUrls).toEqual([url]);
+    expect(result.prUrl).toEqual(url);
   });
 
   test("non-dry-run error returns failed and logs stderr", async () => {
     const updateFn = mock(() =>
       errResult("git pull failed", "git pull", "fatal: no remote")
     );
-    const prUrls: string[] = [];
-    const result = await processRepo(
-      tempDir,
-      "01-01-2025",
-      false,
-      prUrls,
-      updateFn
-    );
+    const result = await processRepo(tempDir, "2025-01-01", false, updateFn);
     expect(result.status).toBe("failed");
     expect(logMock.error).toHaveBeenCalledTimes(2);
   });
@@ -201,35 +177,52 @@ describe("main", () => {
     okResult(opts.repo, "no-changes")
   );
 
+  let exitSpy: ReturnType<typeof spyOn>;
+
+  afterEach(() => {
+    if (exitSpy) {
+      exitSpy.mockRestore();
+    }
+  });
+
   test("--help prints usage and exits", async () => {
-    const exitSpy = spyOn(process, "exit").mockImplementation(() => {
+    exitSpy = spyOn(process, "exit").mockImplementation(() => {
       throw new Error("exit");
     });
-    await expect(main(["--help"], noopUpdate)).rejects.toThrow("exit");
-    expect(exitSpy).toHaveBeenCalledWith(0);
-    exitSpy.mockRestore();
+    try {
+      await expect(main(["--help"], noopUpdate)).rejects.toThrow("exit");
+      expect(exitSpy).toHaveBeenCalledWith(0);
+    } finally {
+      exitSpy.mockRestore();
+    }
   });
 
   test("exits when config not found", async () => {
-    const exitSpy = spyOn(process, "exit").mockImplementation(() => {
+    exitSpy = spyOn(process, "exit").mockImplementation(() => {
       throw new Error("exit");
     });
-    await expect(
-      main(["-c", join(tempDir, "missing.json")], noopUpdate)
-    ).rejects.toThrow("exit");
-    expect(exitSpy).toHaveBeenCalledWith(1);
-    exitSpy.mockRestore();
+    try {
+      await expect(
+        main(["-c", join(tempDir, "missing.json")], noopUpdate)
+      ).rejects.toThrow("exit");
+      expect(exitSpy).toHaveBeenCalledWith(1);
+    } finally {
+      exitSpy.mockRestore();
+    }
   });
 
   test("exits when no valid repos found", async () => {
-    const exitSpy = spyOn(process, "exit").mockImplementation(() => {
+    exitSpy = spyOn(process, "exit").mockImplementation(() => {
       throw new Error("exit");
     });
-    await expect(
-      main([join(tempDir, "nonexistent")], noopUpdate)
-    ).rejects.toThrow("exit");
-    expect(exitSpy).toHaveBeenCalledWith(1);
-    exitSpy.mockRestore();
+    try {
+      await expect(
+        main([join(tempDir, "nonexistent")], noopUpdate)
+      ).rejects.toThrow("exit");
+      expect(exitSpy).toHaveBeenCalledWith(1);
+    } finally {
+      exitSpy.mockRestore();
+    }
   });
 
   test("warns about missing repos", async () => {

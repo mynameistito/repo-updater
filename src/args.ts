@@ -19,7 +19,9 @@ export function parseArgs(argv: string[]): ParsedArgs {
       dryRun = true;
     } else if (arg === "-c" || arg === "--config") {
       const next = iter.next();
-      if (!next.done) {
+      if (next.done) {
+        console.warn(`${arg} requires a value`);
+      } else {
         configPath = next.value as string;
       }
     } else if (arg.startsWith("-")) {
@@ -38,5 +40,5 @@ export function getDate(): string {
   const dd = String(now.getDate()).padStart(2, "0");
   const mm = String(now.getMonth() + 1).padStart(2, "0");
   const yyyy = now.getFullYear();
-  return `${dd}-${mm}-${yyyy}`;
+  return `${yyyy}-${mm}-${dd}`;
 }
