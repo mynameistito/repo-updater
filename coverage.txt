@@ -1,0 +1,93 @@
+bun test v1.3.9 (cf6cdbbb)
+
+__tests__\args.test.ts:
+(pass) parseArgs > --help sets help to true
+(pass) parseArgs > -h sets help to true
+(pass) parseArgs > --dry-run sets dryRun to true
+(pass) parseArgs > -n sets dryRun to true
+(pass) parseArgs > -c sets configPath
+(pass) parseArgs > --config sets configPath
+(pass) parseArgs > positional arguments are collected
+(pass) parseArgs > combined flags work together
+-c requires a value
+(pass) parseArgs > leaves configPath undefined when -c is last argument
+Unknown flag: --unknown
+(pass) parseArgs > ignores unknown flags
+-c requires a value
+(pass) parseArgs > handles -c without value gracefully
+(pass) getDate > returns date in YYYY-MM-DD format
+
+__tests__\cli.test.ts:
+(pass) printUsage > prints usage text
+(pass) resolveRepos > returns positional args directly
+(pass) resolveRepos > dry-run returns result without pushing prUrls
+(pass) resolveRepos > loads repos from config file
+(pass) resolveRepos > returns null when config is not found
+(pass) processRepo > dry-run ok returns result value
+(pass) processRepo > dry-run error returns failed
+(pass) processRepo > non-dry-run no-changes logs info
+(pass) processRepo > non-dry-run pr-created pushes URL
+(pass) processRepo > non-dry-run error returns failed and logs stderr [16.00ms]
+(pass) processRepo > non-dry-run pr-created without prUrl logs success with repo name
+(pass) main > --help prints usage and exits
+(pass) main > exits when config not found
+(pass) main > exits when no valid repos found
+(pass) main > warns about missing repos
+(pass) main > shows dry-run message
+(pass) main > shows no-PRs message when no changes
+(pass) main > shows PR URLs and opens in browser when confirmed
+(pass) main > does not open browser when declined
+(pass) main > exits when user cancels PR confirmation
+(pass) main > openURLs launches correct command for each platform
+(pass) main > does not display PRs when list is empty [15.00ms]
+(pass) main > openURLBun spawns URL with Bun
+(pass) main > openURLNodejs uses child_process spawn [16.00ms]
+(pass) main > openURLs handles empty URL list
+
+__tests__\config.test.ts:
+(pass) loadConfig > loads valid config from explicit path
+(pass) loadConfig > returns ConfigNotFoundError for missing file
+(pass) loadConfig > returns ConfigParseError for invalid JSON
+(pass) loadConfig > searches default locations when no path given
+(pass) loadConfig > returns ConfigParseError when repos key is missing
+(pass) validateRepos > splits paths into valid and missing
+
+__tests__\errors.test.ts:
+(pass) TaggedError construction > ConfigNotFoundError has correct _tag and message
+(pass) TaggedError construction > ConfigParseError has correct _tag and message
+(pass) TaggedError construction > CommandFailedError has correct _tag and properties
+(pass) TaggedError construction > DirectoryNotFoundError has correct _tag and properties
+(pass) TaggedError.is() > ConfigNotFoundError.is() matches own instances
+(pass) TaggedError.is() > ConfigNotFoundError.is() rejects other error types
+(pass) TaggedError.is() > CommandFailedError.is() matches own instances
+(pass) TaggedError.is() > CommandFailedError.is() rejects plain Error
+(pass) TaggedError.is() > TaggedError.is() matches any tagged error
+(pass) TaggedError.is() > TaggedError.is() rejects non-tagged errors
+
+__tests__\runner.test.ts:
+(pass) exec > returns stdout on success [31.00ms]
+(pass) exec > returns CommandFailedError on failure [47.00ms]
+(pass) updateRepo > dry-run returns pr-created status
+(pass) updateRepo > non-dry-run returns no-changes when working tree is clean [16.00ms]
+(pass) updateRepo > non-dry-run returns pr-created with URL when changes exist
+(pass) updateRepo > non-dry-run returns error when a command fails
+(pass) updateRepo > non-dry-run cleans up on failure after branch creation
+(pass) updateRepo > execBun returns stdout and stderr on success [31.00ms]
+(pass) updateRepo > execBun returns non-zero exitCode on failure [47.00ms]
+(pass) updateRepo > execNodejs returns stdout and stderr on success [16.00ms]
+(pass) updateRepo > execNodejs returns non-zero exitCode on failure
+---------------|---------|---------|-------------------
+File           | % Funcs | % Lines | Uncovered Line #s
+---------------|---------|---------|-------------------
+All files      |   99.05 |   99.77 |
+ src\args.ts   |  100.00 |  100.00 | 
+ src\config.ts |  100.00 |  100.00 | 
+ src\errors.ts |  100.00 |  100.00 | 
+ src\index.ts  |  100.00 |   99.30 | 
+ src\runner.ts |   95.24 |   99.56 | 
+---------------|---------|---------|-------------------
+
+ 64 pass
+ 0 fail
+ 113 expect() calls
+Ran 64 tests across 5 files. [380.00ms]

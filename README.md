@@ -1,8 +1,17 @@
 # repo-updater
 
-CLI tool that mass-updates [Bun](https://bun.sh) dependencies across multiple git repositories, commits changes, creates pull requests via [`gh`](https://cli.github.com), and opens all resulting PR URLs in the browser.
+CLI tool that mass-updates dependencies across multiple git repositories using your preferred package manager ([npm](https://www.npmjs.com/), [pnpm](https://pnpm.io/), [yarn](https://yarnpkg.com/), or [Bun](https://bun.sh)). Automatically detects the package manager, commits changes, creates pull requests via [`gh`](https://cli.github.com), and opens all resulting PR URLs in the browser.
 
 Replaces manually running a dependency update workflow in each repo one-by-one.
+
+## Features
+
+- **Auto-detection**: Automatically detects which package manager to use based on lockfiles
+- **Multi-package manager support**: Works with npm, pnpm, yarn, and Bun
+- **Batch processing**: Update dependencies in multiple repos in one command
+- **GitHub integration**: Creates pull requests and opens them in your browser
+- **Dry-run mode**: Preview changes without executing anything
+- **Cross-platform**: Runs on Windows, macOS, and Linux
 
 ## Prerequisites
 
@@ -13,15 +22,13 @@ Replaces manually running a dependency update workflow in each repo one-by-one.
 ## Setup
 
 ```sh
-bun install
+bun install repo-updater -g
 ```
 
 ## Usage
 
-```
-bun run src/index.ts [options] [repo paths...]
-# or
-bun start [options] [repo paths...]
+```text
+repo-updater [options] [repo paths...]
 ```
 
 ### Options
@@ -37,23 +44,23 @@ bun start [options] [repo paths...]
 Pass one or more absolute repo paths directly to override the config file:
 
 ```sh
-bun start E:\GitHub\org\repo1 E:\GitHub\org\repo2
+repo-updater C:\path\to\repo1 C:\path\to\repo2
 ```
 
 ### Examples
 
 ```sh
 # Update all repos listed in config
-bun start
+repo-updater
 
 # Preview what would happen without touching anything
-bun start --dry-run
+repo-updater --dry-run
 
 # Use a different config file
-bun start -c ./other-config.json
+repo-updater -c ./other-config.json
 
 # Update a single repo directly
-bun start E:\GitHub\mynameistito\mynameistito-site
+repo-updater C:\path\to\single-repo
 ```
 
 ## Config file
@@ -77,24 +84,40 @@ The tool searches for a config file in this order:
 
 The `repos` array contains absolute paths to git repositories. Directories that don't exist are skipped with a warning.
 
-## What it does
+## How it works
+
+### Package Manager Detection
+
+The tool automatically detects which package manager to use by checking for lockfiles in this priority order:
+
+1. `package-lock.json` → npm
+2. `pnpm-lock.yaml` → pnpm
+3. `yarn.lock` → yarn
+4. `bun.lock` → Bun
+5. (fallback) → npm
+
+This allows you to manage mono-repos or mixed package manager environments without configuration.
+
+### Update Pipeline
 
 For each repository, the tool runs this pipeline sequentially:
 
 | Step | Command |
 | --- | --- |
-| 1 | `git checkout main` |
-| 2 | `git pull` |
-| 3 | `git checkout -b chore/dep-updates-DD-MM-YYYY` |
-| 4 | `bun update --latest` |
-| 5 | `bun install` |
-| 6 | `git status --porcelain` |
-| 7 | `git add -A` |
-| 8 | `git commit -m "dep updates DD-MM-YYYY"` |
-| 9 | `git push -u origin chore/dep-updates-DD-MM-YYYY` |
-| 10 | `gh pr create --title "Dep Updates DD-MM-YYYY" --body "Dep Updates DD-MM-YYYY"` |
+| 1 | Detect default branch via `git symbolic-ref refs/remotes/origin/HEAD` (fallback to `main`) |
+| 2 | Detect package manager from lockfiles |
+| 3 | `git checkout <default-branch>` |
+| 4 | `git pull` |
+| 5 | `git checkout -b chore/dep-updates-YYYY-MM-DD-<timestamp>` |
+| 6 | `<pm> update` (or `<pm> upgrade` for yarn) |
+| 7 | `<pm> install` |
+| 8 | `git status --porcelain` |
+| 9 | `git add -A` |
+| 10 | `git commit -m "dep updates YYYY-MM-DD"` |
+| 11 | `git push -u origin chore/dep-updates-YYYY-MM-DD-<timestamp>` |
+| 12 | `gh pr create --title "Dep Updates YYYY-MM-DD" --body "Dep Updates YYYY-MM-DD"` |
 
-If step 6 shows no changes, the branch is deleted and the repo is skipped (reported as "no changes").
+If step 8 shows no changes, the branch is deleted and the repo is skipped (reported as "no changes").
 
 After all repos are processed, a summary box lists every PR URL. You're then prompted to open them all in the browser.
 
@@ -102,67 +125,22 @@ After all repos are processed, a summary box lists every PR URL. You're then pro
 
 With `--dry-run`, each step is printed to the console prefixed with `[dry-run]` but nothing is executed. No git commands run, no branches are created, no PRs are opened.
 
-## Project structure
+## Example Scenarios
 
-```
-repo-updater/
-  src/
-    index.ts        Entry point -- CLI arg parsing, orchestration, UI
-    config.ts       Config file loading and repo path validation
-    runner.ts       exec() wrapper and per-repo update pipeline
-    errors.ts       Typed error classes (TaggedError)
-  repo-updater.config.json
-  package.json
-  tsconfig.json
-  biome.jsonc
-```
+### Single mono-repo with multiple package managers
+If your mono-repo has `packages/app` using npm and `packages/lib` using pnpm, repo-updater will detect and use the correct package manager for each automatically.
 
-### `src/errors.ts`
-
-Typed error classes using [`better-result`](https://github.com/dmmulroy/better-result)'s `TaggedError` factory:
-
-- `DirectoryNotFoundError` -- repo path doesn't exist on disk
-- `CommandFailedError` -- a git/bun/gh command exited non-zero
-- `ConfigNotFoundError` -- no config file found in any search location
-- `ConfigParseError` -- config file is invalid JSON or missing the `repos` array
-
-### `src/config.ts`
-
-- `loadConfig(configPath?)` -- returns `Result<Config, ConfigNotFoundError | ConfigParseError>`
-- `validateRepos(repos)` -- checks each path with `existsSync`, returns `{ valid, missing }`
-
-### `src/runner.ts`
-
-- `exec(cmd, cwd)` -- wraps `Bun.spawn`, returns `Result<{ stdout, stderr }, CommandFailedError>`
-- `updateRepo({ repo, date, dryRun })` -- runs the 10-step pipeline using `Result.gen` for railway-oriented error handling
-
-### `src/index.ts`
-
-- Hand-rolled arg parser (no external dependency)
-- Interactive UI via [`@clack/prompts`](https://github.com/bombshell-dev/clack) (intro, spinners, colored logs, summary note, confirmation prompt)
-- Repos processed sequentially -- failures in one repo don't stop the rest
-
-## Scripts
-
-```sh
-bun start           # Run the tool
-bun run typecheck   # Type-check with tsc
-bun run check       # Lint + format check (ultracite/biome)
-bun run fix         # Auto-fix lint + format issues
+### Mixed environment
+Manage repos using different package managers in a single batch operation:
+```json
+{
+  "repos": [
+    "/path/to/npm-project",
+    "/path/to/pnpm-monorepo",
+    "/path/to/yarn-workspace",
+    "/path/to/bun-project"
+  ]
+}
 ```
 
-## Dependencies
-
-### Runtime
-
-- [`@clack/prompts`](https://github.com/bombshell-dev/clack) -- terminal UI (spinners, logs, prompts)
-- [`better-result`](https://github.com/dmmulroy/better-result) -- `Result` type, `TaggedError`, `Result.gen` for typed error handling without try/catch
-
-### Dev
-
-- [`@biomejs/biome`](https://biomejs.dev) -- linter and formatter
-- [`ultracite`](https://github.com/haydenbleasel/ultracite) -- biome preset configuration
-- [`@types/bun`](https://bun.sh) -- Bun type definitions
-- [`@typescript/native-preview`](https://github.com/nicolo-ribaudo/tc39-proposal-type-annotations) -- TypeScript compiler
-- [`@changesets/cli`](https://github.com/changesets/changesets) -- versioning
-- [`lefthook`](https://github.com/evilmartians/lefthook) -- git hooks
+repo-updater will detect each one and run the appropriate update commands.
