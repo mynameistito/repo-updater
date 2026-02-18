@@ -18,6 +18,8 @@ jobs:
 
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
 
       - name: Install dependencies
         run: bun install --frozen-lockfile
@@ -30,6 +32,7 @@ jobs:
 
   test-bun:
     name: Test with Bun
+    needs: [check]
     strategy:
       matrix:
         bun-version: [latest, canary]
@@ -52,6 +55,7 @@ jobs:
 
   test-node:
     name: Test with Node.js
+    needs: [check]
     strategy:
       matrix:
         node-version: [18.x, 20.x, 22.x]

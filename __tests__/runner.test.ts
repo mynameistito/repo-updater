@@ -183,11 +183,13 @@ describe("updateRepo", () => {
 
   test("non-dry-run cleans up on failure after branch creation", async () => {
     let branchCreatedOnce = false;
+    const allCalls: string[] = [];
     const mockExec = (
       cmd: string[],
       _cwd: string
     ): Promise<Result<ExecOutput, CommandFailedError>> => {
       const cmdStr = cmd.join(" ");
+      allCalls.push(cmdStr);
       if (
         cmdStr.includes("git symbolic-ref") &&
         cmdStr.includes("refs/remotes/origin/HEAD")
@@ -224,6 +226,10 @@ describe("updateRepo", () => {
     }
     // Verify branch was created before the failure
     expect(branchCreatedOnce).toBe(true);
+    // Verify checkout cleanup was attempted
+    expect(
+      allCalls.some((c) => c.includes("git checkout") && !c.includes("-b"))
+    ).toBe(true);
   });
 
   test("execBun returns stdout and stderr on success", async () => {

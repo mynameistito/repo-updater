@@ -280,7 +280,7 @@ export function updateRepo(
       return Result.ok<RepoResult, CommandFailedError>({
         repo,
         status: "pr-created",
-        prUrl: pr.stdout.trim(),
+        prUrl: pr.stdout,
       });
     } catch (e) {
       await performCleanup(
