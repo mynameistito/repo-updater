@@ -152,7 +152,7 @@ export function exec(
   });
 }
 
-function performCleanup(
+async function performCleanup(
   defaultBranch: string,
   branch: string,
   branchCreated: boolean,
@@ -162,39 +162,36 @@ function performCleanup(
     cwd: string
   ) => Promise<Result<ExecOutput, CommandFailedError>>,
   repo: string
-): void {
+): Promise<void> {
   if (!branchCreated) {
     return;
   }
 
-  const checkoutResult = execFn(["git", "checkout", defaultBranch], repo);
+  const checkoutResult = await execFn(["git", "checkout", defaultBranch], repo);
+  if (checkoutResult.isErr()) {
+    console.warn(
+      `Cleanup: Failed to checkout ${defaultBranch}: ${checkoutResult.error.message}`
+    );
+  }
 
-  checkoutResult.then((result) => {
-    if (result.isErr()) {
+  if (branchPushed) {
+    const deleteRemoteResult = await execFn(
+      ["git", "push", "origin", "--delete", branch],
+      repo
+    );
+    if (deleteRemoteResult.isErr()) {
       console.warn(
-        `Cleanup: Failed to checkout ${defaultBranch}: ${result.error.message}`
+        `Cleanup: Could not delete remote branch ${branch}: ${deleteRemoteResult.error.message}`
       );
     }
-    if (branchPushed) {
-      execFn(["git", "push", "origin", "--delete", branch], repo).then(
-        (res) => {
-          if (res.isErr()) {
-            console.warn(
-              `Cleanup: Could not delete remote branch ${branch}: ${res.error.message}`
-            );
-          }
-        }
-      );
-    }
-  });
+  }
 
-  execFn(["git", "branch", "-D", branch], repo).then((result) => {
-    if (result.isErr()) {
-      console.warn(
-        `Cleanup: Failed to delete branch ${branch}: ${result.error.message}`
-      );
-    }
-  });
+  const deleteResult = await execFn(["git", "branch", "-D", branch], repo);
+  if (deleteResult.isErr()) {
+    console.warn(
+      `Cleanup: Failed to delete branch ${branch}: ${deleteResult.error.message}`
+    );
+  }
 }
 
 export function updateRepo(
@@ -286,7 +283,7 @@ export function updateRepo(
         prUrl: pr.stdout.trim(),
       });
     } catch (e) {
-      performCleanup(
+      await performCleanup(
         defaultBranch,
         branch,
         branchCreated,
