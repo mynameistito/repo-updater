@@ -15,7 +15,7 @@ Replaces manually running a dependency update workflow in each repo one-by-one.
 
 ## Prerequisites
 
-- [Bun](https://bun.sh) (runtime)
+
 - [Git](https://git-scm.com)
 - [GitHub CLI (`gh`)](https://cli.github.com) -- authenticated via `gh auth login`
 
