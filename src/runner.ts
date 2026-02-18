@@ -45,14 +45,14 @@ export function getInstallCommand(pm: PackageManager): string[] {
 }
 
 export interface ExecOutput {
-  stdout: string;
   stderr: string;
+  stdout: string;
 }
 
 export interface RepoResult {
+  prUrl?: string;
   repo: string;
   status: "pr-created" | "no-changes";
-  prUrl?: string;
 }
 
 class ExecError extends Error {
