@@ -1,5 +1,15 @@
 # repo-updater
 
+## 0.1.1
+
+### Patch Changes
+
+- b92aacf: Fix GitHub Actions release workflow to use GitHub OIDC for NPM publishing.
+
+  - Configure npm registry with OIDC trusted publishing
+  - Remove NPM_TOKEN secret dependency
+  - Enable both GitHub and NPM package publishing in single workflow
+
 ## 0.1.0
 
 ### Minor Changes
