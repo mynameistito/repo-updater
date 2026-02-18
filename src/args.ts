@@ -1,7 +1,7 @@
 export interface ParsedArgs {
-  help: boolean;
-  dryRun: boolean;
   configPath: string | undefined;
+  dryRun: boolean;
+  help: boolean;
   positional: string[];
 }
 
