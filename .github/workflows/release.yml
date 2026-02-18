@@ -52,4 +52,4 @@ jobs:
         run: |
           npm config set @mynameistito:registry https://npm.pkg.github.com
           npm config set //npm.pkg.github.com/:_authToken=${{ secrets.GITHUB_TOKEN }}
-          npm publish --registry https://npm.pkg.github.com --access public 2>/dev/null || true
+          npm publish --registry https://npm.pkg.github.com --access public
