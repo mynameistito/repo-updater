@@ -1,5 +1,14 @@
 # repo-updater
 
+## 0.1.4
+
+### Patch Changes
+
+- 2dd7ad8: Updated Dependencies:
+  - @biomejs/biome 2.4.0 → 2.4.2
+  - @typescript/native-preview 7.0.0-dev.20260215.1 → 7.0.0-dev.20260217.1
+  - ultracite 7.2.2 → 7.2.3
+
 ## 0.1.3
 
 ### Patch Changes
