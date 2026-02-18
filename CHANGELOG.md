@@ -1,5 +1,13 @@
 # repo-updater
 
+## 0.1.3
+
+### Patch Changes
+
+- 8faef12: Fix package manager detection to prioritize bun.lock over package-lock.json.
+
+  When a project has both bun.lock and package-lock.json, the detection now correctly identifies it as a bun project instead of npm.
+
 ## 0.1.2
 
 ### Patch Changes
