@@ -8,12 +8,12 @@ const DEFAULT_BRANCH_REGEX = /refs\/remotes\/origin\/(.+)$/;
 export type PackageManager = "npm" | "pnpm" | "yarn" | "bun";
 
 export function detectPackageManager(repoPath: string): PackageManager {
-  // Check in priority order (npm first for audit)
+  // Check in priority order (most specific lock files first)
   const checks: Array<{ file: string; pm: PackageManager }> = [
-    { file: "package-lock.json", pm: "npm" },
+    { file: "bun.lock", pm: "bun" },
     { file: "pnpm-lock.yaml", pm: "pnpm" },
     { file: "yarn.lock", pm: "yarn" },
-    { file: "bun.lock", pm: "bun" },
+    { file: "package-lock.json", pm: "npm" },
   ];
 
   for (const { file, pm } of checks) {
