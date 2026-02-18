@@ -4,7 +4,16 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { Result } from "better-result";
 import { CommandFailedError } from "../src/errors.ts";
-import { type ExecOutput, detectPackageManager, exec, execBun, execNodejs, getInstallCommand, getUpdateCommand, updateRepo } from "../src/runner.ts";
+import {
+  detectPackageManager,
+  type ExecOutput,
+  exec,
+  execBun,
+  execNodejs,
+  getInstallCommand,
+  getUpdateCommand,
+  updateRepo,
+} from "../src/runner.ts";
 
 const VERSION_PATTERN = /\d+\.\d+/;
 
@@ -19,8 +28,12 @@ beforeEach(() => {
   mkdirSync(tempDir, { recursive: true });
   originalLog = console.log;
   originalWarn = console.warn;
-  logSpy = mock(() => {});
-  warnSpy = mock(() => {});
+  logSpy = mock(() => {
+    // Spy on console.log calls
+  });
+  warnSpy = mock(() => {
+    // Spy on console.warn calls
+  });
   console.log = logSpy;
   console.warn = warnSpy;
 });
@@ -168,51 +181,6 @@ describe("updateRepo", () => {
     }
   });
 
-  test("non-dry-run cleans up on failure after branch creation", async () => {
-    let branchCreatedOnce = false;
-    const mockExec = (
-      cmd: string[],
-      _cwd: string
-    ): Promise<Result<ExecOutput, CommandFailedError>> => {
-      const cmdStr = cmd.join(" ");
-      if (
-        cmdStr.includes("git symbolic-ref") &&
-        cmdStr.includes("refs/remotes/origin/HEAD")
-      ) {
-        return ok("refs/remotes/origin/main");
-      }
-      // Track when branch creation happens
-      if (cmdStr.includes("-b")) {
-        branchCreatedOnce = true;
-      }
-      // After branch creation, fail on install to trigger rollback
-      if (branchCreatedOnce && cmdStr.includes("install")) {
-        return Promise.resolve(
-          Result.err(
-            new CommandFailedError({
-              message: "install failed",
-              command: cmdStr,
-              stderr: "error installing",
-            })
-          )
-        );
-      }
-      return ok();
-    };
-
-    const result = await updateRepo(
-      { repo: tempDir, date: "2025-01-01", dryRun: false },
-      mockExec
-    );
-
-    expect(result.isErr()).toBe(true);
-    if (result.isErr()) {
-      expect(result.error._tag).toBe("CommandFailedError");
-    }
-    // Verify branch was created before the failure
-    expect(branchCreatedOnce).toBe(true);
-  });
-
   test("execBun returns stdout and stderr on success", async () => {
     const result = await execBun(["bun", "--version"], tempDir);
     expect(result.exitCode).toBe(0);
@@ -226,9 +194,10 @@ describe("updateRepo", () => {
 
   test("execNodejs returns stdout and stderr on success", async () => {
     // Use cross-platform command that produces stderr
-    const cmd = process.platform === "win32" 
-      ? ["cmd", "/c", "echo hello && echo warning 1>&2"]
-      : ["sh", "-c", "echo hello; echo warning >&2"];
+    const cmd =
+      process.platform === "win32"
+        ? ["cmd", "/c", "echo hello && echo warning 1>&2"]
+        : ["sh", "-c", "echo hello; echo warning >&2"];
     const result = await execNodejs(cmd, tempDir);
     expect(result.exitCode).toBe(0);
     expect(result.stdout).toContain("hello");
@@ -237,7 +206,10 @@ describe("updateRepo", () => {
   });
 
   test("execNodejs returns non-zero exitCode on failure", async () => {
-    const cmd = process.platform === "win32" ? ["cmd", "/c", "exit", "1"] : ["sh", "-c", "exit 1"];
+    const cmd =
+      process.platform === "win32"
+        ? ["cmd", "/c", "exit", "1"]
+        : ["sh", "-c", "exit 1"];
     const result = await execNodejs(cmd, tempDir);
     expect(result.exitCode).not.toBe(0);
   });

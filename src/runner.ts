@@ -152,6 +152,48 @@ export function exec(
   });
 }
 
+async function performCleanup(
+  defaultBranch: string,
+  branch: string,
+  branchCreated: boolean,
+  branchPushed: boolean,
+  execFn: (
+    cmd: string[],
+    cwd: string
+  ) => Promise<Result<ExecOutput, CommandFailedError>>,
+  repo: string
+): Promise<void> {
+  if (!branchCreated) {
+    return;
+  }
+
+  const checkoutResult = await execFn(["git", "checkout", defaultBranch], repo);
+  if (checkoutResult.isErr()) {
+    console.warn(
+      `Cleanup: Failed to checkout ${defaultBranch}: ${checkoutResult.error.message}`
+    );
+  }
+
+  if (branchPushed) {
+    const deleteRemoteResult = await execFn(
+      ["git", "push", "origin", "--delete", branch],
+      repo
+    );
+    if (deleteRemoteResult.isErr()) {
+      console.warn(
+        `Cleanup: Could not delete remote branch ${branch}: ${deleteRemoteResult.error.message}`
+      );
+    }
+  }
+
+  const deleteResult = await execFn(["git", "branch", "-D", branch], repo);
+  if (deleteResult.isErr()) {
+    console.warn(
+      `Cleanup: Failed to delete branch ${branch}: ${deleteResult.error.message}`
+    );
+  }
+}
+
 export function updateRepo(
   options: {
     repo: string;
@@ -194,6 +236,7 @@ export function updateRepo(
       yield* Result.await(execFn(["git", "pull"], repo));
       yield* Result.await(execFn(["git", "checkout", "-b", branch], repo));
       branchCreated = true;
+
       yield* Result.await(execFn(getUpdateCommand(pm), repo));
       yield* Result.await(execFn(getInstallCommand(pm), repo));
 
@@ -234,46 +277,20 @@ export function updateRepo(
         )
       );
 
-      const prUrl = pr.stdout.trim();
-
       return Result.ok<RepoResult, CommandFailedError>({
         repo,
         status: "pr-created",
-        prUrl,
+        prUrl: pr.stdout,
       });
     } catch (e) {
-      // Rollback on failure
-      if (branchCreated) {
-        const checkoutResult = await execFn(
-          ["git", "checkout", defaultBranch],
-          repo
-        );
-        if (checkoutResult.isErr()) {
-          console.warn(
-            `Cleanup: Failed to checkout ${defaultBranch}: ${checkoutResult.error.message}`
-          );
-        }
-        if (branchPushed) {
-          const deleteRemoteResult = await execFn(
-            ["git", "push", "origin", "--delete", branch],
-            repo
-          );
-          if (deleteRemoteResult.isErr()) {
-            console.warn(
-              `Cleanup: Could not delete remote branch ${branch}: ${deleteRemoteResult.error.message}`
-            );
-          }
-        }
-        const deleteResult = await execFn(
-          ["git", "branch", "-D", branch],
-          repo
-        );
-        if (deleteResult.isErr()) {
-          console.warn(
-            `Cleanup: Failed to delete branch ${branch}: ${deleteResult.error.message}`
-          );
-        }
-      }
+      await performCleanup(
+        defaultBranch,
+        branch,
+        branchCreated,
+        branchPushed,
+        execFn,
+        repo
+      );
       throw e;
     }
   });

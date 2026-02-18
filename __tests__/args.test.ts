@@ -5,7 +5,9 @@ let originalConsoleError: typeof console.error;
 
 beforeEach(() => {
   originalConsoleError = console.error;
-  console.error = () => {};
+  console.error = () => {
+    // Suppress console errors in tests
+  };
 });
 
 afterEach(() => {
