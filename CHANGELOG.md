@@ -1,5 +1,11 @@
 # repo-updater
 
+## 0.1.5
+
+### Patch Changes
+
+- 86f2981: dep bump and fix minimatch 8.7 CVE
+
 ## 0.1.4
 
 ### Patch Changes
