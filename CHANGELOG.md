@@ -1,5 +1,11 @@
 # repo-updater
 
+## 0.1.6
+
+### Patch Changes
+
+- d0d4141: dep update
+
 ## 0.1.5
 
 ### Patch Changes
