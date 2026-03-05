@@ -1,0 +1,13 @@
+pre-commit:
+  parallel: true
+  jobs:
+    - run: bun ultracite fix
+      glob: "**/*.{js,jsx,ts,tsx,json,jsonc,css}"
+
+    - run: bun v8r {staged_files}
+      glob: "**/*.{yml,yaml}"
+
+    - run: bunx tsgo --noEmit
+      glob: "**/*.{ts,tsx}"
+
+    - run: bun run scripts/cleanup.ts
