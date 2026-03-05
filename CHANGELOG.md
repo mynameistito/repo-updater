@@ -1,5 +1,11 @@
 # repo-updater
 
+## 0.1.7
+
+### Patch Changes
+
+- dd9eba5: dep bump
+
 ## 0.1.6
 
 ### Patch Changes
