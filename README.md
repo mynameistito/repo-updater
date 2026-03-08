@@ -82,7 +82,7 @@ The tool searches for a config file in this order:
 }
 ```
 
-The `repos` array contains absolute paths to git repositories. Directories that don't exist are skipped with a warning.
+The `repos` array contains absolute paths to git repositories. Directories that don't exist or aren't git repositories are skipped with a warning.
 
 ## How it works
 
@@ -90,10 +90,10 @@ The `repos` array contains absolute paths to git repositories. Directories that 
 
 The tool automatically detects which package manager to use by checking for lockfiles in this priority order:
 
-1. `package-lock.json` → npm
+1. `bun.lock` → Bun
 2. `pnpm-lock.yaml` → pnpm
 3. `yarn.lock` → yarn
-4. `bun.lock` → Bun
+4. `package-lock.json` → npm
 5. (fallback) → npm
 
 This allows you to manage mono-repos or mixed package manager environments without configuration.
@@ -104,12 +104,12 @@ For each repository, the tool runs this pipeline sequentially:
 
 | Step | Command |
 | --- | --- |
-| 1 | Detect default branch via `git symbolic-ref refs/remotes/origin/HEAD` (fallback to `main`) |
-| 2 | Detect package manager from lockfiles |
+| 1 | Detect package manager from lockfiles |
+| 2 | Detect default branch via `git symbolic-ref refs/remotes/origin/HEAD` (fallback to `main`) |
 | 3 | `git checkout <default-branch>` |
 | 4 | `git pull` |
 | 5 | `git checkout -b chore/dep-updates-YYYY-MM-DD-<timestamp>` |
-| 6 | `<pm> update` (or `<pm> upgrade` for yarn) |
+| 6 | `npm update` / `pnpm update --latest` / `yarn upgrade` / `bun update --latest` |
 | 7 | `<pm> install` |
 | 8 | `git status --porcelain` |
 | 9 | `git add -A` |
