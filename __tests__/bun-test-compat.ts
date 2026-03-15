@@ -8,8 +8,9 @@
  *   spyOn   → vi.spyOn
  *
  * Not covered — mock.module(): requires Bun's module system for ESM interception
- * and cannot be shimmed. Tests that use it (cli.test.ts) are excluded from the
- * vitest run via vitest.config.ts and continue to run under `bun test`.
+ * and cannot be shimmed; calling it throws a descriptive error. Tests that use
+ * it (cli.test.ts) are excluded from the vitest run via vitest.config.ts and
+ * continue to run under `bun test`.
  */
 import {
   afterAll as _afterAll,
@@ -31,5 +32,14 @@ export const describe = _describe;
 export const expect = _expect;
 export const it = _it;
 export const test = _test;
-export const mock = vi.fn;
+function mock(...args: Parameters<typeof vi.fn>) {
+  return vi.fn(...args);
+}
+mock.module = (..._args: unknown[]): never => {
+  throw new Error(
+    "mock.module() is not supported in the Vitest/Node.js shim. " +
+      "Use vi.mock() or vi.doMock() instead."
+  );
+};
+export { mock };
 export const spyOn = vi.spyOn;
