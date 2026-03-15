@@ -16,4 +16,4 @@ export const beforeEach = _beforeEach;
 export const describe = _describe;
 export const expect = _expect;
 export const test = _test;
-export const mock = (...args: Parameters<typeof vi.fn>) => vi.fn(...args);
+export const mock = vi.fn;
