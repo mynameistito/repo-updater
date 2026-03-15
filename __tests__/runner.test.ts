@@ -181,16 +181,24 @@ describe("updateRepo", () => {
     }
   });
 
-  test("execBun returns stdout and stderr on success", async () => {
-    const result = await execBun(["bun", "--version"], tempDir);
-    expect(result.exitCode).toBe(0);
-    expect(result.stdout).toMatch(VERSION_PATTERN);
-  });
+  const isBun = typeof globalThis.Bun !== "undefined";
 
-  test("execBun returns non-zero exitCode on failure", async () => {
-    const result = await execBun(["git", "status"], tempDir);
-    expect(result.exitCode).not.toBe(0);
-  });
+  test.skipIf(!isBun)(
+    "execBun returns stdout and stderr on success",
+    async () => {
+      const result = await execBun(["bun", "--version"], tempDir);
+      expect(result.exitCode).toBe(0);
+      expect(result.stdout).toMatch(VERSION_PATTERN);
+    }
+  );
+
+  test.skipIf(!isBun)(
+    "execBun returns non-zero exitCode on failure",
+    async () => {
+      const result = await execBun(["git", "status"], tempDir);
+      expect(result.exitCode).not.toBe(0);
+    }
+  );
 
   test("execNodejs returns stdout and stderr on success", async () => {
     // Use cross-platform command that produces stderr

@@ -58,7 +58,7 @@ jobs:
     needs: [check]
     strategy:
       matrix:
-        node-version: [22.x, 24.x]
+        node-version: [18.x, 22.x, 24.x]
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -76,4 +76,4 @@ jobs:
         run: bun install --frozen-lockfile
 
       - name: Test (Node.js runtime)
-        run: bun test
+        run: bun run test:node
