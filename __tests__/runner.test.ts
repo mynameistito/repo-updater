@@ -50,6 +50,7 @@ describe("exec", () => {
     }
   });
 
+  // Requires `git` in PATH (standard on CI and most dev machines).
   test("returns CommandFailedError on failure", async () => {
     const result = await exec(["git", "status"], tempDir);
     expect(result.isErr()).toBe(true);

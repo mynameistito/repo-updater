@@ -1,5 +1,5 @@
 import { fileURLToPath } from "node:url";
-import { defineConfig } from "vitest/config";
+import { configDefaults, defineConfig } from "vitest/config";
 
 export default defineConfig({
   resolve: {
@@ -13,6 +13,6 @@ export default defineConfig({
     include: ["__tests__/**/*.test.ts"],
     // cli.test.ts uses bun:test's mock.module() for ESM module mocking,
     // which requires Bun's module system and cannot be shimmed for Node.
-    exclude: ["**/node_modules/**", "__tests__/cli.test.ts"],
+    exclude: [...configDefaults.exclude, "__tests__/cli.test.ts"],
   },
 });

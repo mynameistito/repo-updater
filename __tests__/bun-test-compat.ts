@@ -32,6 +32,8 @@ export const describe = _describe;
 export const expect = _expect;
 export const it = _it;
 export const test = _test;
+// Note: Bun's `Mock<T>` and vitest's `MockInstance` differ slightly in their
+// type signatures; cast explicitly if you need to assign to one of those types.
 function mock(...args: Parameters<typeof vi.fn>) {
   return vi.fn(...args);
 }
@@ -43,4 +45,5 @@ mock.module = (..._args: unknown[]): never => {
 };
 
 export { mock };
-export const spyOn = vi.spyOn;
+// Bound to `vi` so the `this` context is preserved when called as a standalone function.
+export const spyOn = vi.spyOn.bind(vi);
