@@ -151,10 +151,10 @@ export function openURLs(urls: string[], platform: string = process.platform) {
       cmd = ["xdg-open", url];
     }
 
-    if (typeof Bun !== "undefined") {
-      openURLBun(cmd);
-    } else {
+    if (typeof Bun === "undefined") {
       openURLNodejs(cmd);
+    } else {
+      openURLBun(cmd);
     }
   }
 }
