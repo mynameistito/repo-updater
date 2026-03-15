@@ -52,7 +52,10 @@ const ok = (stdout = ""): Promise<Result<ExecOutput, CommandFailedError>> =>
 
 describe("exec", () => {
   test("returns stdout on success", async () => {
-    const result = await exec(["node", "--version"], tempDir);
+    const result = await exec(
+      isBun ? ["bun", "--version"] : ["node", "--version"],
+      tempDir
+    );
     expect(result.isOk()).toBe(true);
     if (result.isOk()) {
       expect(result.value.stdout).toMatch(VERSION_PATTERN);

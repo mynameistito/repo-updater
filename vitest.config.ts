@@ -1,10 +1,12 @@
-import path from "node:path";
+import { fileURLToPath } from "node:url";
 import { defineConfig } from "vitest/config";
 
 export default defineConfig({
   resolve: {
     alias: {
-      "bun:test": path.resolve("./__tests__/bun-test-compat.ts"),
+      "bun:test": fileURLToPath(
+        new URL("./__tests__/bun-test-compat.ts", import.meta.url)
+      ),
     },
   },
   test: {
