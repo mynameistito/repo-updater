@@ -40,8 +40,8 @@ beforeEach(() => {
 
 afterEach(() => {
   rmSync(tempDir, { recursive: true, force: true });
-  logSpy.mockRestore();
-  warnSpy.mockRestore();
+  logSpy.mockReset();
+  warnSpy.mockReset();
   console.log = originalLog;
   console.warn = originalWarn;
 });

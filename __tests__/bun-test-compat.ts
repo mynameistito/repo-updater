@@ -17,3 +17,4 @@ export const describe = _describe;
 export const expect = _expect;
 export const test = _test;
 export const mock = vi.fn;
+export const spyOn = vi.spyOn;
