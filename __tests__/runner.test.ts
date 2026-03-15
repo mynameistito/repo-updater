@@ -16,6 +16,7 @@ import {
 } from "../src/runner.ts";
 
 const VERSION_PATTERN = /\d+\.\d+/;
+const isBun = typeof globalThis.Bun !== "undefined";
 
 let tempDir: string;
 let logSpy: ReturnType<typeof mock>;
@@ -51,7 +52,7 @@ const ok = (stdout = ""): Promise<Result<ExecOutput, CommandFailedError>> =>
 
 describe("exec", () => {
   test("returns stdout on success", async () => {
-    const result = await exec(["bun", "--version"], tempDir);
+    const result = await exec(["node", "--version"], tempDir);
     expect(result.isOk()).toBe(true);
     if (result.isOk()) {
       expect(result.value.stdout).toMatch(VERSION_PATTERN);
@@ -180,8 +181,6 @@ describe("updateRepo", () => {
       expect(result.error._tag).toBe("CommandFailedError");
     }
   });
-
-  const isBun = typeof globalThis.Bun !== "undefined";
 
   test.skipIf(!isBun)(
     "execBun returns stdout and stderr on success",

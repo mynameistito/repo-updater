@@ -1,6 +1,15 @@
 /**
  * Compatibility shim that maps `bun:test` imports to vitest equivalents,
  * allowing tests written for Bun's test runner to execute under Node.js via vitest.
+ *
+ * Covered APIs (all active test files):
+ *   afterEach, beforeEach, describe, expect, test  → vitest equivalents
+ *   mock    → vi.fn   (plain mock function factory)
+ *   spyOn   → vi.spyOn
+ *
+ * Not covered — mock.module(): requires Bun's module system for ESM interception
+ * and cannot be shimmed. Tests that use it (cli.test.ts) are excluded from the
+ * vitest run via vitest.config.ts and continue to run under `bun test`.
  */
 import {
   afterEach as _afterEach,
