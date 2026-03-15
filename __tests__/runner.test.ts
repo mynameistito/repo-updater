@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, mock, test } from "bun:test";
+import { afterEach, beforeEach, describe, expect, spyOn, test } from "bun:test";
 import { mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -19,32 +19,20 @@ const VERSION_PATTERN = /\d+\.\d+/;
 const isBun = typeof globalThis.Bun !== "undefined";
 
 let tempDir: string;
-let logSpy: ReturnType<typeof mock>;
-let warnSpy: ReturnType<typeof mock>;
-let originalLog: typeof console.log;
-let originalWarn: typeof console.warn;
+let logSpy: ReturnType<typeof spyOn>;
+let warnSpy: ReturnType<typeof spyOn>;
 
 beforeEach(() => {
   tempDir = join(tmpdir(), `repo-updater-runner-${Date.now()}`);
   mkdirSync(tempDir, { recursive: true });
-  originalLog = console.log;
-  originalWarn = console.warn;
-  logSpy = mock(() => {
-    // Spy on console.log calls
-  });
-  warnSpy = mock(() => {
-    // Spy on console.warn calls
-  });
-  console.log = logSpy;
-  console.warn = warnSpy;
+  logSpy = spyOn(console, "log").mockImplementation(() => undefined);
+  warnSpy = spyOn(console, "warn").mockImplementation(() => undefined);
 });
 
 afterEach(() => {
   rmSync(tempDir, { recursive: true, force: true });
-  logSpy.mockReset();
-  warnSpy.mockReset();
-  console.log = originalLog;
-  console.warn = originalWarn;
+  logSpy.mockRestore();
+  warnSpy.mockRestore();
 });
 
 const ok = (stdout = ""): Promise<Result<ExecOutput, CommandFailedError>> =>
