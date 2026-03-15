@@ -41,5 +41,6 @@ mock.module = (..._args: unknown[]): never => {
       "Use vi.mock() or vi.doMock() instead."
   );
 };
+
 export { mock };
 export const spyOn = vi.spyOn;
