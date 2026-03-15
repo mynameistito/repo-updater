@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, mock, test } from "bun:test";
+import { afterEach, beforeEach, describe, expect, spyOn, test } from "bun:test";
 import { mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -16,34 +16,23 @@ import {
 } from "../src/runner.ts";
 
 const VERSION_PATTERN = /\d+\.\d+/;
+const isBun = typeof globalThis.Bun !== "undefined";
 
 let tempDir: string;
-let logSpy: ReturnType<typeof mock>;
-let warnSpy: ReturnType<typeof mock>;
-let originalLog: typeof console.log;
-let originalWarn: typeof console.warn;
+let logSpy: ReturnType<typeof spyOn>;
+let warnSpy: ReturnType<typeof spyOn>;
 
 beforeEach(() => {
   tempDir = join(tmpdir(), `repo-updater-runner-${Date.now()}`);
   mkdirSync(tempDir, { recursive: true });
-  originalLog = console.log;
-  originalWarn = console.warn;
-  logSpy = mock(() => {
-    // Spy on console.log calls
-  });
-  warnSpy = mock(() => {
-    // Spy on console.warn calls
-  });
-  console.log = logSpy;
-  console.warn = warnSpy;
+  logSpy = spyOn(console, "log").mockImplementation(() => undefined);
+  warnSpy = spyOn(console, "warn").mockImplementation(() => undefined);
 });
 
 afterEach(() => {
   rmSync(tempDir, { recursive: true, force: true });
   logSpy.mockRestore();
   warnSpy.mockRestore();
-  console.log = originalLog;
-  console.warn = originalWarn;
 });
 
 const ok = (stdout = ""): Promise<Result<ExecOutput, CommandFailedError>> =>
@@ -51,13 +40,17 @@ const ok = (stdout = ""): Promise<Result<ExecOutput, CommandFailedError>> =>
 
 describe("exec", () => {
   test("returns stdout on success", async () => {
-    const result = await exec(["bun", "--version"], tempDir);
+    const result = await exec(
+      isBun ? ["bun", "--version"] : ["node", "--version"],
+      tempDir
+    );
     expect(result.isOk()).toBe(true);
     if (result.isOk()) {
       expect(result.value.stdout).toMatch(VERSION_PATTERN);
     }
   });
 
+  // Requires `git` in PATH (standard on CI and most dev machines).
   test("returns CommandFailedError on failure", async () => {
     const result = await exec(["git", "status"], tempDir);
     expect(result.isErr()).toBe(true);
@@ -181,16 +174,22 @@ describe("updateRepo", () => {
     }
   });
 
-  test("execBun returns stdout and stderr on success", async () => {
-    const result = await execBun(["bun", "--version"], tempDir);
-    expect(result.exitCode).toBe(0);
-    expect(result.stdout).toMatch(VERSION_PATTERN);
-  });
+  test.skipIf(!isBun)(
+    "execBun returns stdout and stderr on success",
+    async () => {
+      const result = await execBun(["bun", "--version"], tempDir);
+      expect(result.exitCode).toBe(0);
+      expect(result.stdout).toMatch(VERSION_PATTERN);
+    }
+  );
 
-  test("execBun returns non-zero exitCode on failure", async () => {
-    const result = await execBun(["git", "status"], tempDir);
-    expect(result.exitCode).not.toBe(0);
-  });
+  test.skipIf(!isBun)(
+    "execBun returns non-zero exitCode on failure",
+    async () => {
+      const result = await execBun(["git", "status"], tempDir);
+      expect(result.exitCode).not.toBe(0);
+    }
+  );
 
   test("execNodejs returns stdout and stderr on success", async () => {
     // Use cross-platform command that produces stderr
