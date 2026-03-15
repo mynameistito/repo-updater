@@ -4,3 +4,4 @@ node_modules
 dist
 repo-updater.config.json
 package-lock.json
+.claude/*

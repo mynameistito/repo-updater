@@ -131,9 +131,9 @@ export function exec(
     try: async () => {
       // Use Bun's spawn if available, fallback to child_process
       const result =
-        typeof Bun !== "undefined"
-          ? await execBun(cmd, cwd)
-          : await execNodejs(cmd, cwd);
+        typeof Bun === "undefined"
+          ? await execNodejs(cmd, cwd)
+          : await execBun(cmd, cwd);
 
       if (result.exitCode !== 0) {
         throw new ExecError(result.stdout, result.stderr, result.exitCode);
