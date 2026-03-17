@@ -1,8 +1,33 @@
 # repo-updater
 
+[![npm version](https://img.shields.io/npm/v/repo-updater)](https://www.npmjs.com/package/repo-updater)
+[![npm downloads](https://img.shields.io/npm/dm/repo-updater)](https://www.npmjs.com/package/repo-updater)
+[![CI](https://github.com/mynameistito/repo-updater/actions/workflows/ci.yml/badge.svg)](https://github.com/mynameistito/repo-updater/actions/workflows/ci.yml)
+[![License](https://img.shields.io/npm/l/repo-updater)](LICENSE)
+
 CLI tool that mass-updates dependencies across multiple git repositories using your preferred package manager ([npm](https://www.npmjs.com/), [pnpm](https://pnpm.io/), [yarn](https://yarnpkg.com/), or [Bun](https://bun.sh)). Automatically detects the package manager, commits changes, creates pull requests via [`gh`](https://cli.github.com), and opens all resulting PR URLs in the browser.
 
 Replaces manually running a dependency update workflow in each repo one-by-one.
+
+![repo-updater social preview](assets/social-preview.png)
+
+## Table of Contents
+
+- [Features](#features)
+- [Prerequisites](#prerequisites)
+- [Setup](#setup)
+- [Usage](#usage)
+  - [Options](#options)
+  - [Positional arguments](#positional-arguments)
+  - [Examples](#examples)
+- [Config file](#config-file)
+  - [Format](#format)
+- [How it works](#how-it-works)
+  - [Package Manager Detection](#package-manager-detection)
+  - [Update Pipeline](#update-pipeline)
+  - [Dry-run mode](#dry-run-mode)
+- [Example Scenarios](#example-scenarios)
+- [Contributing](#contributing)
 
 ## Features
 
@@ -15,14 +40,20 @@ Replaces manually running a dependency update workflow in each repo one-by-one.
 
 ## Prerequisites
 
-
 - [Git](https://git-scm.com)
-- [GitHub CLI (`gh`)](https://cli.github.com) -- authenticated via `gh auth login`
+- [GitHub CLI (`gh`)](https://cli.github.com) — authenticated via `gh auth login`
+- [Bun](https://bun.sh) ≥ 1.0.0 **or** [Node.js](https://nodejs.org) ≥ 22.0.0
 
 ## Setup
 
+**With Bun:**
 ```sh
 bun install repo-updater -g
+```
+
+**With npm:**
+```sh
+npm install repo-updater -g
 ```
 
 ## Usage
@@ -77,7 +108,9 @@ The tool searches for a config file in this order:
 {
   "repos": [
     "C:\\path\\to\\repo-one",
-    "C:\\path\\to\\repo-two"
+    "C:\\path\\to\\repo-two",
+    "/home/user/project-one",
+    "/path/to/repo-three"
   ]
 }
 ```
@@ -96,7 +129,7 @@ The tool automatically detects which package manager to use by checking for lock
 4. `package-lock.json` → npm
 5. (fallback) → npm
 
-This allows you to manage mono-repos or mixed package manager environments without configuration.
+This allows you to manage repos using different package managers in a single batch operation without any configuration.
 
 ### Update Pipeline
 
@@ -121,17 +154,20 @@ If step 8 shows no changes, the branch is deleted and the repo is skipped (repor
 
 After all repos are processed, a summary box lists every PR URL. You're then prompted to open them all in the browser.
 
+**On failure:** if any step fails after a branch has been created, the tool automatically cleans up — it checks out the default branch, deletes the local branch, and (if already pushed) deletes the remote branch too. Repos are never left in a dirty state.
+
 ### Dry-run mode
 
 With `--dry-run`, each step is printed to the console prefixed with `[dry-run]` but nothing is executed. No git commands run, no branches are created, no PRs are opened.
 
+> **Note:** In dry-run mode the default branch is assumed to be `main` rather than detected dynamically. If your default branch is something other than `main`, the printed commands will still show `main` — the actual branch will be detected and used at real runtime.
+
 ## Example Scenarios
 
-### Single mono-repo with multiple package managers
-If your mono-repo has `packages/app` using npm and `packages/lib` using pnpm, repo-updater will detect and use the correct package manager for each automatically.
+### Multiple repos with different package managers
 
-### Mixed environment
 Manage repos using different package managers in a single batch operation:
+
 ```json
 {
   "repos": [
@@ -143,4 +179,39 @@ Manage repos using different package managers in a single batch operation:
 }
 ```
 
-repo-updater will detect each one and run the appropriate update commands.
+repo-updater will detect each package manager and run the appropriate update commands.
+
+### Single repo directly
+
+```sh
+repo-updater C:\path\to\single-repo
+```
+
+No config file needed — just pass the path directly.
+
+## Contributing
+
+```sh
+# Install dependencies
+bun install
+
+# Run tests (Bun)
+bun test
+
+# Run tests (Node.js)
+bun run test:node
+
+# Lint and type-check
+bun run check
+
+# Auto-fix lint issues
+bun run fix
+```
+
+This project uses [Changesets](https://github.com/changesets/changesets) for versioning. To propose a version bump with your PR, run:
+
+```sh
+bunx changeset
+```
+
+and commit the generated changeset file alongside your changes.

@@ -1,0 +1,465 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=1280">
+    <title>repo-updater — Social Preview</title>
+    <style>
+    @import url("https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=Inter:wght@400;500;600;700;800&display=swap");
+
+    * {
+      box-sizing: border-box;
+      padding: 0;
+      margin: 0;
+    }
+
+    body {
+      position: relative;
+      width: 1280px;
+      height: 640px;
+      overflow: hidden;
+      font-family: "Inter", system-ui, sans-serif;
+      color: #e6edf3;
+      background: #0d1117;
+    }
+
+    /* Background grid */
+    .bg-grid {
+      position: absolute;
+      inset: 0;
+      background-image:
+        linear-gradient(rgba(48, 54, 61, 0.4) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(48, 54, 61, 0.4) 1px, transparent 1px);
+      background-size: 40px 40px;
+      mask-image: radial-gradient(
+        ellipse 80% 80% at 50% 50%,
+        black 30%,
+        transparent 100%
+      );
+    }
+
+    /* Glow accents */
+    .glow-left {
+      position: absolute;
+      top: -120px;
+      left: -120px;
+      width: 500px;
+      height: 500px;
+      pointer-events: none;
+      background: radial-gradient(
+        circle,
+        rgba(56, 139, 253, 0.15) 0%,
+        transparent 70%
+      );
+      border-radius: 50%;
+    }
+
+    .glow-right {
+      position: absolute;
+      right: -80px;
+      bottom: -140px;
+      width: 520px;
+      height: 520px;
+      pointer-events: none;
+      background: radial-gradient(
+        circle,
+        rgba(63, 185, 80, 0.12) 0%,
+        transparent 70%
+      );
+      border-radius: 50%;
+    }
+
+    /* Layout */
+    .container {
+      position: relative;
+      z-index: 10;
+      display: flex;
+      gap: 56px;
+      align-items: stretch;
+      height: 100%;
+      padding: 52px 64px;
+    }
+
+    /* LEFT COLUMN */
+    .left {
+      display: flex;
+      flex: 1;
+      flex-direction: column;
+      gap: 0;
+      justify-content: center;
+    }
+
+    .badge {
+      display: inline-flex;
+      gap: 8px;
+      align-items: center;
+      width: fit-content;
+      padding: 5px 14px;
+      margin-bottom: 20px;
+      font-size: 12px;
+      font-weight: 600;
+      color: #388bfd;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      background: rgba(56, 139, 253, 0.1);
+      border: 1px solid rgba(56, 139, 253, 0.3);
+      border-radius: 20px;
+    }
+
+    .badge-dot {
+      width: 7px;
+      height: 7px;
+      background: #388bfd;
+      border-radius: 50%;
+    }
+
+    h1 {
+      margin-bottom: 16px;
+      font-size: 58px;
+      font-weight: 800;
+      line-height: 1.05;
+      color: #f0f6fc;
+      letter-spacing: -0.03em;
+    }
+
+    h1 span {
+      -webkit-text-fill-color: transparent;
+      background: linear-gradient(135deg, #388bfd 0%, #3fb950 100%);
+      -webkit-background-clip: text;
+      background-clip: text;
+    }
+
+    .tagline {
+      max-width: 440px;
+      margin-bottom: 32px;
+      font-size: 18px;
+      line-height: 1.6;
+      color: #adbac7;
+    }
+
+    .features {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .feature {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+      font-size: 15px;
+      font-weight: 500;
+      color: #cdd9e5;
+    }
+
+    .feature-icon {
+      display: flex;
+      flex-shrink: 0;
+      align-items: center;
+      justify-content: center;
+      width: 24px;
+      height: 24px;
+      font-size: 13px;
+      color: #3fb950;
+      background: rgba(63, 185, 80, 0.12);
+      border-radius: 6px;
+    }
+
+    /* PM badges */
+    .pm-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 28px;
+    }
+
+    .pm-badge {
+      padding: 5px 12px;
+      font-family: "JetBrains Mono", monospace;
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.03em;
+      border: 1px solid;
+      border-radius: 8px;
+    }
+
+    .pm-npm {
+      color: #f85149;
+      background: rgba(203, 36, 49, 0.1);
+      border-color: rgba(203, 36, 49, 0.3);
+    }
+
+    .pm-pnpm {
+      color: #e3b341;
+      background: rgba(247, 182, 52, 0.1);
+      border-color: rgba(247, 182, 52, 0.3);
+    }
+
+    .pm-yarn {
+      color: #79c0ff;
+      background: rgba(56, 139, 253, 0.1);
+      border-color: rgba(56, 139, 253, 0.3);
+    }
+
+    .pm-bun {
+      color: #ffa657;
+      background: rgba(240, 136, 62, 0.1);
+      border-color: rgba(240, 136, 62, 0.3);
+    }
+
+    /* RIGHT COLUMN — terminal */
+    .right {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      width: 510px;
+    }
+
+    .terminal {
+      overflow: hidden;
+      background: #161b22;
+      border: 1px solid #30363d;
+      border-radius: 12px;
+      box-shadow:
+        0 0 0 1px rgba(255, 255, 255, 0.03),
+        0 24px 64px rgba(0, 0, 0, 0.6),
+        0 4px 16px rgba(0, 0, 0, 0.4);
+    }
+
+    .terminal-header {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+      padding: 12px 16px;
+      background: #21262d;
+      border-bottom: 1px solid #30363d;
+    }
+
+    .dots {
+      display: flex;
+      gap: 6px;
+    }
+
+    .dot {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+    }
+
+    .dot-red {
+      background: #ff5f57;
+    }
+
+    .dot-yellow {
+      background: #febc2e;
+    }
+
+    .dot-green {
+      background: #28c840;
+    }
+
+    .terminal-title {
+      flex: 1;
+      font-family: "JetBrains Mono", monospace;
+      font-size: 12px;
+      color: #8b949e;
+      text-align: center;
+    }
+
+    .terminal-body {
+      padding: 20px;
+      font-family: "JetBrains Mono", monospace;
+      font-size: 13px;
+      line-height: 1.75;
+    }
+
+    .terminal-body pre {
+      margin: 0;
+      font: inherit;
+      white-space: pre;
+    }
+
+    .prompt {
+      color: #3fb950;
+    }
+
+    .cmd {
+      color: #79c0ff;
+    }
+
+    .dim {
+      color: #484f58;
+    }
+
+    .ok {
+      color: #3fb950;
+    }
+
+    .step {
+      color: #8b949e;
+    }
+
+    .url {
+      color: #388bfd;
+    }
+
+    .warn {
+      color: #d29922;
+    }
+
+    .white {
+      color: #e6edf3;
+    }
+
+    .pr {
+      color: #bc8cff;
+    }
+
+    .cursor {
+      display: inline-block;
+      width: 8px;
+      height: 13px;
+      margin-left: 2px;
+      vertical-align: middle;
+      background: #3fb950;
+      border-radius: 1px;
+    }
+
+    /* Footer */
+    .footer {
+      position: absolute;
+      right: 64px;
+      bottom: 28px;
+      left: 64px;
+      z-index: 10;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .footer-brand {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      font-size: 13px;
+      color: #484f58;
+    }
+
+    .footer-brand strong {
+      font-weight: 600;
+      color: #6e7681;
+    }
+
+    .footer-meta {
+      display: flex;
+      gap: 20px;
+      font-family: "JetBrains Mono", monospace;
+      font-size: 12px;
+      color: #484f58;
+    }
+
+    .footer-meta span {
+      display: flex;
+      gap: 5px;
+      align-items: center;
+    }
+    </style>
+  </head>
+  <body>
+    <div class="bg-grid"></div>
+    <div class="glow-left"></div>
+    <div class="glow-right"></div>
+
+    <div class="container">
+      <!-- LEFT -->
+      <div class="left">
+        <div class="badge">
+          <div class="badge-dot"></div>
+          CLI Tool
+        </div>
+
+        <h1>repo-<span>updater</span></h1>
+
+        <p class="tagline">
+          Mass-update dependencies across all your git repos in one command.
+          Auto-detects your package manager, commits changes, and opens PRs
+          automatically.
+        </p>
+
+        <div class="features">
+          <div class="feature">
+            <div class="feature-icon">⚡</div>
+            Auto-detects npm, pnpm, yarn &amp; Bun from lockfiles
+          </div>
+          <div class="feature">
+            <div class="feature-icon">🔀</div>
+            Creates branches, commits &amp; GitHub PRs automatically
+          </div>
+          <div class="feature">
+            <div class="feature-icon">👁</div>
+            Dry-run mode — preview without executing anything
+          </div>
+          <div class="feature">
+            <div class="feature-icon">🌐</div>
+            Cross-platform: Windows, macOS &amp; Linux
+          </div>
+        </div>
+
+        <div class="pm-row">
+          <span class="pm-badge pm-npm">npm</span>
+          <span class="pm-badge pm-pnpm">pnpm</span>
+          <span class="pm-badge pm-yarn">yarn</span>
+          <span class="pm-badge pm-bun">bun</span>
+        </div>
+      </div>
+
+      <!-- RIGHT -->
+      <div class="right">
+        <div class="terminal">
+          <div class="terminal-header">
+            <div class="dots">
+              <div class="dot dot-red"></div>
+              <div class="dot dot-yellow"></div>
+              <div class="dot dot-green"></div>
+            </div>
+            <div class="terminal-title">bash — repo-updater</div>
+          </div>
+          <div class="terminal-body">
+            <!-- prettier-ignore -->
+            <pre
+            ><span class="prompt">$</span> <span class="cmd">repo-updater</span>
+
+<span class="step">  ◆ Processing </span><span class="white">3 repositories</span>
+
+<span class="ok">  ✔</span> <span class="white">my-app</span><span class="dim">  ·  bun detected</span>
+<span class="step">    ↳ bun update --latest</span>
+<span class="step">    ↳ </span><span class="pr">gh pr create</span><span class="step">  ·  </span><span class="url">github.com/…/pull/42</span>
+
+<span class="ok">  ✔</span> <span class="white">api-server</span><span class="dim">  ·  pnpm detected</span>
+<span class="step">    ↳ pnpm update --latest</span>
+<span class="step">    ↳ </span><span class="pr">gh pr create</span><span class="step">  ·  </span><span class="url">github.com/…/pull/17</span>
+
+<span class="warn">  ─</span> <span class="white">legacy-site</span><span class="dim">  ·  npm detected</span>
+<span class="step">    ↳ </span><span class="warn">no changes — skipped</span>
+
+<span class="step">  ◇ Open 2 PRs in browser? </span><span class="ok">Yes</span>
+
+<span class="ok">  ✔</span> <span class="step">Done </span><span class="dim">in 18.3s</span><span class="cursor"></span></pre>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- FOOTER -->
+    <div class="footer">
+      <div class="footer-brand">
+        <strong>github.com/mynameistito/repo-updater</strong>
+        &nbsp;·&nbsp; MIT License
+      </div>
+      <div class="footer-meta">
+        <span>TypeScript</span>
+        <span>Bun / Node ≥22</span>
+      </div>
+    </div>
+  </body>
+</html>
