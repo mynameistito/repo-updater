@@ -52,6 +52,16 @@ describe("parseArgs", () => {
     expect(args.positional).toEqual(["/path/to/repo1", "/path/to/repo2"]);
   });
 
+  test("--minor sets minor to true", () => {
+    const args = parseArgs(["--minor"]);
+    expect(args.minor).toBe(true);
+  });
+
+  test("minor defaults to false", () => {
+    const args = parseArgs([]);
+    expect(args.minor).toBe(false);
+  });
+
   test("combined flags work together", () => {
     const args = parseArgs(["-n", "-c", "foo", "bar", "baz"]);
     expect(args.dryRun).toBe(true);
