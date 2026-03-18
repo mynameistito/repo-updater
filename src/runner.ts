@@ -35,7 +35,7 @@ export function getUpdateCommand(pm: PackageManager, minor = false): string[] {
     return commands[pm];
   }
   const commands: Record<PackageManager, string[]> = {
-    npm: ["npm", "update"],
+    npm: ["npx", "--yes", "npm-check-updates", "--upgrade"],
     pnpm: ["pnpm", "update", "--latest"],
     yarn: ["yarn", "upgrade", "--latest"],
     bun: ["bun", "update", "--latest"],

@@ -251,7 +251,12 @@ describe("updateRepo", () => {
   });
 
   test("getUpdateCommand returns correct command for each pm", () => {
-    expect(getUpdateCommand("npm")).toEqual(["npm", "update"]);
+    expect(getUpdateCommand("npm")).toEqual([
+      "npx",
+      "--yes",
+      "npm-check-updates",
+      "--upgrade",
+    ]);
     expect(getUpdateCommand("pnpm")).toEqual(["pnpm", "update", "--latest"]);
     expect(getUpdateCommand("yarn")).toEqual(["yarn", "upgrade", "--latest"]);
     expect(getUpdateCommand("bun")).toEqual(["bun", "update", "--latest"]);
