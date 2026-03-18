@@ -251,13 +251,13 @@ describe("updateRepo", () => {
   });
 
   test("getUpdateCommand returns correct command for each pm", () => {
-    expect(getUpdateCommand("npm")).toEqual(["npm", "update", "--latest"]);
+    expect(getUpdateCommand("npm")).toEqual(["npm", "update"]);
     expect(getUpdateCommand("pnpm")).toEqual(["pnpm", "update", "--latest"]);
     expect(getUpdateCommand("yarn")).toEqual(["yarn", "upgrade", "--latest"]);
     expect(getUpdateCommand("bun")).toEqual(["bun", "update", "--latest"]);
   });
 
-  test("getUpdateCommand with minor=true omits --latest for pnpm and bun", () => {
+  test("getUpdateCommand with minor=true omits --latest for all package managers", () => {
     expect(getUpdateCommand("npm", true)).toEqual(["npm", "update"]);
     expect(getUpdateCommand("pnpm", true)).toEqual(["pnpm", "update"]);
     expect(getUpdateCommand("yarn", true)).toEqual(["yarn", "upgrade"]);
