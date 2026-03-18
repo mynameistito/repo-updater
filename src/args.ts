@@ -19,7 +19,7 @@ export function parseArgs(argv: string[]): ParsedArgs {
       help = true;
     } else if (arg === "-n" || arg === "--dry-run") {
       dryRun = true;
-    } else if (arg === "--minor") {
+    } else if (arg === "-m" || arg === "--minor") {
       minor = true;
     } else if (arg === "-c" || arg === "--config") {
       const next = iter.next();
