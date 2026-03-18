@@ -19,7 +19,7 @@ Usage: repo-updater [options] [repo paths...]
 Options:
   -h, --help           Show this help message
   -n, --dry-run        Print steps without executing
-  --minor              Only update minor/patch versions (avoid breaking changes)
+  -m, --minor          Only update minor/patch versions (avoid breaking changes)
   -c, --config <path>  Path to config file
 
 Examples:
