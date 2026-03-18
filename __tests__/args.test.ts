@@ -57,6 +57,11 @@ describe("parseArgs", () => {
     expect(args.minor).toBe(true);
   });
 
+  test("-m sets minor to true", () => {
+    const args = parseArgs(["-m"]);
+    expect(args.minor).toBe(true);
+  });
+
   test("minor defaults to false", () => {
     const args = parseArgs([]);
     expect(args.minor).toBe(false);
