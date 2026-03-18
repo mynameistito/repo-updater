@@ -68,7 +68,7 @@ repo-updater [options] [repo paths...]
 | --- | --- |
 | `-h`, `--help` | Show help message |
 | `-n`, `--dry-run` | Print every step without executing any commands |
-| `-m`, `--minor` | Restrict updates to minor/patch versions (omits `--latest`) |
+| `-m`, `--minor` | Restrict updates to minor/patch versions (uses base update command without major version bumps) |
 | `-c`, `--config <path>` | Path to a custom config file |
 
 ### Positional arguments

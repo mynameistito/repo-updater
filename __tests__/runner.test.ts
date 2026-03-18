@@ -137,6 +137,39 @@ describe("updateRepo", () => {
     }
   });
 
+  test("non-dry-run with minor=true uses minor update command", async () => {
+    const executedCmds: string[][] = [];
+    const mockExec = (
+      cmd: string[],
+      _cwd: string
+    ): Promise<Result<ExecOutput, CommandFailedError>> => {
+      executedCmds.push(cmd);
+      const cmdStr = cmd.join(" ");
+      if (
+        cmdStr.includes("git symbolic-ref") &&
+        cmdStr.includes("refs/remotes/origin/HEAD")
+      ) {
+        return ok("refs/remotes/origin/main");
+      }
+      if (cmdStr.includes("git status") && cmdStr.includes("--porcelain")) {
+        return ok("");
+      }
+      return ok();
+    };
+
+    await updateRepo(
+      { repo: tempDir, date: "2025-01-01", dryRun: false, minor: true },
+      mockExec
+    );
+
+    expect(executedCmds.some((cmd) => cmd.join(" ") === "npm update")).toBe(
+      true
+    );
+    expect(executedCmds.some((cmd) => cmd.includes("npm-check-updates"))).toBe(
+      false
+    );
+  });
+
   test("non-dry-run returns error when a command fails", async () => {
     const mockExec = (
       cmd: string[],
