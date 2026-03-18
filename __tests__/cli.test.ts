@@ -105,6 +105,7 @@ describe("resolveRepos", () => {
     const repos = resolveRepos({
       help: false,
       dryRun: false,
+      minor: false,
       configPath: undefined,
       positional: ["/repo1", "/repo2"],
     });
@@ -116,6 +117,7 @@ describe("resolveRepos", () => {
     const repos = resolveRepos({
       help: false,
       dryRun: true,
+      minor: false,
       configPath: undefined,
       positional: ["/repo1", "/repo2"],
     });
@@ -129,6 +131,7 @@ describe("resolveRepos", () => {
     const repos = resolveRepos({
       help: false,
       dryRun: false,
+      minor: false,
       configPath,
       positional: [],
     });
@@ -139,6 +142,7 @@ describe("resolveRepos", () => {
     const repos = resolveRepos({
       help: false,
       dryRun: false,
+      minor: false,
       configPath: join(tempDir, "missing.json"),
       positional: [],
     });

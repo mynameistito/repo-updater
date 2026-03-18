@@ -68,6 +68,7 @@ repo-updater [options] [repo paths...]
 | --- | --- |
 | `-h`, `--help` | Show help message |
 | `-n`, `--dry-run` | Print every step without executing any commands |
+| `-m`, `--minor` | Restrict updates to minor/patch versions (uses base update command without major version bumps) |
 | `-c`, `--config <path>` | Path to a custom config file |
 
 ### Positional arguments
@@ -142,7 +143,7 @@ For each repository, the tool runs this pipeline sequentially:
 | 3 | `git checkout <default-branch>` |
 | 4 | `git pull` |
 | 5 | `git checkout -b chore/dep-updates-YYYY-MM-DD-<timestamp>` |
-| 6 | `npm update` / `pnpm update --latest` / `yarn upgrade` / `bun update --latest` |
+| 6 | `npx --yes npm-check-updates --upgrade` / `pnpm update --latest` / `yarn upgrade --latest` / `bun update --latest` |
 | 7 | `<pm> install` |
 | 8 | `git status --porcelain` |
 | 9 | `git add -A` |

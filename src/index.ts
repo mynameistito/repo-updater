@@ -19,11 +19,13 @@ Usage: repo-updater [options] [repo paths...]
 Options:
   -h, --help           Show this help message
   -n, --dry-run        Print steps without executing
+  -m, --minor          Only update minor/patch versions (avoid breaking changes)
   -c, --config <path>  Path to config file
 
 Examples:
   repo-updater                              # Update all repos from config
   repo-updater --dry-run                    # Preview without executing
+  repo-updater --minor                      # Only minor/patch updates
   repo-updater -c ./my-config.json          # Use custom config
   repo-updater E:\\GitHub\\org\\repo1          # Update specific repos
 `);
@@ -58,13 +60,14 @@ export async function processRepo(
   repo: string,
   date: string,
   dryRun: boolean,
-  updateFn: typeof updateRepo = updateRepo
+  updateFn: typeof updateRepo = updateRepo,
+  minor = false
 ): Promise<{ repo: string; status: string; prUrl?: string }> {
   const repoName = basename(repo);
   log.step(repoName);
 
   if (dryRun) {
-    const result = await updateFn({ repo, date, dryRun: true });
+    const result = await updateFn({ repo, date, dryRun: true, minor });
     console.log();
     return result.isOk() ? result.value : { repo, status: "failed" };
   }
@@ -72,7 +75,7 @@ export async function processRepo(
   const s = spinner();
   s.start("Updating dependencies...");
 
-  const result = await updateFn({ repo, date, dryRun: false });
+  const result = await updateFn({ repo, date, dryRun: false, minor });
 
   if (result.isErr()) {
     s.stop(`Failed: ${repoName}`);
@@ -105,10 +108,11 @@ async function handleRepoProcessing(
   date: string,
   dryRun: boolean,
   prUrls: string[],
-  updateFn: typeof updateRepo
+  updateFn: typeof updateRepo,
+  minor: boolean
 ) {
   for (const repo of valid) {
-    const result = await processRepo(repo, date, dryRun, updateFn);
+    const result = await processRepo(repo, date, dryRun, updateFn, minor);
     if (result.prUrl) {
       prUrls.push(result.prUrl);
     }
@@ -201,7 +205,14 @@ export async function main(
     log.info("[dry-run] No commands will be executed.\n");
   }
 
-  await handleRepoProcessing(valid, date, args.dryRun, prUrls, updateFn);
+  await handleRepoProcessing(
+    valid,
+    date,
+    args.dryRun,
+    prUrls,
+    updateFn,
+    args.minor
+  );
 
   if (prUrls.length > 0) {
     const shouldOpen = await handlePRDisplay(prUrls);

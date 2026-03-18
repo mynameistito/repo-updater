@@ -24,11 +24,20 @@ export function detectPackageManager(repoPath: string): PackageManager {
   return "npm"; // fallback
 }
 
-export function getUpdateCommand(pm: PackageManager): string[] {
+export function getUpdateCommand(pm: PackageManager, minor = false): string[] {
+  if (minor) {
+    const commands: Record<PackageManager, string[]> = {
+      npm: ["npm", "update"],
+      pnpm: ["pnpm", "update"],
+      yarn: ["yarn", "upgrade"],
+      bun: ["bun", "update"],
+    };
+    return commands[pm];
+  }
   const commands: Record<PackageManager, string[]> = {
-    npm: ["npm", "update"],
+    npm: ["npx", "--yes", "npm-check-updates", "--upgrade"],
     pnpm: ["pnpm", "update", "--latest"],
-    yarn: ["yarn", "upgrade"],
+    yarn: ["yarn", "upgrade", "--latest"],
     bun: ["bun", "update", "--latest"],
   };
   return commands[pm];
@@ -199,16 +208,17 @@ export function updateRepo(
     repo: string;
     date: string;
     dryRun: boolean;
+    minor?: boolean;
   },
   execFn = exec
 ): Promise<Result<RepoResult, CommandFailedError>> {
-  const { repo, date, dryRun } = options;
+  const { repo, date, dryRun, minor = false } = options;
   // Add timestamp to branch name to avoid collisions when running multiple times in one day
   const timestamp = Date.now();
   const branch = `chore/dep-updates-${date}-${timestamp}`;
 
   if (dryRun) {
-    return Promise.resolve(dryRunRepo(repo, date, branch, "main"));
+    return Promise.resolve(dryRunRepo(repo, date, branch, "main", minor));
   }
 
   return Result.gen(async function* () {
@@ -237,7 +247,7 @@ export function updateRepo(
       yield* Result.await(execFn(["git", "checkout", "-b", branch], repo));
       branchCreated = true;
 
-      yield* Result.await(execFn(getUpdateCommand(pm), repo));
+      yield* Result.await(execFn(getUpdateCommand(pm, minor), repo));
       yield* Result.await(execFn(getInstallCommand(pm), repo));
 
       const status = yield* Result.await(
@@ -300,7 +310,8 @@ function dryRunRepo(
   repo: string,
   date: string,
   branch: string,
-  defaultBranch = "main"
+  defaultBranch = "main",
+  minor = false
 ): Result<RepoResult, CommandFailedError> {
   const pm = detectPackageManager(repo);
   console.log(
@@ -312,7 +323,7 @@ function dryRunRepo(
     `git checkout ${defaultBranch}`,
     "git pull",
     `git checkout -b ${branch}`,
-    getUpdateCommand(pm).join(" "),
+    getUpdateCommand(pm, minor).join(" "),
     getInstallCommand(pm).join(" "),
     "git status --porcelain",
     "git add -A",

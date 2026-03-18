@@ -2,12 +2,14 @@ export interface ParsedArgs {
   configPath: string | undefined;
   dryRun: boolean;
   help: boolean;
+  minor: boolean;
   positional: string[];
 }
 
 export function parseArgs(argv: string[]): ParsedArgs {
   let help = false;
   let dryRun = false;
+  let minor = false;
   let configPath: string | undefined;
   const positional: string[] = [];
 
@@ -17,6 +19,8 @@ export function parseArgs(argv: string[]): ParsedArgs {
       help = true;
     } else if (arg === "-n" || arg === "--dry-run") {
       dryRun = true;
+    } else if (arg === "-m" || arg === "--minor") {
+      minor = true;
     } else if (arg === "-c" || arg === "--config") {
       const next = iter.next();
       if (next.done) {
@@ -32,7 +36,7 @@ export function parseArgs(argv: string[]): ParsedArgs {
     }
   }
 
-  return { help, dryRun, configPath, positional };
+  return { help, dryRun, minor, configPath, positional };
 }
 
 export function getDate(): string {
