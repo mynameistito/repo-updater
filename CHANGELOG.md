@@ -1,5 +1,11 @@
 # repo-updater
 
+## 0.2.0
+
+### Minor Changes
+
+- 08fc860: Add `--minor` / `-m` flag to restrict dependency updates to minor and patch versions. Also updates the default npm command to use `npx --yes npm-check-updates --upgrade` to support major-version upgrades, consistent with `pnpm update --latest`, `yarn upgrade --latest`, and `bun update --latest`.
+
 ## 0.1.10
 
 ### Patch Changes
