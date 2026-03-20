@@ -1,5 +1,11 @@
 # repo-updater
 
+## 0.2.1
+
+### Patch Changes
+
+- cfec48d: bump dep
+
 ## 0.2.0
 
 ### Minor Changes
