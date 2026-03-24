@@ -27,6 +27,7 @@ Core source directory - CLI entry point, repository update orchestration, and ut
 - **AVOID** arbitrary `console.log` in `runner.ts` - prefix with `[info]` for user-facing messages only
 - **NEVER** skip cleanup on failure - `performCleanup()` handles branch rollback
 - **NEVER** hardcode branch names - use timestamp suffix to avoid collisions
+- **AVOID** checking `getChangesetFiles().length === 0` - active repos have pre-existing changesets on `main`; check for specific target file instead
 
 ## KEY PATTERNS
 
@@ -52,3 +53,8 @@ const checks = [
   { file: "package-lock.json", pm: "npm" },
 ];
 ```
+
+## NOTES
+
+- **Changesets module:** `changesets.ts` has `readPackageJson` helper with error handling - use `getPackageName()` instead of inline `JSON.parse`
+- **Dry-run parity:** `dryRunRepo` step order must match `updateRepo` execution order exactly - changeset write happens before `git status --porcelain`
