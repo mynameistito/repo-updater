@@ -1,6 +1,13 @@
-import { existsSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { Result } from "better-result";
+import {
+  diffDeps,
+  getChangesetFiles,
+  hasChangesets,
+  snapshotDeps,
+  writeChangesetFile,
+} from "./changesets.ts";
 import { CommandFailedError, InvalidInputError } from "./errors.ts";
 
 const DEFAULT_BRANCH_REGEX = /refs\/remotes\/origin\/(.+)$/;
@@ -243,7 +250,9 @@ export function updateRepo(
   const branch = `chore/dep-updates-${date}-${timestamp}`;
 
   if (dryRun) {
-    return Promise.resolve(dryRunRepo(repo, date, branch, "main", minor));
+    return Promise.resolve(
+      dryRunRepo(repo, date, branch, "main", minor, timestamp)
+    );
   }
 
   return Result.gen(async function* () {
@@ -272,8 +281,29 @@ export function updateRepo(
       yield* Result.await(execFn(["git", "checkout", "-b", branch], repo));
       branchCreated = true;
 
+      const depsBefore = snapshotDeps(repo);
+
       yield* Result.await(execFn(getUpdateCommand(pm, minor), repo));
       yield* Result.await(execFn(getInstallCommand(pm), repo));
+
+      const depsAfter = snapshotDeps(repo);
+      const depsChanged = diffDeps(depsBefore, depsAfter);
+
+      if (
+        hasChangesets(repo) &&
+        depsChanged.length > 0 &&
+        getChangesetFiles(repo).length === 0
+      ) {
+        const pkg = JSON.parse(
+          readFileSync(join(repo, "package.json"), "utf8")
+        ) as {
+          name?: string;
+        };
+        writeChangesetFile(repo, pkg.name ?? "unknown", depsChanged, timestamp);
+        console.log(
+          `[info] Wrote changeset: .changeset/dep-updates-${timestamp}.md`
+        );
+      }
 
       const status = yield* Result.await(
         execFn(["git", "status", "--porcelain"], repo)
@@ -336,7 +366,8 @@ function dryRunRepo(
   date: string,
   branch: string,
   defaultBranch = "main",
-  minor = false
+  minor = false,
+  timestamp = Date.now()
 ): Result<RepoResult, CommandFailedError> {
   const pm = detectPackageManager(repo);
   console.log(
@@ -351,11 +382,20 @@ function dryRunRepo(
     getUpdateCommand(pm, minor).join(" "),
     getInstallCommand(pm).join(" "),
     "git status --porcelain",
+  ];
+
+  if (hasChangesets(repo)) {
+    steps.push(
+      `write .changeset/dep-updates-${timestamp}.md  (non-dev changed deps listed at runtime)`
+    );
+  }
+
+  steps.push(
     "git add -A",
     `git commit -m "dep updates ${date}"`,
     `git push -u origin ${branch}`,
-    `gh pr create --title "Dep Updates ${date}" --body "Dep Updates ${date}"`,
-  ];
+    `gh pr create --title "Dep Updates ${date}" --body "Dep Updates ${date}"`
+  );
 
   for (const step of steps) {
     console.log(`  [dry-run] ${step}`);
