@@ -34,7 +34,7 @@ Test directory with Bun/Vitest dual-runner support. Uses compatibility shim for 
 
 ```typescript
 // Result type testing
-const result = updateRepo({ repo, date: "2024-01-01", dryRun: true });
+const result = await updateRepo({ repo, date: "2024-01-01", dryRun: true });
 expect(Result.isOk(result)).toBe(true);
 // Mock exec for testing
 const mockExec = async () => Result.ok({ stdout: "", stderr: "" });
