@@ -169,7 +169,7 @@ Detection triggers on **either** condition:
 - `.changeset/config.json` exists in the repo root
 - `@changesets/cli` is listed in `devDependencies`
 
-When detected, the tool diffs `dependencies` before and after the update. If any changed and no changeset file already exists on the branch, it writes `.changeset/dep-updates-<timestamp>.md`:
+When detected, the tool diffs `dependencies` before and after the update. If any changed and the target changeset file doesn't already exist (e.g., from a previous run), it writes `.changeset/dep-updates-<timestamp>.md`:
 
 ```markdown
 ---

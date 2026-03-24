@@ -56,3 +56,4 @@ logSpy.mockRestore();
 - `bun-test-compat.ts` exports: `afterAll`, `afterEach`, `beforeAll`, `beforeEach`, `describe`, `expect`, `it`, `test`, `mock`, `spyOn`
 - Vitest config excludes `cli.test.ts` via `exclude: ["__tests__/cli.test.ts"]`
 - Tests use `better-result` `Result.isOk()` / `Result.isErr()` for assertions
+- **Changeset placeholder tests:** `writeChangesetFile` uses `(new)` for empty `from` and `(removed)` for empty `to` - test coverage required for both cases

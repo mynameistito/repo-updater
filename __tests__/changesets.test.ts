@@ -203,4 +203,35 @@ describe("writeChangesetFile", () => {
     );
     expect(content).toContain('"my-lib": patch');
   });
+
+  test("handles (new) placeholder for added packages with empty from", () => {
+    mkdirSync(join(tempDir, ".changeset"));
+    const changes = [
+      { name: "new-pkg", from: "", to: "1.0.0" },
+      { name: "updated-pkg", from: "2.0.0", to: "2.1.0" },
+    ];
+    writeChangesetFile(tempDir, "my-lib", changes, 5555);
+
+    const content = readFileSync(
+      join(tempDir, ".changeset", "dep-updates-5555.md"),
+      "utf8"
+    );
+    expect(content).toContain("- new-pkg: (new) → 1.0.0");
+    expect(content).toContain("- updated-pkg: 2.0.0 → 2.1.0");
+  });
+
+  test("handles (removed) placeholder for removed packages with empty to", () => {
+    mkdirSync(join(tempDir, ".changeset"));
+    const changes = [
+      { name: "old-pkg", from: "2.0.0", to: "" },
+      { name: "stable-pkg", from: "1.0.0", to: "1.0.0" },
+    ];
+    writeChangesetFile(tempDir, "my-lib", changes, 7777);
+
+    const content = readFileSync(
+      join(tempDir, ".changeset", "dep-updates-7777.md"),
+      "utf8"
+    );
+    expect(content).toContain("- old-pkg: 2.0.0 → (removed)");
+  });
 });

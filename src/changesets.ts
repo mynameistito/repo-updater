@@ -90,6 +90,15 @@ export function getChangesetFiles(repoPath: string): string[] {
   }
 }
 
+export function getPackageName(repoPath: string): string {
+  const pkg = readPackageJson(repoPath);
+  if (!pkg) {
+    return "unknown";
+  }
+  const name = pkg.name;
+  return typeof name === "string" ? name : "unknown";
+}
+
 export function writeChangesetFile(
   repoPath: string,
   packageName: string,

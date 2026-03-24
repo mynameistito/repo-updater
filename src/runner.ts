@@ -1,9 +1,10 @@
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync } from "node:fs";
 import { join } from "node:path";
 import { Result } from "better-result";
 import {
   diffDeps,
   getChangesetFiles,
+  getPackageName,
   hasChangesets,
   snapshotDeps,
   writeChangesetFile,
@@ -289,17 +290,13 @@ export function updateRepo(
       const depsAfter = snapshotDeps(repo);
       const depsChanged = diffDeps(depsBefore, depsAfter);
 
+      const targetFile = `dep-updates-${timestamp}.md`;
       if (
         hasChangesets(repo) &&
         depsChanged.length > 0 &&
-        getChangesetFiles(repo).length === 0
+        !getChangesetFiles(repo).includes(targetFile)
       ) {
-        const pkg = JSON.parse(
-          readFileSync(join(repo, "package.json"), "utf8")
-        ) as {
-          name?: string;
-        };
-        writeChangesetFile(repo, pkg.name ?? "unknown", depsChanged, timestamp);
+        writeChangesetFile(repo, getPackageName(repo), depsChanged, timestamp);
         console.log(
           `[info] Wrote changeset: .changeset/dep-updates-${timestamp}.md`
         );
@@ -381,7 +378,6 @@ function dryRunRepo(
     `git checkout -b ${branch}`,
     getUpdateCommand(pm, minor).join(" "),
     getInstallCommand(pm).join(" "),
-    "git status --porcelain",
   ];
 
   if (hasChangesets(repo)) {
@@ -391,6 +387,7 @@ function dryRunRepo(
   }
 
   steps.push(
+    "git status --porcelain",
     "git add -A",
     `git commit -m "dep updates ${date}"`,
     `git push -u origin ${branch}`,
