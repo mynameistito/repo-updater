@@ -368,10 +368,11 @@ describe("updateRepo changeset integration", () => {
   test("writes changeset when hasChangesets and deps changed", async () => {
     setupChangesetsRepo({ react: "18.2.0" });
 
-    await updateRepo(
+    const result = await updateRepo(
       { repo: tempDir, date: "2025-01-01", dryRun: false },
       makeExec({ react: "18.3.1" })
     );
+    expect(result.isOk()).toBe(true);
 
     const changesetFiles = readdirSync(join(tempDir, ".changeset")).filter(
       (f) => f.startsWith("dep-updates-") && f.endsWith(".md")
@@ -389,10 +390,11 @@ describe("updateRepo changeset integration", () => {
   test("skips changeset when deps did not change", async () => {
     setupChangesetsRepo({ react: "18.2.0" });
 
-    await updateRepo(
+    const result = await updateRepo(
       { repo: tempDir, date: "2025-01-01", dryRun: false },
       makeExec() // no updatedDeps — package.json stays the same
     );
+    expect(result.isOk()).toBe(true);
 
     const changesetFiles = readdirSync(join(tempDir, ".changeset")).filter(
       (f) => f.startsWith("dep-updates-") && f.endsWith(".md")
@@ -408,10 +410,11 @@ describe("updateRepo changeset integration", () => {
       "utf8"
     );
 
-    await updateRepo(
+    const result = await updateRepo(
       { repo: tempDir, date: "2025-01-01", dryRun: false },
       makeExec({ react: "18.3.1" })
     );
+    expect(result.isOk()).toBe(true);
 
     expect(existsSync(join(tempDir, ".changeset"))).toBe(false);
   });
@@ -430,10 +433,11 @@ describe("updateRepo changeset integration", () => {
     writeFileSync(join(tempDir, ".changeset", targetFile), sentinel, "utf8");
 
     try {
-      await updateRepo(
+      const result = await updateRepo(
         { repo: tempDir, date: "2025-01-01", dryRun: false },
         makeExec({ react: "18.3.1" })
       );
+      expect(result.isOk()).toBe(true);
 
       // File should not have been overwritten
       const content = readFileSync(

@@ -209,6 +209,15 @@ async function performCleanup(
     }
   }
 
+  // Restore tracked files to HEAD so the branch switch doesn't fail
+  // due to uncommitted changes (e.g. package.json, lockfiles).
+  const resetResult = await execFn(["git", "checkout", "--", "."], repo);
+  if (resetResult.isErr()) {
+    console.warn(
+      `Cleanup: Failed to restore worktree: ${resetResult.error.message}`
+    );
+  }
+
   const checkoutResult = await execFn(["git", "checkout", defaultBranch], repo);
   if (checkoutResult.isErr()) {
     console.warn(
@@ -310,9 +319,9 @@ export function updateRepo(
         !getChangesetFiles(repo).includes(targetFile) &&
         pkgName !== "unknown"
       ) {
+        changesetFilePath = join(repo, ".changeset", targetFile);
         try {
           writeChangesetFile(repo, pkgName, depsChanged, timestamp);
-          changesetFilePath = join(repo, ".changeset", targetFile);
           console.log(
             `[info] Wrote changeset: .changeset/dep-updates-${timestamp}.md`
           );
