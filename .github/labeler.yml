@@ -1,0 +1,43 @@
+dependencies:
+  - changed-files:
+      - any-glob-to-any-file:
+          - "package.json"
+          - "package-lock.json"
+          - "bun.lock"
+          - "bunfig.toml"
+
+ci:
+  - changed-files:
+      - any-glob-to-any-file:
+          - ".github/**"
+
+source:
+  - changed-files:
+      - any-glob-to-any-file:
+          - "src/**"
+
+tests:
+  - changed-files:
+      - any-glob-to-any-file:
+          - "__tests__/**"
+
+documentation:
+  - changed-files:
+      - any-glob-to-any-file:
+          - "*.md"
+          - "README"
+          - "README.*"
+          - "CHANGELOG.md"
+          - "CONTRIBUTING.md"
+          - "CODE_OF_CONDUCT.md"
+          - "SECURITY.md"
+
+configuration:
+  - changed-files:
+      - any-glob-to-any-file:
+          - "tsconfig*.json"
+          - "biome.jsonc"
+          - "lefthook.yml"
+          - "vitest.config.ts"
+          - ".changeset/**"
+          - "scripts/**"

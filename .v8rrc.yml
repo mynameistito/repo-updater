@@ -1,0 +1,7 @@
+customCatalog:
+  schemas:
+    - name: Pull Request Labeler (5)
+      description: A GitHub Action for automatically labelling pull requests
+      fileMatch:
+        - ".github/labeler.yml"
+      location: https://json.schemastore.org/pull-request-labeler-5.json
