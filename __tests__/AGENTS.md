@@ -20,6 +20,7 @@ Test directory with Bun/Vitest dual-runner support. Uses compatibility shim for 
 - **Import:** `import { describe, it, expect, beforeEach, afterEach } from "bun:test"`
 - **Dual runner:** Same code runs under `bun test` and `vitest run`
 - **Compat shim:** `vitest.config.ts` aliases `bun:test` → `vitest`
+- **isBun detection:** Define locally: `const isBun = typeof globalThis.Bun !== "undefined";`
 - **Conditional skip:** `test.skipIf(!isBun)("...", () => ...)` for Bun-specific tests
 - **Mock pattern:** `spyOn(console, "log").mockImplementation(() => {})` with `.mockRestore()`
 - **Temp dirs:** `beforeEach` creates `tmpdir`, `afterEach` cleans up with `rmSync(..., { recursive: true, force: true })`
@@ -41,6 +42,7 @@ const mockExec = async () => Result.ok({ stdout: "", stderr: "" });
 await updateRepo({ repo, date, dryRun: false }, mockExec);
 
 // Skip Bun-specific tests under Node
+const isBun = typeof globalThis.Bun !== "undefined";
 test.skipIf(!isBun)("bun-specific test", () => { ... });
 
 // Spy pattern
