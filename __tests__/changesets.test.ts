@@ -65,7 +65,7 @@ describe("hasChangesets", () => {
 // ---------------------------------------------------------------------------
 
 describe("snapshotDeps", () => {
-  test("captures dependencies and peerDependencies, ignores devDependencies", () => {
+  test("captures dependencies only, ignores devDependencies and peerDependencies", () => {
     writeFileSync(
       join(tempDir, "package.json"),
       JSON.stringify({
@@ -78,7 +78,6 @@ describe("snapshotDeps", () => {
     expect(snapshotDeps(tempDir)).toEqual({
       react: "18.2.0",
       zod: "3.21.0",
-      "react-dom": "18.2.0",
     });
   });
 

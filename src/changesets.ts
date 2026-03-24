@@ -54,11 +54,7 @@ export function snapshotDeps(repoPath: string): DepSnapshot {
     typeof pkg.dependencies === "object" && pkg.dependencies !== null
       ? (pkg.dependencies as Record<string, string>)
       : {};
-  const peerDeps =
-    typeof pkg.peerDependencies === "object" && pkg.peerDependencies !== null
-      ? (pkg.peerDependencies as Record<string, string>)
-      : {};
-  return { ...deps, ...peerDeps };
+  return deps;
 }
 
 export function diffDeps(before: DepSnapshot, after: DepSnapshot): DepChange[] {
