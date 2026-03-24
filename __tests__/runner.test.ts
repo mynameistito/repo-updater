@@ -419,14 +419,70 @@ describe("updateRepo changeset integration", () => {
     expect(existsSync(join(tempDir, ".changeset"))).toBe(false);
   });
 
+  test("cleans up changeset file on post-write failure", async () => {
+    setupChangesetsRepo({ react: "18.2.0" });
+
+    const failingExec = (
+      cmd: string[],
+      cwd: string
+    ): Promise<Result<ExecOutput, CommandFailedError>> => {
+      const cmdStr = cmd.join(" ");
+      if (
+        cmdStr.includes("git symbolic-ref") &&
+        cmdStr.includes("refs/remotes/origin/HEAD")
+      ) {
+        return ok("refs/remotes/origin/main");
+      }
+      // Simulate update modifying deps
+      if (cmdStr.includes("npm-check-updates")) {
+        writeFileSync(
+          join(cwd, "package.json"),
+          JSON.stringify({
+            name: "test-lib",
+            dependencies: { react: "18.3.1" },
+          }),
+          "utf8"
+        );
+        return ok();
+      }
+      if (cmdStr.includes("git status") && cmdStr.includes("--porcelain")) {
+        return ok("M package.json");
+      }
+      // Fail on git add -A to trigger cleanup after changeset is written
+      if (cmdStr.includes("git add -A")) {
+        return Promise.resolve(
+          Result.err(
+            new CommandFailedError({
+              message: "git add failed",
+              command: "git add -A",
+              stderr: "fatal: error",
+            })
+          )
+        );
+      }
+      return ok();
+    };
+
+    const result = await updateRepo(
+      { repo: tempDir, date: "2025-01-01", dryRun: false },
+      failingExec
+    );
+    expect(result.isErr()).toBe(true);
+
+    // The changeset file should have been removed by cleanup
+    const remaining = readdirSync(join(tempDir, ".changeset")).filter(
+      (f) => f.startsWith("dep-updates-") && f.endsWith(".md")
+    );
+    expect(remaining.length).toBe(0);
+  });
+
   test("skips changeset when target file already exists", async () => {
     setupChangesetsRepo({ react: "18.2.0" });
 
     // Pre-create a changeset file that matches the target pattern.
     // We need to predict the timestamp — mock Date.now for this test.
-    const originalDateNow = Date.now;
     const fixedTimestamp = 9_999_999_999_999;
-    Date.now = () => fixedTimestamp;
+    const dateNowSpy = spyOn(Date, "now").mockReturnValue(fixedTimestamp);
 
     const targetFile = `dep-updates-${fixedTimestamp}.md`;
     const sentinel = "pre-existing content";
@@ -446,7 +502,7 @@ describe("updateRepo changeset integration", () => {
       );
       expect(content).toBe(sentinel);
     } finally {
-      Date.now = originalDateNow;
+      dateNowSpy.mockRestore();
     }
   });
 });

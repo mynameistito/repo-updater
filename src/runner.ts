@@ -209,12 +209,13 @@ async function performCleanup(
     }
   }
 
-  // Restore tracked files to HEAD so the branch switch doesn't fail
-  // due to uncommitted changes (e.g. package.json, lockfiles).
-  const resetResult = await execFn(["git", "checkout", "--", "."], repo);
+  // Hard-reset index + worktree to HEAD so the branch switch doesn't fail.
+  // `git checkout -- .` only restores the worktree from the index, which is
+  // insufficient when `git add -A` has already staged changes.
+  const resetResult = await execFn(["git", "reset", "--hard", "HEAD"], repo);
   if (resetResult.isErr()) {
     console.warn(
-      `Cleanup: Failed to restore worktree: ${resetResult.error.message}`
+      `Cleanup: Failed to reset worktree: ${resetResult.error.message}`
     );
   }
 
@@ -297,6 +298,7 @@ export function updateRepo(
     let branchCreated = false;
     let branchPushed = false;
     let changesetFilePath: string | undefined;
+    let succeeded = false;
     try {
       yield* Result.await(execFn(["git", "checkout", defaultBranch], repo));
       yield* Result.await(execFn(["git", "pull"], repo));
@@ -341,6 +343,7 @@ export function updateRepo(
       if (status.stdout === "") {
         yield* Result.await(execFn(["git", "checkout", defaultBranch], repo));
         yield* Result.await(execFn(["git", "branch", "-D", branch], repo));
+        succeeded = true;
         return Result.ok<RepoResult, CommandFailedError>({
           repo,
           status: "no-changes",
@@ -371,22 +374,24 @@ export function updateRepo(
         )
       );
 
+      succeeded = true;
       return Result.ok<RepoResult, CommandFailedError>({
         repo,
         status: "pr-created",
         prUrl: pr.stdout,
       });
-    } catch (e) {
-      await performCleanup(
-        defaultBranch,
-        branch,
-        branchCreated,
-        branchPushed,
-        execFn,
-        repo,
-        changesetFilePath
-      );
-      throw e;
+    } finally {
+      if (!succeeded) {
+        await performCleanup(
+          defaultBranch,
+          branch,
+          branchCreated,
+          branchPushed,
+          execFn,
+          repo,
+          changesetFilePath
+        );
+      }
     }
   });
 }
