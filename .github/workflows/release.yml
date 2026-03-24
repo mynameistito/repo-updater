@@ -6,7 +6,7 @@ on:
     types: [completed]
     branches: [main]
 
-concurrency: ${{ github.workflow }}-${{ github.ref }}
+concurrency: ${{ github.workflow }}-${{ github.event.workflow_run.head_branch }}
 
 jobs:
   release:

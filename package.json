@@ -45,7 +45,7 @@
     "check": "ultracite check",
     "fix": "ultracite fix",
     "build": "bun build src/cli.ts --outdir dist --target bun",
-    "prepublishOnly": "bun run build && npm pack --dry-run",
+    "prepublishOnly": "bun run build && bun run typecheck && npm pack --dry-run",
     "version": "changeset version"
   },
   "dependencies": {
