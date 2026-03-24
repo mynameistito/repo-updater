@@ -46,7 +46,7 @@
     "fix": "ultracite fix",
     "build": "bun build src/cli.ts --outdir dist --target bun",
     "build:pack": "bun pm pack",
-    "prepublishOnly": "bun run build && bun run typecheck && bun test",
+    "prepublishOnly": "bun run build && bun run typecheck && bun test && bun pack --dry-run",
     "version": "changeset version"
   },
   "dependencies": {
