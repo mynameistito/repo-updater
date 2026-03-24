@@ -65,7 +65,7 @@ describe("hasChangesets", () => {
 // ---------------------------------------------------------------------------
 
 describe("snapshotDeps", () => {
-  test("returns only dependencies, ignores devDependencies and peerDependencies", () => {
+  test("captures dependencies and peerDependencies, ignores devDependencies", () => {
     writeFileSync(
       join(tempDir, "package.json"),
       JSON.stringify({
@@ -75,7 +75,11 @@ describe("snapshotDeps", () => {
       }),
       "utf8"
     );
-    expect(snapshotDeps(tempDir)).toEqual({ react: "18.2.0", zod: "3.21.0" });
+    expect(snapshotDeps(tempDir)).toEqual({
+      react: "18.2.0",
+      zod: "3.21.0",
+      "react-dom": "18.2.0",
+    });
   });
 
   test("returns {} when package.json is missing", () => {
