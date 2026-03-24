@@ -1,0 +1,105 @@
+name: Bug Report
+description: Report something that isn't working correctly.
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Before opening a bug report, please check that no existing issue already covers it.
+        For security vulnerabilities, use [private vulnerability reporting](../../security) instead of opening a public issue.
+
+  - type: textarea
+    id: description
+    attributes:
+      label: What happened?
+      description: A clear description of the bug. What did you expect, and what actually happened?
+      placeholder: |
+        Expected: repo-updater creates a branch and opens a PR.
+        Actual: the command exits with "CommandFailedError" after the dependency update step.
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Steps to reproduce
+      description: Minimal steps that reliably reproduce the issue.
+      placeholder: |
+        1. Run `repo-updater /path/to/repo`
+        2. ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: command
+    attributes:
+      label: Full command and output
+      description: Paste the exact command you ran and the complete terminal output, including any error messages.
+      render: shell
+    validations:
+      required: true
+
+  - type: input
+    id: version
+    attributes:
+      label: repo-updater version
+      description: Run `repo-updater --version` or check `package.json`.
+      placeholder: "0.2.2"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: runtime
+    attributes:
+      label: Runtime
+      options:
+        - Bun
+        - Node.js
+    validations:
+      required: true
+
+  - type: input
+    id: runtime_version
+    attributes:
+      label: Runtime version
+      description: Output of `bun --version` or `node --version`.
+      placeholder: "1.2.4 / 22.3.0"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: package_manager
+    attributes:
+      label: Package manager of the target repo
+      options:
+        - Bun
+        - npm
+        - pnpm
+        - yarn
+        - Unknown / auto-detected incorrectly
+    validations:
+      required: true
+
+  - type: dropdown
+    id: os
+    attributes:
+      label: Operating system
+      options:
+        - macOS
+        - Linux
+        - Windows
+    validations:
+      required: true
+
+  - type: textarea
+    id: config
+    attributes:
+      label: Config file (if applicable)
+      description: Paste your `repo-updater.config.json` with any sensitive paths redacted.
+      render: json
+
+  - type: textarea
+    id: additional
+    attributes:
+      label: Additional context
+      description: Anything else that might be relevant — related issues, recent changes, unusual repo setup, etc.

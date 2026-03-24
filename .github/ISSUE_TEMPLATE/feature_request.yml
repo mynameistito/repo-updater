@@ -1,0 +1,63 @@
+name: Feature Request
+description: Suggest a new feature or improvement.
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for suggesting an improvement! Please fill out as much detail as you can so the request is easy to evaluate.
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: What problem does this solve?
+      description: Describe the situation or workflow that motivated this request. Focus on the problem, not the solution.
+      placeholder: |
+        When updating repos that use workspaces, the tool updates root-level dependencies
+        but ignores packages inside the workspace, so I still have to update them manually.
+    validations:
+      required: true
+
+  - type: textarea
+    id: solution
+    attributes:
+      label: Proposed solution
+      description: How would you like this to work? Include CLI flags, config options, or behavior changes if relevant.
+      placeholder: |
+        Add a `--workspaces` flag that recursively detects and updates workspace packages.
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: Any other approaches you considered and why you'd prefer the proposed one.
+
+  - type: dropdown
+    id: scope
+    attributes:
+      label: Which area does this affect?
+      options:
+        - CLI flags / arguments
+        - Config file format
+        - Package manager support
+        - Git workflow (branching, commits, PRs)
+        - Output / logging
+        - Performance
+        - Other
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: contribution
+    attributes:
+      label: Contribution
+      options:
+        - label: I'm willing to open a PR for this.
+
+  - type: textarea
+    id: additional
+    attributes:
+      label: Additional context
+      description: Links, examples from other tools, or anything else that helps illustrate the request.
