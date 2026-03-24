@@ -2,6 +2,7 @@ node_modules
 .env
 .env.*
 dist
+*.tgz
 repo-updater.config.json
 package-lock.json
 .claude/*
