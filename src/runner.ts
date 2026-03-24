@@ -326,7 +326,11 @@ export function updateRepo(
             `[info] Wrote changeset: .changeset/dep-updates-${timestamp}.md`
           );
         } catch (e) {
-          console.warn(`[warn] Failed to write changeset: ${String(e)}`);
+          throw new CommandFailedError({
+            message: `Failed to write changeset file: ${String(e)}`,
+            command: "writeChangesetFile",
+            stderr: String(e),
+          });
         }
       }
 
