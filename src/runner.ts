@@ -4,6 +4,7 @@ import { Result } from "better-result";
 import { CommandFailedError } from "./errors.ts";
 
 const DEFAULT_BRANCH_REGEX = /refs\/remotes\/origin\/(.+)$/;
+const DATE_FORMAT_REGEX = /^\d{4}-\d{2}-\d{2}$/;
 
 export type PackageManager = "npm" | "pnpm" | "yarn" | "bun";
 
@@ -213,6 +214,19 @@ export function updateRepo(
   execFn = exec
 ): Promise<Result<RepoResult, CommandFailedError>> {
   const { repo, date, dryRun, minor = false } = options;
+
+  if (!DATE_FORMAT_REGEX.test(date)) {
+    return Promise.resolve(
+      Result.err(
+        new CommandFailedError({
+          message: `Invalid date format: ${date}`,
+          command: "",
+          stderr: "",
+        })
+      )
+    );
+  }
+
   // Add timestamp to branch name to avoid collisions when running multiple times in one day
   const timestamp = Date.now();
   const branch = `chore/dep-updates-${date}-${timestamp}`;
