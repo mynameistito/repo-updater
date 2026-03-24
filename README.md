@@ -181,7 +181,7 @@ Updated dependencies:
 - zod: 3.21.0 → 3.24.1
 ```
 
-Both `dependencies` and `peerDependencies` are considered — changes to either will produce a changeset. `devDependencies` are always excluded as they are never shipped to consumers.
+Only `dependencies` are considered — changes to `peerDependencies` do not trigger a changeset. `devDependencies` are always excluded as they are never shipped to consumers.
 
 ### Dry-run mode
 
