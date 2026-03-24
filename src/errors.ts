@@ -24,3 +24,8 @@ export const ConfigParseError = TaggedError("ConfigParseError")<{
   message: string;
 }>();
 export type ConfigParseError = InstanceType<typeof ConfigParseError>;
+
+export const InvalidInputError = TaggedError("InvalidInputError")<{
+  message: string;
+}>();
+export type InvalidInputError = InstanceType<typeof InvalidInputError>;

@@ -1,10 +1,23 @@
 import { existsSync } from "node:fs";
 import { join } from "node:path";
 import { Result } from "better-result";
-import { CommandFailedError } from "./errors.ts";
+import { CommandFailedError, InvalidInputError } from "./errors.ts";
 
 const DEFAULT_BRANCH_REGEX = /refs\/remotes\/origin\/(.+)$/;
 const DATE_FORMAT_REGEX = /^\d{4}-\d{2}-\d{2}$/;
+
+function isValidCalendarDate(date: string): boolean {
+  if (!DATE_FORMAT_REGEX.test(date)) {
+    return false;
+  }
+  const [year, month, day] = date.split("-").map(Number);
+  const d = new Date(Date.UTC(year, month - 1, day));
+  return (
+    d.getUTCFullYear() === year &&
+    d.getUTCMonth() === month - 1 &&
+    d.getUTCDate() === day
+  );
+}
 
 export type PackageManager = "npm" | "pnpm" | "yarn" | "bun";
 
@@ -212,16 +225,14 @@ export function updateRepo(
     minor?: boolean;
   },
   execFn = exec
-): Promise<Result<RepoResult, CommandFailedError>> {
+): Promise<Result<RepoResult, CommandFailedError | InvalidInputError>> {
   const { repo, date, dryRun, minor = false } = options;
 
-  if (!DATE_FORMAT_REGEX.test(date)) {
+  if (!isValidCalendarDate(date)) {
     return Promise.resolve(
       Result.err(
-        new CommandFailedError({
-          message: `Invalid date format: ${date}`,
-          command: "",
-          stderr: "",
+        new InvalidInputError({
+          message: `Invalid date: "${date}" — expected a valid YYYY-MM-DD calendar date`,
         })
       )
     );

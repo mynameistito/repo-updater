@@ -80,7 +80,7 @@ export async function processRepo(
   if (result.isErr()) {
     s.stop(`Failed: ${repoName}`);
     log.error(`${repoName}: ${result.error.message}`);
-    if (result.error.stderr) {
+    if ("stderr" in result.error && result.error.stderr) {
       log.error(result.error.stderr);
     }
     return { repo, status: "failed" };
