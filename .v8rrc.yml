@@ -4,4 +4,4 @@ customCatalog:
       description: A GitHub Action for automatically labelling pull requests
       fileMatch:
         - ".github/labeler.yml"
-      location: https://www.schemastore.org/pull-request-labeler-5.json
+      location: https://json.schemastore.org/pull-request-labeler-5.json
