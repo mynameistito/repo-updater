@@ -7,7 +7,7 @@ import {
   spyOn,
   test,
 } from "bun:test";
-import { mkdirSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { Result } from "better-result";
@@ -73,7 +73,7 @@ const errResult = (message: string, command: string, stderr: string) =>
   );
 
 beforeEach(() => {
-  tempDir = join(tmpdir(), `cli-test-${Date.now()}`);
+  tempDir = mkdtempSync(join(tmpdir(), "cli-test-"));
   mkdirSync(join(tempDir, ".git"), { recursive: true });
   originalConsoleLog = console.log;
   console.log = consoleLogMock;

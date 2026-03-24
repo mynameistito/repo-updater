@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
-import { mkdirSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { loadConfig, validateRepos } from "../src/config.ts";
@@ -7,8 +7,7 @@ import { loadConfig, validateRepos } from "../src/config.ts";
 let tempDir: string;
 
 beforeEach(() => {
-  tempDir = join(tmpdir(), `repo-updater-test-${Date.now()}`);
-  mkdirSync(tempDir, { recursive: true });
+  tempDir = mkdtempSync(join(tmpdir(), "repo-updater-test-"));
 });
 
 afterEach(() => {

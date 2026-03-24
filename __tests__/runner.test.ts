@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, spyOn, test } from "bun:test";
-import { mkdirSync, rmSync, writeFileSync } from "node:fs";
+import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { Result } from "better-result";
@@ -23,8 +23,7 @@ let logSpy: ReturnType<typeof spyOn>;
 let warnSpy: ReturnType<typeof spyOn>;
 
 beforeEach(() => {
-  tempDir = join(tmpdir(), `repo-updater-runner-${Date.now()}`);
-  mkdirSync(tempDir, { recursive: true });
+  tempDir = mkdtempSync(join(tmpdir(), "repo-updater-runner-"));
   logSpy = spyOn(console, "log").mockImplementation(() => undefined);
   warnSpy = spyOn(console, "warn").mockImplementation(() => undefined);
 });
