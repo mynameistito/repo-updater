@@ -1,5 +1,29 @@
 # repo-updater
 
+## 0.3.1
+
+### Patch Changes
+
+- 9352b06: Add build and pack scripts for local build verification and CI
+
+  - Add `build` script using `bun build` to compile `src/cli.ts` to `dist`
+  - Add `build:pack` script for creating distributable tarballs
+  - Add `prepublishOnly` gate that runs build, typecheck, tests, and pack dry-run before publish
+  - Add Build Verification job to CI workflow (with explicit bun-version)
+  - Ignore `*.tgz` files in `.gitignore`
+
+## 0.3.0
+
+### Minor Changes
+
+- cff5d72: Auto-write a Changesets file on dep-update PRs for repos that use Changesets.
+
+  - Detects Changesets via `.changeset/config.json` or `@changesets/cli` in `devDependencies`
+  - Snapshots `dependencies` before and after the update, then writes a `patch` changeset if anything changed
+  - Skips writing if the target changeset file already exists (idempotent across retries)
+  - Automatically cleans up the changeset file on failure during branch rollback
+  - Dry-run mode previews the changeset step without writing anything
+
 ## 0.2.3
 
 ### Patch Changes

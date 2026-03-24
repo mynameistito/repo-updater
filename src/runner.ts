@@ -1,6 +1,14 @@
-import { existsSync } from "node:fs";
+import { existsSync, unlinkSync } from "node:fs";
 import { join } from "node:path";
 import { Result } from "better-result";
+import {
+  diffDeps,
+  getChangesetFiles,
+  getPackageName,
+  hasChangesets,
+  snapshotDeps,
+  writeChangesetFile,
+} from "./changesets.ts";
 import { CommandFailedError, InvalidInputError } from "./errors.ts";
 
 const DEFAULT_BRANCH_REGEX = /refs\/remotes\/origin\/(.+)$/;
@@ -184,10 +192,31 @@ async function performCleanup(
     cmd: string[],
     cwd: string
   ) => Promise<Result<ExecOutput, CommandFailedError>>,
-  repo: string
+  repo: string,
+  changesetFile?: string
 ): Promise<void> {
   if (!branchCreated) {
     return;
+  }
+
+  if (changesetFile && existsSync(changesetFile)) {
+    try {
+      unlinkSync(changesetFile);
+    } catch {
+      console.warn(
+        `Cleanup: Could not remove changeset file: ${changesetFile}`
+      );
+    }
+  }
+
+  // Hard-reset index + worktree to HEAD so the branch switch doesn't fail.
+  // `git checkout -- .` only restores the worktree from the index, which is
+  // insufficient when `git add -A` has already staged changes.
+  const resetResult = await execFn(["git", "reset", "--hard", "HEAD"], repo);
+  if (resetResult.isErr()) {
+    console.warn(
+      `Cleanup: Failed to reset worktree: ${resetResult.error.message}`
+    );
   }
 
   const checkoutResult = await execFn(["git", "checkout", defaultBranch], repo);
@@ -243,7 +272,9 @@ export function updateRepo(
   const branch = `chore/dep-updates-${date}-${timestamp}`;
 
   if (dryRun) {
-    return Promise.resolve(dryRunRepo(repo, date, branch, "main", minor));
+    return Promise.resolve(
+      dryRunRepo(repo, date, branch, "main", minor, timestamp)
+    );
   }
 
   return Result.gen(async function* () {
@@ -266,14 +297,44 @@ export function updateRepo(
 
     let branchCreated = false;
     let branchPushed = false;
+    let changesetFilePath: string | undefined;
+    let succeeded = false;
     try {
       yield* Result.await(execFn(["git", "checkout", defaultBranch], repo));
       yield* Result.await(execFn(["git", "pull"], repo));
       yield* Result.await(execFn(["git", "checkout", "-b", branch], repo));
       branchCreated = true;
 
+      const depsBefore = snapshotDeps(repo);
+
       yield* Result.await(execFn(getUpdateCommand(pm, minor), repo));
       yield* Result.await(execFn(getInstallCommand(pm), repo));
+
+      const depsAfter = snapshotDeps(repo);
+      const depsChanged = diffDeps(depsBefore, depsAfter);
+
+      const targetFile = `dep-updates-${timestamp}.md`;
+      const pkgName = getPackageName(repo);
+      if (
+        hasChangesets(repo) &&
+        depsChanged.length > 0 &&
+        !getChangesetFiles(repo).includes(targetFile) &&
+        pkgName !== "unknown"
+      ) {
+        changesetFilePath = join(repo, ".changeset", targetFile);
+        try {
+          writeChangesetFile(repo, pkgName, depsChanged, timestamp);
+          console.log(
+            `[info] Wrote changeset: .changeset/dep-updates-${timestamp}.md`
+          );
+        } catch (e) {
+          throw new CommandFailedError({
+            message: `Failed to write changeset file: ${String(e)}`,
+            command: "writeChangesetFile",
+            stderr: String(e),
+          });
+        }
+      }
 
       const status = yield* Result.await(
         execFn(["git", "status", "--porcelain"], repo)
@@ -282,6 +343,7 @@ export function updateRepo(
       if (status.stdout === "") {
         yield* Result.await(execFn(["git", "checkout", defaultBranch], repo));
         yield* Result.await(execFn(["git", "branch", "-D", branch], repo));
+        succeeded = true;
         return Result.ok<RepoResult, CommandFailedError>({
           repo,
           status: "no-changes",
@@ -312,21 +374,24 @@ export function updateRepo(
         )
       );
 
+      succeeded = true;
       return Result.ok<RepoResult, CommandFailedError>({
         repo,
         status: "pr-created",
         prUrl: pr.stdout,
       });
-    } catch (e) {
-      await performCleanup(
-        defaultBranch,
-        branch,
-        branchCreated,
-        branchPushed,
-        execFn,
-        repo
-      );
-      throw e;
+    } finally {
+      if (!succeeded) {
+        await performCleanup(
+          defaultBranch,
+          branch,
+          branchCreated,
+          branchPushed,
+          execFn,
+          repo,
+          changesetFilePath
+        );
+      }
     }
   });
 }
@@ -336,7 +401,8 @@ function dryRunRepo(
   date: string,
   branch: string,
   defaultBranch = "main",
-  minor = false
+  minor = false,
+  timestamp = Date.now()
 ): Result<RepoResult, CommandFailedError> {
   const pm = detectPackageManager(repo);
   console.log(
@@ -350,12 +416,21 @@ function dryRunRepo(
     `git checkout -b ${branch}`,
     getUpdateCommand(pm, minor).join(" "),
     getInstallCommand(pm).join(" "),
+  ];
+
+  if (hasChangesets(repo)) {
+    steps.push(
+      `write .changeset/dep-updates-${timestamp}.md (only if non-dev deps changed)`
+    );
+  }
+
+  steps.push(
     "git status --porcelain",
     "git add -A",
     `git commit -m "dep updates ${date}"`,
     `git push -u origin ${branch}`,
-    `gh pr create --title "Dep Updates ${date}" --body "Dep Updates ${date}"`,
-  ];
+    `gh pr create --title "Dep Updates ${date}" --body "Dep Updates ${date}"`
+  );
 
   for (const step of steps) {
     console.log(`  [dry-run] ${step}`);

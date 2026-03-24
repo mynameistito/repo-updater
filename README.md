@@ -25,6 +25,7 @@ Replaces manually running a dependency update workflow in each repo one-by-one.
 - [How it works](#how-it-works)
   - [Package Manager Detection](#package-manager-detection)
   - [Update Pipeline](#update-pipeline)
+  - [Changesets support](#changesets-support)
   - [Dry-run mode](#dry-run-mode)
 - [Example Scenarios](#example-scenarios)
 - [Contributing](#contributing)
@@ -35,6 +36,7 @@ Replaces manually running a dependency update workflow in each repo one-by-one.
 - **Multi-package manager support**: Works with npm, pnpm, yarn, and Bun
 - **Batch processing**: Update dependencies in multiple repos in one command
 - **GitHub integration**: Creates pull requests and opens them in your browser
+- **Changesets support**: Automatically writes a changeset file on repos that use [Changesets](https://github.com/changesets/changesets), so CI is never blocked by a missing changeset
 - **Dry-run mode**: Preview changes without executing anything
 - **Cross-platform**: Runs on Windows, macOS, and Linux
 
@@ -145,17 +147,41 @@ For each repository, the tool runs this pipeline sequentially:
 | 5 | `git checkout -b chore/dep-updates-YYYY-MM-DD-<timestamp>` |
 | 6 | `npx --yes npm-check-updates --upgrade` / `pnpm update --latest` / `yarn upgrade --latest` / `bun update --latest` |
 | 7 | `<pm> install` |
-| 8 | `git status --porcelain` |
-| 9 | `git add -A` |
-| 10 | `git commit -m "dep updates YYYY-MM-DD"` |
-| 11 | `git push -u origin chore/dep-updates-YYYY-MM-DD-<timestamp>` |
-| 12 | `gh pr create --title "Dep Updates YYYY-MM-DD" --body "Dep Updates YYYY-MM-DD"` |
+| 8 | If repo uses Changesets and `dependencies` changed: write `.changeset/dep-updates-<timestamp>.md` |
+| 9 | `git status --porcelain` |
+| 10 | `git add -A` |
+| 11 | `git commit -m "dep updates YYYY-MM-DD"` |
+| 12 | `git push -u origin chore/dep-updates-YYYY-MM-DD-<timestamp>` |
+| 13 | `gh pr create --title "Dep Updates YYYY-MM-DD" --body "Dep Updates YYYY-MM-DD"` |
 
-If step 8 shows no changes, the branch is deleted and the repo is skipped (reported as "no changes").
+If step 9 shows no changes, the branch is deleted and the repo is skipped (reported as "no changes").
 
 After all repos are processed, a summary box lists every PR URL. You're then prompted to open them all in the browser.
 
 **On failure:** if any step fails after a branch has been created, the tool automatically cleans up — it checks out the default branch, deletes the local branch, and (if already pushed) deletes the remote branch too. Repos are never left in a dirty state.
+
+### Changesets support
+
+If the target repo uses [Changesets](https://github.com/changesets/changesets), repo-updater automatically writes a changeset file before committing so CI isn't blocked by a missing changeset.
+
+Detection triggers on **either** condition:
+
+- `.changeset/config.json` exists in the repo root
+- `@changesets/cli` is listed in `devDependencies`
+
+When detected, the tool diffs `dependencies` before and after the update. If any changed and the target changeset file doesn't already exist (e.g., from a previous run), it writes `.changeset/dep-updates-<timestamp>.md`:
+
+```markdown
+---
+"my-lib": patch
+---
+
+Updated dependencies:
+- react: 18.2.0 → 18.3.1
+- zod: 3.21.0 → 3.24.1
+```
+
+Only `dependencies` are considered — changes to `peerDependencies` do not trigger a changeset. `devDependencies` are always excluded as they are never shipped to consumers.
 
 ### Dry-run mode
 
