@@ -52,8 +52,8 @@ jobs:
       - name: Build
         run: bun run build
 
-      - name: Pack
-        run: bun run build:pack
+      - name: Pack (dry-run)
+        run: npm pack --dry-run
 
   test-bun:
     name: Test with Bun
