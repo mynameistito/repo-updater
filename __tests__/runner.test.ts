@@ -1,5 +1,13 @@
 import { afterEach, beforeEach, describe, expect, spyOn, test } from "bun:test";
-import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import {
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readdirSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { Result } from "better-result";
@@ -306,5 +314,135 @@ describe("updateRepo", () => {
     expect(getInstallCommand("pnpm")).toEqual(["pnpm", "install"]);
     expect(getInstallCommand("yarn")).toEqual(["yarn", "install"]);
     expect(getInstallCommand("bun")).toEqual(["bun", "install"]);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// updateRepo changeset integration
+// ---------------------------------------------------------------------------
+
+describe("updateRepo changeset integration", () => {
+  function setupChangesetsRepo(deps: Record<string, string>) {
+    writeFileSync(
+      join(tempDir, "package.json"),
+      JSON.stringify({ name: "test-lib", dependencies: deps }),
+      "utf8"
+    );
+    mkdirSync(join(tempDir, ".changeset"), { recursive: true });
+    writeFileSync(join(tempDir, ".changeset", "config.json"), "{}", "utf8");
+  }
+
+  function makeExec(
+    updatedDeps?: Record<string, string>
+  ): (
+    cmd: string[],
+    cwd: string
+  ) => Promise<Result<ExecOutput, CommandFailedError>> {
+    return (cmd, cwd) => {
+      const cmdStr = cmd.join(" ");
+      if (
+        cmdStr.includes("git symbolic-ref") &&
+        cmdStr.includes("refs/remotes/origin/HEAD")
+      ) {
+        return ok("refs/remotes/origin/main");
+      }
+      // Simulate the update command modifying package.json
+      if (updatedDeps && cmdStr.includes("npm-check-updates")) {
+        writeFileSync(
+          join(cwd, "package.json"),
+          JSON.stringify({ name: "test-lib", dependencies: updatedDeps }),
+          "utf8"
+        );
+        return ok();
+      }
+      if (cmdStr.includes("git status") && cmdStr.includes("--porcelain")) {
+        return ok(updatedDeps ? "M package.json" : "");
+      }
+      if (cmd[0] === "gh" && cmd.includes("pr")) {
+        return ok("https://github.com/test/repo/pull/1");
+      }
+      return ok();
+    };
+  }
+
+  test("writes changeset when hasChangesets and deps changed", async () => {
+    setupChangesetsRepo({ react: "18.2.0" });
+
+    await updateRepo(
+      { repo: tempDir, date: "2025-01-01", dryRun: false },
+      makeExec({ react: "18.3.1" })
+    );
+
+    const changesetFiles = readdirSync(join(tempDir, ".changeset")).filter(
+      (f) => f.startsWith("dep-updates-") && f.endsWith(".md")
+    );
+    expect(changesetFiles.length).toBe(1);
+
+    const content = readFileSync(
+      join(tempDir, ".changeset", changesetFiles[0]),
+      "utf8"
+    );
+    expect(content).toContain('"test-lib": patch');
+    expect(content).toContain("- react: 18.2.0 → 18.3.1");
+  });
+
+  test("skips changeset when deps did not change", async () => {
+    setupChangesetsRepo({ react: "18.2.0" });
+
+    await updateRepo(
+      { repo: tempDir, date: "2025-01-01", dryRun: false },
+      makeExec() // no updatedDeps — package.json stays the same
+    );
+
+    const changesetFiles = readdirSync(join(tempDir, ".changeset")).filter(
+      (f) => f.startsWith("dep-updates-") && f.endsWith(".md")
+    );
+    expect(changesetFiles.length).toBe(0);
+  });
+
+  test("skips changeset when hasChangesets is false", async () => {
+    // No .changeset dir and no @changesets/cli
+    writeFileSync(
+      join(tempDir, "package.json"),
+      JSON.stringify({ name: "test-lib", dependencies: { react: "18.2.0" } }),
+      "utf8"
+    );
+
+    await updateRepo(
+      { repo: tempDir, date: "2025-01-01", dryRun: false },
+      makeExec({ react: "18.3.1" })
+    );
+
+    expect(existsSync(join(tempDir, ".changeset"))).toBe(false);
+  });
+
+  test("skips changeset when target file already exists", async () => {
+    setupChangesetsRepo({ react: "18.2.0" });
+
+    // Pre-create a changeset file that matches the target pattern.
+    // We need to predict the timestamp — mock Date.now for this test.
+    const originalDateNow = Date.now;
+    const fixedTimestamp = 9_999_999_999_999;
+    Date.now = () => fixedTimestamp;
+
+    const targetFile = `dep-updates-${fixedTimestamp}.md`;
+    const sentinel = "pre-existing content";
+    writeFileSync(join(tempDir, ".changeset", targetFile), sentinel, "utf8");
+
+    try {
+      await updateRepo(
+        { repo: tempDir, date: "2025-01-01", dryRun: false },
+        makeExec({ react: "18.3.1" })
+      );
+
+      // File should not have been overwritten
+      const content = readFileSync(
+        join(tempDir, ".changeset", targetFile),
+        "utf8"
+      );
+      expect(content).toBe(sentinel);
+    } finally {
+      Date.now = originalDateNow;
+    }
   });
 });

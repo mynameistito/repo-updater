@@ -50,6 +50,8 @@ export function snapshotDeps(repoPath: string): DepSnapshot {
   if (!pkg) {
     return {};
   }
+  // Values are assumed to be strings (standard for npm dependencies).
+  // Non-string values (e.g. workspace protocol objects) are not handled.
   const deps =
     typeof pkg.dependencies === "object" && pkg.dependencies !== null
       ? (pkg.dependencies as Record<string, string>)
@@ -78,9 +80,9 @@ export function getChangesetFiles(repoPath: string): string[] {
     return [];
   }
   try {
-    return readdirSync(changesetDir).filter(
-      (f) => f.endsWith(".md") && f !== "README.md"
-    );
+    return readdirSync(changesetDir)
+      .filter((f) => f.endsWith(".md") && f !== "README.md")
+      .sort();
   } catch {
     return [];
   }
@@ -101,6 +103,10 @@ export function writeChangesetFile(
   changes: DepChange[],
   timestamp: number
 ): void {
+  if (changes.length === 0) {
+    return;
+  }
+
   const changesetDir = join(repoPath, ".changeset");
   if (!existsSync(changesetDir)) {
     mkdirSync(changesetDir, { recursive: true });

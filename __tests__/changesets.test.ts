@@ -11,6 +11,7 @@ import { join } from "node:path";
 import {
   diffDeps,
   getChangesetFiles,
+  getPackageName,
   hasChangesets,
   snapshotDeps,
   writeChangesetFile,
@@ -56,6 +57,11 @@ describe("hasChangesets", () => {
   });
 
   test("returns false with no package.json and no .changeset dir", () => {
+    expect(hasChangesets(tempDir)).toBe(false);
+  });
+
+  test("returns false when package.json is malformed JSON", () => {
+    writeFileSync(join(tempDir, "package.json"), "not json", "utf8");
     expect(hasChangesets(tempDir)).toBe(false);
   });
 });
@@ -151,7 +157,7 @@ describe("getChangesetFiles", () => {
     expect(getChangesetFiles(tempDir)).toEqual([]);
   });
 
-  test("lists .md files, excludes README.md", () => {
+  test("lists .md files, excludes README.md and non-.md files", () => {
     mkdirSync(join(tempDir, ".changeset"));
     writeFileSync(
       join(tempDir, ".changeset", "dep-updates-123.md"),
@@ -159,9 +165,11 @@ describe("getChangesetFiles", () => {
       "utf8"
     );
     writeFileSync(join(tempDir, ".changeset", "README.md"), "", "utf8");
+    writeFileSync(join(tempDir, ".changeset", "config.json"), "{}", "utf8");
     const files = getChangesetFiles(tempDir);
     expect(files).toContain("dep-updates-123.md");
     expect(files).not.toContain("README.md");
+    expect(files).not.toContain("config.json");
   });
 
   test("returns [] for empty .changeset directory", () => {
@@ -223,7 +231,7 @@ describe("writeChangesetFile", () => {
     mkdirSync(join(tempDir, ".changeset"));
     const changes = [
       { name: "old-pkg", from: "2.0.0", to: "" },
-      { name: "stable-pkg", from: "1.0.0", to: "1.0.0" },
+      { name: "updated-pkg", from: "1.0.0", to: "1.1.0" },
     ];
     writeChangesetFile(tempDir, "my-lib", changes, 7777);
 
@@ -232,5 +240,48 @@ describe("writeChangesetFile", () => {
       "utf8"
     );
     expect(content).toContain("- old-pkg: 2.0.0 → (removed)");
+    expect(content).toContain("- updated-pkg: 1.0.0 → 1.1.0");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// getPackageName
+// ---------------------------------------------------------------------------
+
+describe("getPackageName", () => {
+  test("returns name from package.json", () => {
+    writeFileSync(
+      join(tempDir, "package.json"),
+      JSON.stringify({ name: "my-lib" }),
+      "utf8"
+    );
+    expect(getPackageName(tempDir)).toBe("my-lib");
+  });
+
+  test('returns "unknown" when package.json is missing', () => {
+    expect(getPackageName(tempDir)).toBe("unknown");
+  });
+
+  test('returns "unknown" when package.json has no name field', () => {
+    writeFileSync(
+      join(tempDir, "package.json"),
+      JSON.stringify({ version: "1.0.0" }),
+      "utf8"
+    );
+    expect(getPackageName(tempDir)).toBe("unknown");
+  });
+
+  test('returns "unknown" when package.json is malformed JSON', () => {
+    writeFileSync(join(tempDir, "package.json"), "not json", "utf8");
+    expect(getPackageName(tempDir)).toBe("unknown");
+  });
+
+  test('returns "unknown" when name field is non-string', () => {
+    writeFileSync(
+      join(tempDir, "package.json"),
+      JSON.stringify({ name: 42 }),
+      "utf8"
+    );
+    expect(getPackageName(tempDir)).toBe("unknown");
   });
 });

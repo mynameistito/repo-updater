@@ -1,4 +1,4 @@
-import { existsSync } from "node:fs";
+import { existsSync, unlinkSync } from "node:fs";
 import { join } from "node:path";
 import { Result } from "better-result";
 import {
@@ -192,10 +192,21 @@ async function performCleanup(
     cmd: string[],
     cwd: string
   ) => Promise<Result<ExecOutput, CommandFailedError>>,
-  repo: string
+  repo: string,
+  changesetFile?: string
 ): Promise<void> {
   if (!branchCreated) {
     return;
+  }
+
+  if (changesetFile && existsSync(changesetFile)) {
+    try {
+      unlinkSync(changesetFile);
+    } catch {
+      console.warn(
+        `Cleanup: Could not remove changeset file: ${changesetFile}`
+      );
+    }
   }
 
   const checkoutResult = await execFn(["git", "checkout", defaultBranch], repo);
@@ -276,6 +287,7 @@ export function updateRepo(
 
     let branchCreated = false;
     let branchPushed = false;
+    let changesetFilePath: string | undefined;
     try {
       yield* Result.await(execFn(["git", "checkout", defaultBranch], repo));
       yield* Result.await(execFn(["git", "pull"], repo));
@@ -291,15 +303,22 @@ export function updateRepo(
       const depsChanged = diffDeps(depsBefore, depsAfter);
 
       const targetFile = `dep-updates-${timestamp}.md`;
+      const pkgName = getPackageName(repo);
       if (
         hasChangesets(repo) &&
         depsChanged.length > 0 &&
-        !getChangesetFiles(repo).includes(targetFile)
+        !getChangesetFiles(repo).includes(targetFile) &&
+        pkgName !== "unknown"
       ) {
-        writeChangesetFile(repo, getPackageName(repo), depsChanged, timestamp);
-        console.log(
-          `[info] Wrote changeset: .changeset/dep-updates-${timestamp}.md`
-        );
+        try {
+          writeChangesetFile(repo, pkgName, depsChanged, timestamp);
+          changesetFilePath = join(repo, ".changeset", targetFile);
+          console.log(
+            `[info] Wrote changeset: .changeset/dep-updates-${timestamp}.md`
+          );
+        } catch (e) {
+          console.warn(`[warn] Failed to write changeset: ${String(e)}`);
+        }
       }
 
       const status = yield* Result.await(
@@ -351,7 +370,8 @@ export function updateRepo(
         branchCreated,
         branchPushed,
         execFn,
-        repo
+        repo,
+        changesetFilePath
       );
       throw e;
     }
@@ -382,7 +402,7 @@ function dryRunRepo(
 
   if (hasChangesets(repo)) {
     steps.push(
-      `write .changeset/dep-updates-${timestamp}.md  (non-dev changed deps listed at runtime)`
+      `write .changeset/dep-updates-${timestamp}.md (only if non-dev deps changed)`
     );
   }
 
