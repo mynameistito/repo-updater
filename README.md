@@ -176,7 +176,9 @@ When detected, the tool diffs `dependencies` before and after the update. If any
 "my-lib": patch
 ---
 
-Update dependencies: react 18.2.0 → 18.3.1, zod 3.21.0 → 3.24.1
+Updated dependencies:
+- react: 18.2.0 → 18.3.1
+- zod: 3.21.0 → 3.24.1
 ```
 
 Only `dependencies` are considered — changes to `devDependencies` or `peerDependencies` alone will not produce a changeset.

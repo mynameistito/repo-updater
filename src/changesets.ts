@@ -97,11 +97,11 @@ export function writeChangesetFile(
     mkdirSync(changesetDir, { recursive: true });
   }
 
-  const summary = changes
-    .map((c) => `${c.name} ${c.from || "(new)"} → ${c.to || "(removed)"}`)
-    .join(", ");
+  const bullets = changes
+    .map((c) => `- ${c.name}: ${c.from || "(new)"} → ${c.to || "(removed)"}`)
+    .join("\n");
 
-  const content = `---\n"${packageName}": patch\n---\n\nUpdate dependencies: ${summary}\n`;
+  const content = `---\n"${packageName}": patch\n---\n\nUpdated dependencies:\n${bullets}\n`;
 
   writeFileSync(
     join(changesetDir, `dep-updates-${timestamp}.md`),

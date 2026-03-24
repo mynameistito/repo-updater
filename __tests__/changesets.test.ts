@@ -185,8 +185,9 @@ describe("writeChangesetFile", () => {
       "utf8"
     );
     expect(content).toContain('---\n"my-lib": patch\n---');
-    expect(content).toContain("react 18.2.0 → 18.3.1");
-    expect(content).toContain("zod 3.21.0 → 3.24.1");
+    expect(content).toContain("Updated dependencies:");
+    expect(content).toContain("- react: 18.2.0 → 18.3.1");
+    expect(content).toContain("- zod: 3.21.0 → 3.24.1");
   });
 
   test("creates .changeset directory if it does not exist", () => {
