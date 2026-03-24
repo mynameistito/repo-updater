@@ -24,7 +24,7 @@ Core source directory - CLI entry point, repository update orchestration, and ut
 
 ## ANTI-PATTERNS
 
-- **AVOID** direct `console.log` in `runner.ts` - use `console.log` for`[info]` messages only
+- **AVOID** arbitrary `console.log` in `runner.ts` - prefix with `[info]` for user-facing messages only
 - **NEVER** skip cleanup on failure - `performCleanup()` handles branch rollback
 - **NEVER** hardcode branch names - use timestamp suffix to avoid collisions
 

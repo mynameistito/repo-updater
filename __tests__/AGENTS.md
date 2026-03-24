@@ -22,7 +22,7 @@ Test directory with Bun/Vitest dual-runner support. Uses compatibility shim for 
 - **Compat shim:** `vitest.config.ts` aliases `bun:test` → `vitest`
 - **Conditional skip:** `test.skipIf(!isBun)("...", () => ...)` for Bun-specific tests
 - **Mock pattern:** `spyOn(console, "log").mockImplementation(() => {})` with `.mockRestore()`
-- **Temp dirs:** `beforeEach` creates`tmpdir`, `afterEach` cleans up with `rmSync(..., { recursive: true, force: true })`
+- **Temp dirs:** `beforeEach` creates `tmpdir`, `afterEach` cleans up with `rmSync(..., { recursive: true, force: true })`
 
 ## ANTI-PATTERNS
 
@@ -35,7 +35,8 @@ Test directory with Bun/Vitest dual-runner support. Uses compatibility shim for 
 ```typescript
 // Result type testing
 const result = updateRepo({ repo, date: "2024-01-01", dryRun: true });
-expect(Result.isOk(result)).toBe(true);// Mock exec for testing
+expect(Result.isOk(result)).toBe(true);
+// Mock exec for testing
 const mockExec = async () => Result.ok({ stdout: "", stderr: "" });
 await updateRepo({ repo, date, dryRun: false }, mockExec);
 
