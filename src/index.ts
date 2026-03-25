@@ -66,7 +66,11 @@ export async function processRepo(
   minor = false,
   noChangeset = false,
   noWorkspaces = false
-): Promise<{ repo: string; status: string; prUrl?: string }> {
+): Promise<{
+  repo: string;
+  status: "pr-created" | "no-changes" | "failed";
+  prUrl?: string;
+}> {
   const repoName = basename(repo);
   log.step(repoName);
 
@@ -121,16 +125,27 @@ export async function processRepo(
   return result.value;
 }
 
-async function handleRepoProcessing(
-  valid: string[],
-  date: string,
-  dryRun: boolean,
-  prUrls: string[],
-  updateFn: typeof updateRepo,
-  minor: boolean,
-  noChangeset: boolean,
-  noWorkspaces: boolean
-) {
+interface RepoProcessingOptions {
+  date: string;
+  dryRun: boolean;
+  minor: boolean;
+  noChangeset: boolean;
+  noWorkspaces: boolean;
+  prUrls: string[];
+  updateFn: typeof updateRepo;
+  valid: string[];
+}
+
+async function handleRepoProcessing({
+  valid,
+  date,
+  dryRun,
+  prUrls,
+  updateFn,
+  minor,
+  noChangeset,
+  noWorkspaces,
+}: RepoProcessingOptions) {
   for (const repo of valid) {
     const result = await processRepo(
       repo,
@@ -167,9 +182,8 @@ export function openURLBun(cmd: string[]): void {
 }
 
 export async function openURLNodejs(cmd: string[]): Promise<void> {
-  // Node.js fallback
-  const childProcess = await import("node:child_process");
-  childProcess.spawn(cmd[0], cmd.slice(1), { stdio: "ignore" });
+  const { spawn } = await import("node:child_process");
+  spawn(cmd[0], cmd.slice(1), { stdio: "ignore" });
 }
 
 export function openURLs(urls: string[], platform: string = process.platform) {
@@ -233,16 +247,16 @@ export async function main(
     log.info("[dry-run] No commands will be executed.\n");
   }
 
-  await handleRepoProcessing(
+  await handleRepoProcessing({
     valid,
     date,
-    args.dryRun,
+    dryRun: args.dryRun,
     prUrls,
     updateFn,
-    args.minor,
-    args.noChangeset,
-    args.noWorkspaces
-  );
+    minor: args.minor,
+    noChangeset: args.noChangeset,
+    noWorkspaces: args.noWorkspaces,
+  });
 
   if (prUrls.length > 0) {
     const shouldOpen = await handlePRDisplay(prUrls);

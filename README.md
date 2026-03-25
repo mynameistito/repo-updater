@@ -156,7 +156,7 @@ For each repository, the tool runs this pipeline sequentially:
 | 4 | `git pull` |
 | 5 | `git checkout -b chore/dep-updates-YYYY-MM-DD-<timestamp>` |
 | 6 | `npx --yes npm-check-updates --upgrade` / `pnpm update --latest` / `yarn upgrade --latest` / `bun update --latest` |
-| 6a | If workspace detected (and `--no-workspaces` not set): also run workspace-aware update (e.g. `npx --yes npm-check-updates --upgrade --workspaces`, `pnpm update --latest -r`, `bun update --latest`) |
+| 6a | If workspace detected (and `--no-workspaces` not set): replaces step 6 with the workspace-aware update command (e.g. `npx --yes npm-check-updates --upgrade --workspaces`, `pnpm update --latest -r`, `bun update --latest`) |
 | 7 | `<pm> install` |
 | 8 | If repo uses Changesets and `dependencies` changed (and `--no-changeset` not set): write `.changeset/dep-updates-<timestamp>.md` (multi-package changeset for monorepos) |
 | 9 | `git status --porcelain` |
@@ -212,8 +212,11 @@ For monorepos with workspaces, the changeset includes all workspace packages tha
 ---
 
 Updated dependencies:
-- @scope/app: react 18.2.0 → 18.3.1
-- @scope/utils: lodash 4.17.20 → 4.17.21
+**@scope/app**:
+- react: 18.2.0 → 18.3.1
+
+**@scope/utils**:
+- lodash: 4.17.20 → 4.17.21
 ```
 
 Only `dependencies` are considered — changes to `peerDependencies` do not trigger a changeset. `devDependencies` are always excluded as they are never shipped to consumers.

@@ -1,8 +1,9 @@
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { basename, join, relative } from "node:path";
 import { parse as parseYaml } from "yaml";
+import { readPackageJson } from "./package-json.ts";
 
-const GLOB_SUFFIX_RE = /\/\*\*?$/;
+const TRAILING_WILDCARD_RE = /\/\*\*?$/;
 
 export interface WorkspacePackage {
   name: string;
@@ -13,18 +14,6 @@ export interface WorkspacePackage {
 export interface WorkspaceConfig {
   isWorkspace: boolean;
   packages: WorkspacePackage[];
-}
-
-function readPackageJson(dir: string): Record<string, unknown> | null {
-  const pkgPath = join(dir, "package.json");
-  if (!existsSync(pkgPath)) {
-    return null;
-  }
-  try {
-    return JSON.parse(readFileSync(pkgPath, "utf8")) as Record<string, unknown>;
-  } catch {
-    return null;
-  }
 }
 
 function parsePnpmWorkspaceYaml(repoPath: string): string[] | null {
@@ -67,7 +56,10 @@ function getWorkspaceGlobs(repoPath: string): string[] | null {
   const workspaces = pkg.workspaces;
   if (Array.isArray(workspaces)) {
     // npm/yarn/bun: workspaces: ["packages/*", "apps/*"]
-    return workspaces.filter((w): w is string => typeof w === "string");
+    const filtered = workspaces.filter(
+      (w): w is string => typeof w === "string"
+    );
+    return filtered.length > 0 ? filtered : null;
   }
 
   if (
@@ -78,7 +70,8 @@ function getWorkspaceGlobs(repoPath: string): string[] | null {
     // yarn classic: workspaces: { packages: ["packages/*"] }
     const pkgs = (workspaces as { packages: unknown }).packages;
     if (Array.isArray(pkgs)) {
-      return pkgs.filter((w): w is string => typeof w === "string");
+      const filtered = pkgs.filter((w): w is string => typeof w === "string");
+      return filtered.length > 0 ? filtered : null;
     }
   }
 
@@ -115,7 +108,7 @@ function listDirsRecursive(parentDir: string): string[] {
 }
 
 function resolveGlob(repoPath: string, glob: string): string[] {
-  const cleaned = glob.replace(GLOB_SUFFIX_RE, "");
+  const cleaned = glob.replace(TRAILING_WILDCARD_RE, "");
   const parentDir = join(repoPath, cleaned);
 
   if (!existsSync(parentDir)) {
@@ -138,6 +131,11 @@ function resolveGlob(repoPath: string, glob: string): string[] {
   }
 }
 
+/**
+ * Resolves workspace glob patterns to concrete directory paths.
+ * Negation patterns (starting with `!`) are applied as exclusion filters
+ * after all inclusion globs are resolved. Duplicates are de-duplicated.
+ */
 export function resolveWorkspaceGlobs(
   repoPath: string,
   globs: string[]
@@ -171,6 +169,7 @@ export function resolveWorkspaceGlobs(
   return dirs;
 }
 
+/** Returns workspace packages found in the given directories, sorted by name. */
 export function getWorkspacePackages(
   repoPath: string,
   dirs: string[]
@@ -194,6 +193,7 @@ export function getWorkspacePackages(
   return packages.sort((a, b) => a.name.localeCompare(b.name));
 }
 
+/** Detects whether a repo is a monorepo with workspaces and returns its packages. */
 export function detectWorkspaces(repoPath: string): WorkspaceConfig {
   const globs = getWorkspaceGlobs(repoPath);
   if (!globs || globs.length === 0) {

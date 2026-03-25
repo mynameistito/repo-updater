@@ -28,8 +28,8 @@ const VERSION_PATTERN = /\d+\.\d+/;
 const isBun = typeof globalThis.Bun !== "undefined";
 
 let tempDir: string;
-let logSpy: ReturnType<typeof spyOn>;
-let warnSpy: ReturnType<typeof spyOn>;
+let logSpy!: ReturnType<typeof spyOn>;
+let warnSpy!: ReturnType<typeof spyOn>;
 
 beforeEach(() => {
   tempDir = mkdtempSync(join(tmpdir(), "repo-updater-runner-"));

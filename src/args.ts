@@ -42,7 +42,7 @@ export function parseArgs(argv: string[]): ParsedArgs {
       if (next.done) {
         console.error(`${arg} requires a value`);
       } else {
-        configPath = next.value as string;
+        configPath = next.value;
       }
     } else if (arg.startsWith("-")) {
       console.error(`Unknown flag: ${arg}`);

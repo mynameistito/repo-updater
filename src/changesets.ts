@@ -1,12 +1,9 @@
-import {
-  existsSync,
-  mkdirSync,
-  readdirSync,
-  readFileSync,
-  writeFileSync,
-} from "node:fs";
+import { existsSync, mkdirSync, readdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
+import { readPackageJson } from "./package-json.ts";
 import type { WorkspacePackage } from "./workspaces.ts";
+
+const DEPENDENCY_ARROW = "→";
 
 export interface DepSnapshot {
   [pkg: string]: string;
@@ -16,18 +13,6 @@ export interface DepChange {
   from: string;
   name: string;
   to: string;
-}
-
-function readPackageJson(repoPath: string): Record<string, unknown> | null {
-  const pkgPath = join(repoPath, "package.json");
-  if (!existsSync(pkgPath)) {
-    return null;
-  }
-  try {
-    return JSON.parse(readFileSync(pkgPath, "utf8")) as Record<string, unknown>;
-  } catch {
-    return null;
-  }
 }
 
 export function hasChangesets(repoPath: string): boolean {
@@ -114,7 +99,10 @@ export function writeChangesetFile(
   }
 
   const bullets = changes
-    .map((c) => `- ${c.name}: ${c.from || "(new)"} → ${c.to || "(removed)"}`)
+    .map(
+      (c) =>
+        `- ${c.name}: ${c.from || "(new)"} ${DEPENDENCY_ARROW} ${c.to || "(removed)"}`
+    )
     .join("\n");
 
   const content = `---\n"${packageName}": patch\n---\n\nUpdated dependencies:\n${bullets}\n`;
@@ -126,6 +114,7 @@ export function writeChangesetFile(
   );
 }
 
+/** Snapshots `dependencies` for the root package and all workspace packages. */
 export function snapshotWorkspaceDeps(
   repoPath: string,
   packages: WorkspacePackage[]
@@ -152,6 +141,7 @@ export function snapshotWorkspaceDeps(
   return snapshots;
 }
 
+/** Diffs before/after workspace dependency snapshots, returning only packages with changes. */
 export function diffWorkspaceDeps(
   before: Map<string, DepSnapshot>,
   after: Map<string, DepSnapshot>
@@ -171,6 +161,7 @@ export function diffWorkspaceDeps(
   return result;
 }
 
+/** Writes a multi-package changeset file listing dependency changes per workspace package. */
 export function writeWorkspaceChangesetFile(
   repoPath: string,
   changedPackages: Map<string, DepChange[]>,
@@ -196,7 +187,10 @@ export function writeWorkspaceChangesetFile(
     a[0].localeCompare(b[0])
   )) {
     const bullets = changes
-      .map((c) => `- ${c.name}: ${c.from || "(new)"} → ${c.to || "(removed)"}`)
+      .map(
+        (c) =>
+          `- ${c.name}: ${c.from || "(new)"} ${DEPENDENCY_ARROW} ${c.to || "(removed)"}`
+      )
       .join("\n");
     bodyParts.push(`**${name}**:\n${bullets}`);
   }
