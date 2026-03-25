@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import {
+  existsSync,
   mkdirSync,
   mkdtempSync,
   readFileSync,
@@ -9,12 +10,16 @@ import {
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import {
+  type DepSnapshot,
   diffDeps,
+  diffWorkspaceDeps,
   getChangesetFiles,
   getPackageName,
   hasChangesets,
   snapshotDeps,
+  snapshotWorkspaceDeps,
   writeChangesetFile,
+  writeWorkspaceChangesetFile,
 } from "../src/changesets.ts";
 
 let tempDir: string;
@@ -283,5 +288,149 @@ describe("getPackageName", () => {
       "utf8"
     );
     expect(getPackageName(tempDir)).toBe("unknown");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// snapshotWorkspaceDeps
+// ---------------------------------------------------------------------------
+
+describe("snapshotWorkspaceDeps", () => {
+  test("snapshots deps from root and all workspace packages", () => {
+    writeFileSync(
+      join(tempDir, "package.json"),
+      JSON.stringify({ name: "root", dependencies: { shared: "1.0.0" } }),
+      "utf8"
+    );
+    const pkgADir = join(tempDir, "packages", "a");
+    mkdirSync(pkgADir, { recursive: true });
+    writeFileSync(
+      join(pkgADir, "package.json"),
+      JSON.stringify({ name: "@scope/a", dependencies: { react: "18.2.0" } }),
+      "utf8"
+    );
+
+    const snapshots = snapshotWorkspaceDeps(tempDir, [
+      { name: "@scope/a", path: pkgADir, relativePath: "packages/a" },
+    ]);
+
+    expect(snapshots.size).toBe(2);
+    expect(snapshots.get("root")).toEqual({ shared: "1.0.0" });
+    expect(snapshots.get("@scope/a")).toEqual({ react: "18.2.0" });
+  });
+
+  test("skips root when package name is unknown", () => {
+    writeFileSync(
+      join(tempDir, "package.json"),
+      JSON.stringify({ dependencies: { shared: "1.0.0" } }),
+      "utf8"
+    );
+
+    const snapshots = snapshotWorkspaceDeps(tempDir, []);
+    expect(snapshots.size).toBe(0);
+  });
+
+  test("skips duplicate package names and keeps the first entry", () => {
+    writeFileSync(
+      join(tempDir, "package.json"),
+      JSON.stringify({ name: "root" }),
+      "utf8"
+    );
+    const dirA = join(tempDir, "packages", "a");
+    const dirB = join(tempDir, "packages", "b");
+    mkdirSync(dirA, { recursive: true });
+    mkdirSync(dirB, { recursive: true });
+    writeFileSync(
+      join(dirA, "package.json"),
+      JSON.stringify({ name: "dupe", dependencies: { react: "18.0.0" } }),
+      "utf8"
+    );
+    writeFileSync(
+      join(dirB, "package.json"),
+      JSON.stringify({ name: "dupe", dependencies: { react: "19.0.0" } }),
+      "utf8"
+    );
+
+    const snapshots = snapshotWorkspaceDeps(tempDir, [
+      { name: "dupe", path: dirA, relativePath: "packages/a" },
+      { name: "dupe", path: dirB, relativePath: "packages/b" },
+    ]);
+
+    // Should keep the first "dupe" entry (react 18.0.0), not overwrite with the second
+    expect(snapshots.get("dupe")).toEqual({ react: "18.0.0" });
+  });
+});
+
+// ---------------------------------------------------------------------------
+// diffWorkspaceDeps
+// ---------------------------------------------------------------------------
+
+describe("diffWorkspaceDeps", () => {
+  test("diffs per-package and only returns packages with changes", () => {
+    const before = new Map<string, DepSnapshot>([
+      ["pkg-a", { react: "18.2.0" }],
+      ["pkg-b", { zod: "3.21.0" }],
+    ]);
+    const after = new Map<string, DepSnapshot>([
+      ["pkg-a", { react: "18.3.1" }],
+      ["pkg-b", { zod: "3.21.0" }], // unchanged
+    ]);
+
+    const result = diffWorkspaceDeps(before, after);
+    expect(result.size).toBe(1);
+    expect(result.has("pkg-a")).toBe(true);
+    expect(result.get("pkg-a")).toEqual([
+      { name: "react", from: "18.2.0", to: "18.3.1" },
+    ]);
+  });
+
+  test("returns empty map when nothing changed", () => {
+    const snap = new Map<string, DepSnapshot>([["pkg-a", { react: "18.2.0" }]]);
+    const result = diffWorkspaceDeps(snap, snap);
+    expect(result.size).toBe(0);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// writeWorkspaceChangesetFile
+// ---------------------------------------------------------------------------
+
+describe("writeWorkspaceChangesetFile", () => {
+  test("writes frontmatter with all changed packages", () => {
+    mkdirSync(join(tempDir, ".changeset"));
+    const changes = new Map([
+      ["@scope/a", [{ name: "react", from: "18.2.0", to: "18.3.1" }]],
+      ["@scope/b", [{ name: "zod", from: "3.21.0", to: "3.24.0" }]],
+    ]);
+
+    writeWorkspaceChangesetFile(tempDir, changes, 1_234_567_890);
+
+    const content = readFileSync(
+      join(tempDir, ".changeset", "dep-updates-1234567890.md"),
+      "utf8"
+    );
+    expect(content).toContain('"@scope/a": patch');
+    expect(content).toContain('"@scope/b": patch');
+    expect(content).toContain("**@scope/a**:");
+    expect(content).toContain("- react: 18.2.0");
+    expect(content).toContain("**@scope/b**:");
+    expect(content).toContain("- zod: 3.21.0");
+  });
+
+  test("creates .changeset directory if it does not exist", () => {
+    const changes = new Map([
+      ["pkg", [{ name: "react", from: "18.2.0", to: "18.3.1" }]],
+    ]);
+    writeWorkspaceChangesetFile(tempDir, changes, 9999);
+    const content = readFileSync(
+      join(tempDir, ".changeset", "dep-updates-9999.md"),
+      "utf8"
+    );
+    expect(content).toContain('"pkg": patch');
+  });
+
+  test("does nothing when changedPackages map is empty", () => {
+    writeWorkspaceChangesetFile(tempDir, new Map(), 1111);
+    expect(existsSync(join(tempDir, ".changeset"))).toBe(false);
   });
 });

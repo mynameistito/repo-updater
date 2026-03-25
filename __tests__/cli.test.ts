@@ -106,6 +106,8 @@ describe("resolveRepos", () => {
       help: false,
       dryRun: false,
       minor: false,
+      noChangeset: false,
+      noWorkspaces: false,
       configPath: undefined,
       positional: ["/repo1", "/repo2"],
     });
@@ -118,6 +120,8 @@ describe("resolveRepos", () => {
       help: false,
       dryRun: true,
       minor: false,
+      noChangeset: false,
+      noWorkspaces: false,
       configPath: undefined,
       positional: ["/repo1", "/repo2"],
     });
@@ -132,6 +136,8 @@ describe("resolveRepos", () => {
       help: false,
       dryRun: false,
       minor: false,
+      noChangeset: false,
+      noWorkspaces: false,
       configPath,
       positional: [],
     });
@@ -143,6 +149,8 @@ describe("resolveRepos", () => {
       help: false,
       dryRun: false,
       minor: false,
+      noChangeset: false,
+      noWorkspaces: false,
       configPath: join(tempDir, "missing.json"),
       positional: [],
     });

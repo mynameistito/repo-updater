@@ -25,6 +25,7 @@ Replaces manually running a dependency update workflow in each repo one-by-one.
 - [How it works](#how-it-works)
   - [Package Manager Detection](#package-manager-detection)
   - [Update Pipeline](#update-pipeline)
+  - [Workspace support](#workspace-support)
   - [Changesets support](#changesets-support)
   - [Dry-run mode](#dry-run-mode)
 - [Example Scenarios](#example-scenarios)
@@ -34,6 +35,7 @@ Replaces manually running a dependency update workflow in each repo one-by-one.
 
 - **Auto-detection**: Automatically detects which package manager to use based on lockfiles
 - **Multi-package manager support**: Works with npm, pnpm, yarn, and Bun
+- **Monorepo/workspace support**: Detects workspace configuration (`pnpm-workspace.yaml`, `package.json` workspaces) and updates all workspace packages
 - **Batch processing**: Update dependencies in multiple repos in one command
 - **GitHub integration**: Creates pull requests and opens them in your browser
 - **Changesets support**: Automatically writes a changeset file on repos that use [Changesets](https://github.com/changesets/changesets), so CI is never blocked by a missing changeset
@@ -72,6 +74,8 @@ repo-updater [options] [repo paths...]
 | `-n`, `--dry-run` | Print every step without executing any commands |
 | `-m`, `--minor` | Restrict updates to minor/patch versions (uses base update command without major version bumps) |
 | `-c`, `--config <path>` | Path to a custom config file |
+| `--no-workspaces` | Skip workspace detection and update root only |
+| `--no-changeset` | Skip automatic changeset creation |
 
 ### Positional arguments
 
@@ -95,6 +99,12 @@ repo-updater -c ./other-config.json
 
 # Update a single repo directly
 repo-updater C:\path\to\single-repo
+
+# Update a monorepo but skip workspace packages
+repo-updater --no-workspaces C:\path\to\monorepo
+
+# Update without generating changeset files
+repo-updater --no-changeset
 ```
 
 ## Config file
@@ -146,8 +156,9 @@ For each repository, the tool runs this pipeline sequentially:
 | 4 | `git pull` |
 | 5 | `git checkout -b chore/dep-updates-YYYY-MM-DD-<timestamp>` |
 | 6 | `npx --yes npm-check-updates --upgrade` / `pnpm update --latest` / `yarn upgrade --latest` / `bun update --latest` |
+| 6a | If workspace detected (and `--no-workspaces` not set): replaces step 6 with the workspace-aware update command (e.g. `npx --yes npm-check-updates --upgrade --workspaces`, `pnpm update --latest -r`, `bun update --latest`) |
 | 7 | `<pm> install` |
-| 8 | If repo uses Changesets and `dependencies` changed: write `.changeset/dep-updates-<timestamp>.md` |
+| 8 | If repo uses Changesets and `dependencies` changed (and `--no-changeset` not set): write `.changeset/dep-updates-<timestamp>.md` (multi-package changeset for monorepos) |
 | 9 | `git status --porcelain` |
 | 10 | `git add -A` |
 | 11 | `git commit -m "dep updates YYYY-MM-DD"` |
@@ -159,6 +170,17 @@ If step 9 shows no changes, the branch is deleted and the repo is skipped (repor
 After all repos are processed, a summary box lists every PR URL. You're then prompted to open them all in the browser.
 
 **On failure:** if any step fails after a branch has been created, the tool automatically cleans up — it checks out the default branch, deletes the local branch, and (if already pushed) deletes the remote branch too. Repos are never left in a dirty state.
+
+### Workspace support
+
+For monorepo projects, repo-updater automatically detects workspace configuration and updates all workspace packages alongside the root. Detection checks (in order):
+
+1. `pnpm-workspace.yaml` — parses the `packages:` list
+2. `package.json` `workspaces` field — supports npm, yarn, and Bun formats (both array and `{ packages: [...] }`)
+
+When a workspace is detected, the tool resolves all workspace package directories, runs the appropriate workspace-aware update command for the detected package manager, and tracks dependency changes across all packages for changeset generation.
+
+Use `--no-workspaces` to skip workspace detection and update only the root `package.json`.
 
 ### Changesets support
 
@@ -181,7 +203,25 @@ Updated dependencies:
 - zod: 3.21.0 → 3.24.1
 ```
 
+For monorepos with workspaces, the changeset includes all workspace packages that had dependency changes:
+
+```markdown
+---
+"@scope/app": patch
+"@scope/utils": patch
+---
+
+Updated dependencies:
+**@scope/app**:
+- react: 18.2.0 → 18.3.1
+
+**@scope/utils**:
+- lodash: 4.17.20 → 4.17.21
+```
+
 Only `dependencies` are considered — changes to `peerDependencies` do not trigger a changeset. `devDependencies` are always excluded as they are never shipped to consumers.
+
+Use `--no-changeset` to skip automatic changeset creation entirely.
 
 ### Dry-run mode
 

@@ -1,11 +1,9 @@
-import {
-  existsSync,
-  mkdirSync,
-  readdirSync,
-  readFileSync,
-  writeFileSync,
-} from "node:fs";
+import { existsSync, mkdirSync, readdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
+import { readPackageJson } from "./package-json.ts";
+import type { WorkspacePackage } from "./workspaces.ts";
+
+const DEPENDENCY_ARROW = "→";
 
 export interface DepSnapshot {
   [pkg: string]: string;
@@ -15,18 +13,6 @@ export interface DepChange {
   from: string;
   name: string;
   to: string;
-}
-
-function readPackageJson(repoPath: string): Record<string, unknown> | null {
-  const pkgPath = join(repoPath, "package.json");
-  if (!existsSync(pkgPath)) {
-    return null;
-  }
-  try {
-    return JSON.parse(readFileSync(pkgPath, "utf8")) as Record<string, unknown>;
-  } catch {
-    return null;
-  }
 }
 
 export function hasChangesets(repoPath: string): boolean {
@@ -113,10 +99,103 @@ export function writeChangesetFile(
   }
 
   const bullets = changes
-    .map((c) => `- ${c.name}: ${c.from || "(new)"} → ${c.to || "(removed)"}`)
+    .map(
+      (c) =>
+        `- ${c.name}: ${c.from || "(new)"} ${DEPENDENCY_ARROW} ${c.to || "(removed)"}`
+    )
     .join("\n");
 
   const content = `---\n"${packageName}": patch\n---\n\nUpdated dependencies:\n${bullets}\n`;
+
+  writeFileSync(
+    join(changesetDir, `dep-updates-${timestamp}.md`),
+    content,
+    "utf8"
+  );
+}
+
+/** Snapshots `dependencies` for the root package and all workspace packages. */
+export function snapshotWorkspaceDeps(
+  repoPath: string,
+  packages: WorkspacePackage[]
+): Map<string, DepSnapshot> {
+  const snapshots = new Map<string, DepSnapshot>();
+
+  // Include root package
+  const rootName = getPackageName(repoPath);
+  if (rootName !== "unknown") {
+    snapshots.set(rootName, snapshotDeps(repoPath));
+  }
+
+  // Include each workspace package
+  for (const pkg of packages) {
+    if (snapshots.has(pkg.name)) {
+      console.warn(
+        `[warn] Duplicate package name "${pkg.name}" at ${pkg.path} — skipping (already captured)`
+      );
+      continue;
+    }
+    snapshots.set(pkg.name, snapshotDeps(pkg.path));
+  }
+
+  return snapshots;
+}
+
+/** Diffs before/after workspace dependency snapshots, returning only packages with changes. */
+export function diffWorkspaceDeps(
+  before: Map<string, DepSnapshot>,
+  after: Map<string, DepSnapshot>
+): Map<string, DepChange[]> {
+  const allNames = new Set([...before.keys(), ...after.keys()]);
+  const result = new Map<string, DepChange[]>();
+
+  for (const name of allNames) {
+    const b = before.get(name) ?? {};
+    const a = after.get(name) ?? {};
+    const changes = diffDeps(b, a);
+    if (changes.length > 0) {
+      result.set(name, changes);
+    }
+  }
+
+  return result;
+}
+
+/** Writes a multi-package changeset file listing dependency changes per workspace package. */
+export function writeWorkspaceChangesetFile(
+  repoPath: string,
+  changedPackages: Map<string, DepChange[]>,
+  timestamp: number
+): void {
+  if (changedPackages.size === 0) {
+    return;
+  }
+
+  const changesetDir = join(repoPath, ".changeset");
+  if (!existsSync(changesetDir)) {
+    mkdirSync(changesetDir, { recursive: true });
+  }
+
+  // Build frontmatter with all changed packages
+  const frontmatterLines = [...changedPackages.keys()]
+    .sort()
+    .map((name) => `"${name}": patch`);
+
+  // Build body with per-package change details
+  const bodyParts: string[] = [];
+  for (const [name, changes] of [...changedPackages.entries()].sort((a, b) =>
+    a[0].localeCompare(b[0])
+  )) {
+    const bullets = changes
+      .map(
+        (c) =>
+          `- ${c.name}: ${c.from || "(new)"} ${DEPENDENCY_ARROW} ${c.to || "(removed)"}`
+      )
+      .join("\n");
+    bodyParts.push(`**${name}**:\n${bullets}`);
+  }
+
+  const content = `---\n${frontmatterLines.join("\n")}\n---\n\nUpdated dependencies:\n${bodyParts.join("\n\n")}\n`;
 
   writeFileSync(
     join(changesetDir, `dep-updates-${timestamp}.md`),

@@ -21,6 +21,8 @@ Options:
   -n, --dry-run        Print steps without executing
   -m, --minor          Only update minor/patch versions (avoid breaking changes)
   -c, --config <path>  Path to config file
+  --no-changeset       Skip changeset creation
+  --no-workspaces      Skip workspace detection (update root only)
 
 Examples:
   repo-updater                              # Update all repos from config
@@ -61,13 +63,26 @@ export async function processRepo(
   date: string,
   dryRun: boolean,
   updateFn: typeof updateRepo = updateRepo,
-  minor = false
-): Promise<{ repo: string; status: string; prUrl?: string }> {
+  minor = false,
+  noChangeset = false,
+  noWorkspaces = false
+): Promise<{
+  repo: string;
+  status: "pr-created" | "no-changes" | "failed";
+  prUrl?: string;
+}> {
   const repoName = basename(repo);
   log.step(repoName);
 
   if (dryRun) {
-    const result = await updateFn({ repo, date, dryRun: true, minor });
+    const result = await updateFn({
+      repo,
+      date,
+      dryRun: true,
+      minor,
+      noChangeset,
+      noWorkspaces,
+    });
     console.log();
     return result.isOk() ? result.value : { repo, status: "failed" };
   }
@@ -75,7 +90,14 @@ export async function processRepo(
   const s = spinner();
   s.start("Updating dependencies...");
 
-  const result = await updateFn({ repo, date, dryRun: false, minor });
+  const result = await updateFn({
+    repo,
+    date,
+    dryRun: false,
+    minor,
+    noChangeset,
+    noWorkspaces,
+  });
 
   if (result.isErr()) {
     s.stop(`Failed: ${repoName}`);
@@ -103,16 +125,37 @@ export async function processRepo(
   return result.value;
 }
 
-async function handleRepoProcessing(
-  valid: string[],
-  date: string,
-  dryRun: boolean,
-  prUrls: string[],
-  updateFn: typeof updateRepo,
-  minor: boolean
-) {
+interface RepoProcessingOptions {
+  date: string;
+  dryRun: boolean;
+  minor: boolean;
+  noChangeset: boolean;
+  noWorkspaces: boolean;
+  prUrls: string[];
+  updateFn: typeof updateRepo;
+  valid: string[];
+}
+
+async function handleRepoProcessing({
+  valid,
+  date,
+  dryRun,
+  prUrls,
+  updateFn,
+  minor,
+  noChangeset,
+  noWorkspaces,
+}: RepoProcessingOptions) {
   for (const repo of valid) {
-    const result = await processRepo(repo, date, dryRun, updateFn, minor);
+    const result = await processRepo(
+      repo,
+      date,
+      dryRun,
+      updateFn,
+      minor,
+      noChangeset,
+      noWorkspaces
+    );
     if (result.prUrl) {
       prUrls.push(result.prUrl);
     }
@@ -139,9 +182,8 @@ export function openURLBun(cmd: string[]): void {
 }
 
 export async function openURLNodejs(cmd: string[]): Promise<void> {
-  // Node.js fallback
-  const childProcess = await import("node:child_process");
-  childProcess.spawn(cmd[0], cmd.slice(1), { stdio: "ignore" });
+  const { spawn } = await import("node:child_process");
+  spawn(cmd[0], cmd.slice(1), { stdio: "ignore" });
 }
 
 export function openURLs(urls: string[], platform: string = process.platform) {
@@ -205,14 +247,16 @@ export async function main(
     log.info("[dry-run] No commands will be executed.\n");
   }
 
-  await handleRepoProcessing(
+  await handleRepoProcessing({
     valid,
     date,
-    args.dryRun,
+    dryRun: args.dryRun,
     prUrls,
     updateFn,
-    args.minor
-  );
+    minor: args.minor,
+    noChangeset: args.noChangeset,
+    noWorkspaces: args.noWorkspaces,
+  });
 
   if (prUrls.length > 0) {
     const shouldOpen = await handlePRDisplay(prUrls);

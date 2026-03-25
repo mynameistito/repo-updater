@@ -20,6 +20,7 @@ import {
   execNodejs,
   getInstallCommand,
   getUpdateCommand,
+  getWorkspaceUpdateCommand,
   updateRepo,
 } from "../src/runner.ts";
 
@@ -27,8 +28,8 @@ const VERSION_PATTERN = /\d+\.\d+/;
 const isBun = typeof globalThis.Bun !== "undefined";
 
 let tempDir: string;
-let logSpy: ReturnType<typeof spyOn>;
-let warnSpy: ReturnType<typeof spyOn>;
+let logSpy!: ReturnType<typeof spyOn>;
+let warnSpy!: ReturnType<typeof spyOn>;
 
 beforeEach(() => {
   tempDir = mkdtempSync(join(tmpdir(), "repo-updater-runner-"));
@@ -504,5 +505,292 @@ describe("updateRepo changeset integration", () => {
     } finally {
       dateNowSpy.mockRestore();
     }
+  });
+
+  test("noChangeset skips changeset even when repo has changesets", async () => {
+    setupChangesetsRepo({ react: "18.2.0" });
+
+    const result = await updateRepo(
+      { repo: tempDir, date: "2025-01-01", dryRun: false, noChangeset: true },
+      makeExec({ react: "18.3.1" })
+    );
+    expect(result.isOk()).toBe(true);
+
+    const changesetFiles = readdirSync(join(tempDir, ".changeset")).filter(
+      (f) => f.startsWith("dep-updates-") && f.endsWith(".md")
+    );
+    expect(changesetFiles.length).toBe(0);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// getWorkspaceUpdateCommand
+// ---------------------------------------------------------------------------
+
+describe("getWorkspaceUpdateCommand", () => {
+  test("returns correct workspace update commands for latest", () => {
+    expect(getWorkspaceUpdateCommand("npm")).toEqual([
+      "npx",
+      "--yes",
+      "npm-check-updates",
+      "--upgrade",
+      "--workspaces",
+    ]);
+    expect(getWorkspaceUpdateCommand("pnpm")).toEqual([
+      "pnpm",
+      "update",
+      "--latest",
+      "-r",
+    ]);
+    expect(getWorkspaceUpdateCommand("yarn")).toEqual([
+      "npx",
+      "--yes",
+      "npm-check-updates",
+      "--upgrade",
+      "--workspaces",
+    ]);
+    expect(getWorkspaceUpdateCommand("bun")).toEqual([
+      "bun",
+      "update",
+      "--latest",
+    ]);
+  });
+
+  test("returns correct workspace update commands for minor", () => {
+    expect(getWorkspaceUpdateCommand("npm", true)).toEqual([
+      "npm",
+      "update",
+      "--workspaces",
+    ]);
+    expect(getWorkspaceUpdateCommand("pnpm", true)).toEqual([
+      "pnpm",
+      "update",
+      "-r",
+    ]);
+    expect(getWorkspaceUpdateCommand("yarn", true)).toEqual([
+      "npx",
+      "--yes",
+      "npm-check-updates",
+      "--upgrade",
+      "--target",
+      "minor",
+      "--workspaces",
+    ]);
+    expect(getWorkspaceUpdateCommand("bun", true)).toEqual(["bun", "update"]);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// updateRepo workspace integration
+// ---------------------------------------------------------------------------
+
+describe("updateRepo workspace integration", () => {
+  function setupWorkspaceRepo() {
+    writeFileSync(
+      join(tempDir, "package.json"),
+      JSON.stringify({
+        name: "my-monorepo",
+        workspaces: ["packages/*"],
+        dependencies: { shared: "1.0.0" },
+      }),
+      "utf8"
+    );
+    mkdirSync(join(tempDir, "packages", "pkg-a"), { recursive: true });
+    writeFileSync(
+      join(tempDir, "packages", "pkg-a", "package.json"),
+      JSON.stringify({
+        name: "@scope/pkg-a",
+        dependencies: { react: "18.2.0" },
+      }),
+      "utf8"
+    );
+    mkdirSync(join(tempDir, "packages", "pkg-b"), { recursive: true });
+    writeFileSync(
+      join(tempDir, "packages", "pkg-b", "package.json"),
+      JSON.stringify({
+        name: "@scope/pkg-b",
+        dependencies: { zod: "3.21.0" },
+      }),
+      "utf8"
+    );
+  }
+
+  function makeWorkspaceExec(
+    updatedPkgA?: Record<string, string>,
+    updatedPkgB?: Record<string, string>
+  ): (
+    cmd: string[],
+    cwd: string
+  ) => Promise<Result<ExecOutput, CommandFailedError>> {
+    return (cmd, cwd) => {
+      const cmdStr = cmd.join(" ");
+      if (
+        cmdStr.includes("git symbolic-ref") &&
+        cmdStr.includes("refs/remotes/origin/HEAD")
+      ) {
+        return ok("refs/remotes/origin/main");
+      }
+      // Simulate the update command modifying workspace package.json files
+      if (
+        cmdStr.includes("npm-check-updates") ||
+        cmdStr.includes("npm update")
+      ) {
+        if (updatedPkgA) {
+          writeFileSync(
+            join(cwd, "packages", "pkg-a", "package.json"),
+            JSON.stringify({ name: "@scope/pkg-a", dependencies: updatedPkgA }),
+            "utf8"
+          );
+        }
+        if (updatedPkgB) {
+          writeFileSync(
+            join(cwd, "packages", "pkg-b", "package.json"),
+            JSON.stringify({ name: "@scope/pkg-b", dependencies: updatedPkgB }),
+            "utf8"
+          );
+        }
+        return ok();
+      }
+      if (cmdStr.includes("git status") && cmdStr.includes("--porcelain")) {
+        return ok(
+          updatedPkgA || updatedPkgB ? "M packages/pkg-a/package.json" : ""
+        );
+      }
+      if (cmd[0] === "gh" && cmd.includes("pr")) {
+        return ok("https://github.com/test/mono/pull/1");
+      }
+      return ok();
+    };
+  }
+
+  test("auto-detects workspace and uses workspace update commands", async () => {
+    setupWorkspaceRepo();
+
+    const executedCmds: string[][] = [];
+    const trackingExec = (
+      cmd: string[],
+      cwd: string
+    ): Promise<Result<ExecOutput, CommandFailedError>> => {
+      executedCmds.push(cmd);
+      return makeWorkspaceExec()(cmd, cwd);
+    };
+
+    await updateRepo(
+      { repo: tempDir, date: "2025-01-01", dryRun: false },
+      trackingExec
+    );
+
+    // Should use workspace update command (npm-check-updates --workspaces)
+    expect(executedCmds.some((cmd) => cmd.includes("--workspaces"))).toBe(true);
+  });
+
+  test("noWorkspaces falls back to root-only update", async () => {
+    setupWorkspaceRepo();
+
+    const executedCmds: string[][] = [];
+    const trackingExec = (
+      cmd: string[],
+      cwd: string
+    ): Promise<Result<ExecOutput, CommandFailedError>> => {
+      executedCmds.push(cmd);
+      return makeWorkspaceExec()(cmd, cwd);
+    };
+
+    await updateRepo(
+      { repo: tempDir, date: "2025-01-01", dryRun: false, noWorkspaces: true },
+      trackingExec
+    );
+
+    // Should NOT use workspace update command
+    expect(executedCmds.some((cmd) => cmd.includes("--workspaces"))).toBe(
+      false
+    );
+    // Should use standard npm-check-updates without --workspaces
+    expect(executedCmds.some((cmd) => cmd.includes("npm-check-updates"))).toBe(
+      true
+    );
+  });
+
+  test("workspace mode writes multi-package changeset when deps change", async () => {
+    setupWorkspaceRepo();
+    mkdirSync(join(tempDir, ".changeset"), { recursive: true });
+    writeFileSync(join(tempDir, ".changeset", "config.json"), "{}", "utf8");
+
+    const result = await updateRepo(
+      { repo: tempDir, date: "2025-01-01", dryRun: false },
+      makeWorkspaceExec({ react: "18.3.1" }, { zod: "3.24.0" })
+    );
+    expect(result.isOk()).toBe(true);
+
+    const changesetFiles = readdirSync(join(tempDir, ".changeset")).filter(
+      (f) => f.startsWith("dep-updates-") && f.endsWith(".md")
+    );
+    expect(changesetFiles.length).toBe(1);
+
+    const content = readFileSync(
+      join(tempDir, ".changeset", changesetFiles[0]),
+      "utf8"
+    );
+    expect(content).toContain('"@scope/pkg-a": patch');
+    expect(content).toContain('"@scope/pkg-b": patch');
+    expect(content).toContain("react: 18.2.0");
+    expect(content).toContain("zod: 3.21.0");
+  });
+
+  test("workspace mode with noChangeset skips changeset", async () => {
+    setupWorkspaceRepo();
+    mkdirSync(join(tempDir, ".changeset"), { recursive: true });
+    writeFileSync(join(tempDir, ".changeset", "config.json"), "{}", "utf8");
+
+    const result = await updateRepo(
+      { repo: tempDir, date: "2025-01-01", dryRun: false, noChangeset: true },
+      makeWorkspaceExec({ react: "18.3.1" })
+    );
+    expect(result.isOk()).toBe(true);
+
+    const changesetFiles = readdirSync(join(tempDir, ".changeset")).filter(
+      (f) => f.startsWith("dep-updates-") && f.endsWith(".md")
+    );
+    expect(changesetFiles.length).toBe(0);
+  });
+
+  test("non-workspace repo uses standard update flow", async () => {
+    // Simple repo without workspaces
+    writeFileSync(
+      join(tempDir, "package.json"),
+      JSON.stringify({ name: "simple-lib", dependencies: { react: "18.2.0" } }),
+      "utf8"
+    );
+
+    const executedCmds: string[][] = [];
+    const trackingExec = (
+      cmd: string[],
+      _cwd: string
+    ): Promise<Result<ExecOutput, CommandFailedError>> => {
+      executedCmds.push(cmd);
+      const cmdStr = cmd.join(" ");
+      if (
+        cmdStr.includes("git symbolic-ref") &&
+        cmdStr.includes("refs/remotes/origin/HEAD")
+      ) {
+        return ok("refs/remotes/origin/main");
+      }
+      if (cmdStr.includes("git status") && cmdStr.includes("--porcelain")) {
+        return ok("");
+      }
+      return ok();
+    };
+
+    await updateRepo(
+      { repo: tempDir, date: "2025-01-01", dryRun: false },
+      trackingExec
+    );
+
+    // Should NOT use workspace commands
+    expect(
+      executedCmds.some(
+        (cmd) => cmd.includes("--workspaces") || cmd.includes("-r")
+      )
+    ).toBe(false);
   });
 });

@@ -1,15 +1,21 @@
 import { existsSync, unlinkSync } from "node:fs";
 import { join } from "node:path";
 import { Result } from "better-result";
+import type { DepSnapshot } from "./changesets.ts";
 import {
   diffDeps,
+  diffWorkspaceDeps,
   getChangesetFiles,
   getPackageName,
   hasChangesets,
   snapshotDeps,
+  snapshotWorkspaceDeps,
   writeChangesetFile,
+  writeWorkspaceChangesetFile,
 } from "./changesets.ts";
 import { CommandFailedError, InvalidInputError } from "./errors.ts";
+import type { WorkspaceConfig } from "./workspaces.ts";
+import { detectWorkspaces } from "./workspaces.ts";
 
 const DEFAULT_BRANCH_REGEX = /refs\/remotes\/origin\/(.+)$/;
 const DATE_FORMAT_REGEX = /^\d{4}-\d{2}-\d{2}$/;
@@ -71,6 +77,47 @@ export function getInstallCommand(pm: PackageManager): string[] {
     pnpm: ["pnpm", "install"],
     yarn: ["yarn", "install"],
     bun: ["bun", "install"],
+  };
+  return commands[pm];
+}
+
+/**
+ * Returns the CLI command array to update workspace dependencies.
+ *
+ * For `npm` and `yarn`, uses `npx npm-check-updates --workspaces` because
+ * neither package manager has a built-in `--latest` flag for workspace-wide
+ * updates. `pnpm` and `bun` have native recursive/latest update support.
+ *
+ * @param pm - The detected {@link PackageManager}.
+ * @param minor - When `true`, restricts updates to the current minor range.
+ * @returns The command tokens to pass to `exec`.
+ */
+export function getWorkspaceUpdateCommand(
+  pm: PackageManager,
+  minor = false
+): string[] {
+  if (minor) {
+    const commands: Record<PackageManager, string[]> = {
+      npm: ["npm", "update", "--workspaces"],
+      pnpm: ["pnpm", "update", "-r"],
+      yarn: [
+        "npx",
+        "--yes",
+        "npm-check-updates",
+        "--upgrade",
+        "--target",
+        "minor",
+        "--workspaces",
+      ],
+      bun: ["bun", "update"], // bun update already handles workspaces natively
+    };
+    return commands[pm];
+  }
+  const commands: Record<PackageManager, string[]> = {
+    npm: ["npx", "--yes", "npm-check-updates", "--upgrade", "--workspaces"],
+    pnpm: ["pnpm", "update", "--latest", "-r"],
+    yarn: ["npx", "--yes", "npm-check-updates", "--upgrade", "--workspaces"],
+    bun: ["bun", "update", "--latest"], // bun update already handles workspaces natively
   };
   return commands[pm];
 }
@@ -183,18 +230,28 @@ export function exec(
   });
 }
 
-async function performCleanup(
-  defaultBranch: string,
-  branch: string,
-  branchCreated: boolean,
-  branchPushed: boolean,
+interface CleanupOptions {
+  branch: string;
+  branchCreated: boolean;
+  branchPushed: boolean;
+  changesetFile?: string;
+  defaultBranch: string;
   execFn: (
     cmd: string[],
     cwd: string
-  ) => Promise<Result<ExecOutput, CommandFailedError>>,
-  repo: string,
-  changesetFile?: string
-): Promise<void> {
+  ) => Promise<Result<ExecOutput, CommandFailedError>>;
+  repo: string;
+}
+
+async function performCleanup({
+  defaultBranch,
+  branch,
+  branchCreated,
+  branchPushed,
+  execFn,
+  repo,
+  changesetFile,
+}: CleanupOptions): Promise<void> {
   if (!branchCreated) {
     return;
   }
@@ -246,16 +303,116 @@ async function performCleanup(
   }
 }
 
+interface ChangesetContext {
+  depsBefore: Map<string, DepSnapshot> | null;
+  isWorkspace: boolean;
+  noChangeset: boolean;
+  repo: string;
+  singleDepsBefore: DepSnapshot | null;
+  timestamp: number;
+  workspace: WorkspaceConfig;
+}
+
+/**
+ * Creates and writes a changeset file when dependency updates are detected.
+ *
+ * Checks {@link hasChangesets} and {@link getChangesetFiles} to determine
+ * whether the repo uses changesets and whether a target file already exists.
+ * In workspace mode, snapshots with {@link snapshotWorkspaceDeps}, diffs with
+ * {@link diffWorkspaceDeps}, and writes via {@link writeWorkspaceChangesetFile}.
+ * For single-package repos, uses {@link snapshotDeps}, {@link diffDeps}, and
+ * {@link writeChangesetFile}.
+ *
+ * @param ctx - The {@link ChangesetContext} describing the repo, snapshot state,
+ *   and workspace configuration.
+ * @returns The absolute path to the written changeset file, or `undefined` when
+ *   no changeset is needed (changesets disabled, no dependency changes, or the
+ *   target file already exists).
+ */
+function handleChangesets(ctx: ChangesetContext): string | undefined {
+  if (ctx.noChangeset || !hasChangesets(ctx.repo)) {
+    return undefined;
+  }
+
+  const targetFile = `dep-updates-${ctx.timestamp}.md`;
+  if (getChangesetFiles(ctx.repo).includes(targetFile)) {
+    return undefined;
+  }
+
+  const filePath = join(ctx.repo, ".changeset", targetFile);
+
+  if (ctx.isWorkspace && ctx.depsBefore) {
+    const depsAfter = snapshotWorkspaceDeps(ctx.repo, ctx.workspace.packages);
+    const changes = diffWorkspaceDeps(ctx.depsBefore, depsAfter);
+    if (changes.size === 0) {
+      return undefined;
+    }
+    writeWorkspaceChangesetFile(ctx.repo, changes, ctx.timestamp);
+  } else if (ctx.singleDepsBefore) {
+    const depsAfter = snapshotDeps(ctx.repo);
+    const changes = diffDeps(ctx.singleDepsBefore, depsAfter);
+    const pkgName = getPackageName(ctx.repo);
+    if (changes.length === 0 || pkgName === "unknown") {
+      return undefined;
+    }
+    writeChangesetFile(ctx.repo, pkgName, changes, ctx.timestamp);
+  } else {
+    return undefined;
+  }
+
+  console.log(
+    `[info] Wrote changeset: .changeset/dep-updates-${ctx.timestamp}.md`
+  );
+  return filePath;
+}
+
+function prepareWorkspaceContext(
+  repo: string,
+  pm: PackageManager,
+  minor: boolean,
+  noWorkspaces: boolean
+) {
+  const workspace = noWorkspaces
+    ? { isWorkspace: false, packages: [] }
+    : detectWorkspaces(repo);
+  const isWorkspace = workspace.isWorkspace;
+
+  if (isWorkspace) {
+    console.log(
+      `[info] Detected monorepo with ${workspace.packages.length} workspace packages`
+    );
+  }
+
+  const depsBefore = isWorkspace
+    ? snapshotWorkspaceDeps(repo, workspace.packages)
+    : null;
+  const singleDepsBefore = isWorkspace ? null : snapshotDeps(repo);
+  const updateCmd = isWorkspace
+    ? getWorkspaceUpdateCommand(pm, minor)
+    : getUpdateCommand(pm, minor);
+
+  return { workspace, isWorkspace, depsBefore, singleDepsBefore, updateCmd };
+}
+
 export function updateRepo(
   options: {
     repo: string;
     date: string;
     dryRun: boolean;
     minor?: boolean;
+    noChangeset?: boolean;
+    noWorkspaces?: boolean;
   },
   execFn = exec
 ): Promise<Result<RepoResult, CommandFailedError | InvalidInputError>> {
-  const { repo, date, dryRun, minor = false } = options;
+  const {
+    repo,
+    date,
+    dryRun,
+    minor = false,
+    noChangeset = false,
+    noWorkspaces = false,
+  } = options;
 
   if (!isValidCalendarDate(date)) {
     return Promise.resolve(
@@ -273,7 +430,15 @@ export function updateRepo(
 
   if (dryRun) {
     return Promise.resolve(
-      dryRunRepo(repo, date, branch, "main", minor, timestamp)
+      dryRunRepo({
+        repo,
+        date,
+        branch,
+        minor,
+        timestamp,
+        noChangeset,
+        noWorkspaces,
+      })
     );
   }
 
@@ -305,35 +470,37 @@ export function updateRepo(
       yield* Result.await(execFn(["git", "checkout", "-b", branch], repo));
       branchCreated = true;
 
-      const depsBefore = snapshotDeps(repo);
-
-      yield* Result.await(execFn(getUpdateCommand(pm, minor), repo));
+      // Auto-detect workspaces unless opted out
+      const {
+        workspace,
+        isWorkspace,
+        depsBefore,
+        singleDepsBefore,
+        updateCmd,
+      } = prepareWorkspaceContext(repo, pm, minor, noWorkspaces);
+      yield* Result.await(execFn(updateCmd, repo));
       yield* Result.await(execFn(getInstallCommand(pm), repo));
 
-      const depsAfter = snapshotDeps(repo);
-      const depsChanged = diffDeps(depsBefore, depsAfter);
-
-      const targetFile = `dep-updates-${timestamp}.md`;
-      const pkgName = getPackageName(repo);
-      if (
-        hasChangesets(repo) &&
-        depsChanged.length > 0 &&
-        !getChangesetFiles(repo).includes(targetFile) &&
-        pkgName !== "unknown"
-      ) {
-        changesetFilePath = join(repo, ".changeset", targetFile);
-        try {
-          writeChangesetFile(repo, pkgName, depsChanged, timestamp);
-          console.log(
-            `[info] Wrote changeset: .changeset/dep-updates-${timestamp}.md`
-          );
-        } catch (e) {
-          throw new CommandFailedError({
-            message: `Failed to write changeset file: ${String(e)}`,
-            command: "writeChangesetFile",
-            stderr: String(e),
-          });
-        }
+      // Snapshot deps after update, diff, and optionally write changeset
+      try {
+        changesetFilePath = handleChangesets({
+          repo,
+          timestamp,
+          noChangeset,
+          isWorkspace,
+          workspace,
+          depsBefore,
+          singleDepsBefore,
+        });
+      } catch (e) {
+        const command = isWorkspace
+          ? "writeWorkspaceChangesetFile"
+          : "writeChangesetFile";
+        throw new CommandFailedError({
+          message: `Failed to ${command}: ${String(e)}`,
+          command,
+          stderr: String(e),
+        });
       }
 
       const status = yield* Result.await(
@@ -344,9 +511,9 @@ export function updateRepo(
         yield* Result.await(execFn(["git", "checkout", defaultBranch], repo));
         yield* Result.await(execFn(["git", "branch", "-D", branch], repo));
         succeeded = true;
-        return Result.ok<RepoResult, CommandFailedError>({
+        return Result.ok({
           repo,
-          status: "no-changes",
+          status: "no-changes" as const,
         });
       }
 
@@ -375,52 +542,82 @@ export function updateRepo(
       );
 
       succeeded = true;
-      return Result.ok<RepoResult, CommandFailedError>({
+      return Result.ok({
         repo,
-        status: "pr-created",
+        status: "pr-created" as const,
         prUrl: pr.stdout,
       });
     } finally {
       if (!succeeded) {
-        await performCleanup(
+        await performCleanup({
           defaultBranch,
           branch,
           branchCreated,
           branchPushed,
           execFn,
           repo,
-          changesetFilePath
-        );
+          changesetFile: changesetFilePath,
+        });
       }
     }
   });
 }
 
-function dryRunRepo(
-  repo: string,
-  date: string,
-  branch: string,
+interface DryRunOptions {
+  branch: string;
+  date: string;
+  defaultBranch?: string;
+  minor?: boolean;
+  noChangeset?: boolean;
+  noWorkspaces?: boolean;
+  repo: string;
+  timestamp?: number;
+}
+
+function dryRunRepo({
+  repo,
+  date,
+  branch,
   defaultBranch = "main",
   minor = false,
-  timestamp = Date.now()
-): Result<RepoResult, CommandFailedError> {
+  timestamp = Date.now(),
+  noChangeset = false,
+  noWorkspaces = false,
+}: DryRunOptions): Result<RepoResult, CommandFailedError> {
   const pm = detectPackageManager(repo);
+  const workspace = noWorkspaces
+    ? { isWorkspace: false, packages: [] }
+    : detectWorkspaces(repo);
+
   console.log(
     `  [dry-run] assuming default branch: ${defaultBranch} (actual branch will be detected at runtime)`
   );
   console.log(`  [dry-run] detected package manager: ${pm}`);
 
+  if (workspace.isWorkspace) {
+    console.log(
+      `  [dry-run] detected monorepo with ${workspace.packages.length} workspace packages`
+    );
+    for (const pkg of workspace.packages) {
+      console.log(`  [dry-run]   - ${pkg.name} (${pkg.relativePath})`);
+    }
+  }
+
+  const updateCmd = workspace.isWorkspace
+    ? getWorkspaceUpdateCommand(pm, minor).join(" ")
+    : getUpdateCommand(pm, minor).join(" ");
+
   const steps = [
     `git checkout ${defaultBranch}`,
     "git pull",
     `git checkout -b ${branch}`,
-    getUpdateCommand(pm, minor).join(" "),
+    updateCmd,
     getInstallCommand(pm).join(" "),
   ];
 
-  if (hasChangesets(repo)) {
+  if (!noChangeset && hasChangesets(repo)) {
     steps.push(
-      `write .changeset/dep-updates-${timestamp}.md (only if non-dev deps changed)`
+      `write .changeset/dep-updates-${timestamp}.md (only if deps changed)`
     );
   }
 
