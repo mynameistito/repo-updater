@@ -156,7 +156,7 @@ For each repository, the tool runs this pipeline sequentially:
 | 4 | `git pull` |
 | 5 | `git checkout -b chore/dep-updates-YYYY-MM-DD-<timestamp>` |
 | 6 | `npx --yes npm-check-updates --upgrade` / `pnpm update --latest` / `yarn upgrade --latest` / `bun update --latest` |
-| 6a | If workspace detected (and `--no-workspaces` not set): also run workspace-aware update (e.g. `pnpm update -r --latest`, `npm update --workspaces`) |
+| 6a | If workspace detected (and `--no-workspaces` not set): also run workspace-aware update (e.g. `npx npm-check-updates --upgrade --workspaces`, `pnpm update --latest -r`, `bun update --latest`) |
 | 7 | `<pm> install` |
 | 8 | If repo uses Changesets and `dependencies` changed (and `--no-changeset` not set): write `.changeset/dep-updates-<timestamp>.md` (multi-package changeset for monorepos) |
 | 9 | `git status --porcelain` |

@@ -329,6 +329,36 @@ describe("snapshotWorkspaceDeps", () => {
     const snapshots = snapshotWorkspaceDeps(tempDir, []);
     expect(snapshots.size).toBe(0);
   });
+
+  test("skips duplicate package names and keeps the first entry", () => {
+    writeFileSync(
+      join(tempDir, "package.json"),
+      JSON.stringify({ name: "root" }),
+      "utf8"
+    );
+    const dirA = join(tempDir, "packages", "a");
+    const dirB = join(tempDir, "packages", "b");
+    mkdirSync(dirA, { recursive: true });
+    mkdirSync(dirB, { recursive: true });
+    writeFileSync(
+      join(dirA, "package.json"),
+      JSON.stringify({ name: "dupe", dependencies: { react: "18.0.0" } }),
+      "utf8"
+    );
+    writeFileSync(
+      join(dirB, "package.json"),
+      JSON.stringify({ name: "dupe", dependencies: { react: "19.0.0" } }),
+      "utf8"
+    );
+
+    const snapshots = snapshotWorkspaceDeps(tempDir, [
+      { name: "dupe", path: dirA, relativePath: "packages/a" },
+      { name: "dupe", path: dirB, relativePath: "packages/b" },
+    ]);
+
+    // Should keep the first "dupe" entry (react 18.0.0), not overwrite with the second
+    expect(snapshots.get("dupe")).toEqual({ react: "18.0.0" });
+  });
 });
 
 // ---------------------------------------------------------------------------

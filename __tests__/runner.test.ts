@@ -543,9 +543,11 @@ describe("getWorkspaceUpdateCommand", () => {
       "-r",
     ]);
     expect(getWorkspaceUpdateCommand("yarn")).toEqual([
-      "yarn",
-      "upgrade",
-      "--latest",
+      "npx",
+      "--yes",
+      "npm-check-updates",
+      "--upgrade",
+      "--workspaces",
     ]);
     expect(getWorkspaceUpdateCommand("bun")).toEqual([
       "bun",
@@ -566,8 +568,13 @@ describe("getWorkspaceUpdateCommand", () => {
       "-r",
     ]);
     expect(getWorkspaceUpdateCommand("yarn", true)).toEqual([
-      "yarn",
-      "upgrade",
+      "npx",
+      "--yes",
+      "npm-check-updates",
+      "--upgrade",
+      "--target",
+      "minor",
+      "--workspaces",
     ]);
     expect(getWorkspaceUpdateCommand("bun", true)).toEqual(["bun", "update"]);
   });

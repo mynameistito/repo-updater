@@ -175,13 +175,16 @@ describe("resolveWorkspaceGlobs", () => {
     expect(dirs).toHaveLength(0);
   });
 
-  test("skips negation patterns", () => {
+  test("excludes directories matching negation patterns", () => {
     mkdirSync(join(tempDir, "packages", "a"), { recursive: true });
+    mkdirSync(join(tempDir, "packages", "internal"), { recursive: true });
     const dirs = resolveWorkspaceGlobs(tempDir, [
       "packages/*",
       "!packages/internal",
     ]);
     expect(dirs).toHaveLength(1);
+    expect(dirs).toContain(join(tempDir, "packages", "a"));
+    expect(dirs).not.toContain(join(tempDir, "packages", "internal"));
   });
 
   test("handles exact directory paths (no glob)", () => {
@@ -189,6 +192,30 @@ describe("resolveWorkspaceGlobs", () => {
     const dirs = resolveWorkspaceGlobs(tempDir, ["tools"]);
     expect(dirs).toHaveLength(1);
     expect(dirs[0]).toBe(join(tempDir, "tools"));
+  });
+
+  test("resolves packages/** pattern to nested directories recursively", () => {
+    mkdirSync(join(tempDir, "packages", "a"), { recursive: true });
+    mkdirSync(join(tempDir, "packages", "group", "nested"), {
+      recursive: true,
+    });
+
+    const dirs = resolveWorkspaceGlobs(tempDir, ["packages/**"]);
+    expect(dirs).toContain(join(tempDir, "packages", "a"));
+    expect(dirs).toContain(join(tempDir, "packages", "group"));
+    expect(dirs).toContain(join(tempDir, "packages", "group", "nested"));
+  });
+
+  test("deduplicates directories from overlapping globs", () => {
+    const sharedDir = join(tempDir, "packages", "shared");
+    mkdirSync(sharedDir, { recursive: true });
+
+    const dirs = resolveWorkspaceGlobs(tempDir, [
+      "packages/*",
+      "packages/shared",
+    ]);
+    expect(dirs).toHaveLength(1);
+    expect(dirs[0]).toBe(sharedDir);
   });
 });
 

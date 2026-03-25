@@ -87,7 +87,15 @@ export function getWorkspaceUpdateCommand(
     const commands: Record<PackageManager, string[]> = {
       npm: ["npm", "update", "--workspaces"],
       pnpm: ["pnpm", "update", "-r"],
-      yarn: ["yarn", "upgrade"],
+      yarn: [
+        "npx",
+        "--yes",
+        "npm-check-updates",
+        "--upgrade",
+        "--target",
+        "minor",
+        "--workspaces",
+      ],
       bun: ["bun", "update"],
     };
     return commands[pm];
@@ -95,7 +103,7 @@ export function getWorkspaceUpdateCommand(
   const commands: Record<PackageManager, string[]> = {
     npm: ["npx", "--yes", "npm-check-updates", "--upgrade", "--workspaces"],
     pnpm: ["pnpm", "update", "--latest", "-r"],
-    yarn: ["yarn", "upgrade", "--latest"],
+    yarn: ["npx", "--yes", "npm-check-updates", "--upgrade", "--workspaces"],
     bun: ["bun", "update", "--latest"],
   };
   return commands[pm];

@@ -140,6 +140,12 @@ export function snapshotWorkspaceDeps(
 
   // Include each workspace package
   for (const pkg of packages) {
+    if (snapshots.has(pkg.name)) {
+      console.warn(
+        `[warn] Duplicate package name "${pkg.name}" at ${pkg.path} — skipping (already captured)`
+      );
+      continue;
+    }
     snapshots.set(pkg.name, snapshotDeps(pkg.path));
   }
 
@@ -190,9 +196,7 @@ export function writeWorkspaceChangesetFile(
     a[0].localeCompare(b[0])
   )) {
     const bullets = changes
-      .map(
-        (c) => `- ${c.name}: ${c.from || "(new)"} \u2192 ${c.to || "(removed)"}`
-      )
+      .map((c) => `- ${c.name}: ${c.from || "(new)"} → ${c.to || "(removed)"}`)
       .join("\n");
     bodyParts.push(`**${name}**:\n${bullets}`);
   }

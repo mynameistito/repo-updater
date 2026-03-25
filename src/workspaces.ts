@@ -1,8 +1,7 @@
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { basename, join, relative } from "node:path";
+import { parse as parseYaml } from "yaml";
 
-const LEADING_QUOTE_RE = /^['"]/;
-const TRAILING_QUOTE_RE = /['"]$/;
 const GLOB_SUFFIX_RE = /\/\*\*?$/;
 
 export interface WorkspacePackage {
@@ -35,31 +34,17 @@ function parsePnpmWorkspaceYaml(repoPath: string): string[] | null {
   }
   try {
     const content = readFileSync(yamlPath, "utf8");
-    const globs: string[] = [];
-    let inPackages = false;
-
-    for (const line of content.split("\n")) {
-      const trimmed = line.trim();
-      if (trimmed === "packages:" || trimmed === "packages: ") {
-        inPackages = true;
-        continue;
-      }
-      if (inPackages) {
-        if (trimmed.startsWith("- ")) {
-          const glob = trimmed
-            .slice(2)
-            .trim()
-            .replace(LEADING_QUOTE_RE, "")
-            .replace(TRAILING_QUOTE_RE, "");
-          if (glob) {
-            globs.push(glob);
-          }
-        } else if (trimmed !== "" && !trimmed.startsWith("#")) {
-          break;
-        }
-      }
+    const doc = parseYaml(content) as Record<string, unknown> | null;
+    if (!doc || typeof doc !== "object") {
+      return null;
     }
 
+    const packages = doc.packages;
+    if (!Array.isArray(packages)) {
+      return null;
+    }
+
+    const globs = packages.filter((w): w is string => typeof w === "string");
     return globs.length > 0 ? globs : null;
   } catch {
     return null;
@@ -120,6 +105,15 @@ function listChildDirs(parentDir: string): string[] {
   }
 }
 
+function listDirsRecursive(parentDir: string): string[] {
+  const results: string[] = [];
+  for (const dir of listChildDirs(parentDir)) {
+    results.push(dir);
+    results.push(...listDirsRecursive(dir));
+  }
+  return results;
+}
+
 function resolveGlob(repoPath: string, glob: string): string[] {
   const cleaned = glob.replace(GLOB_SUFFIX_RE, "");
   const parentDir = join(repoPath, cleaned);
@@ -128,25 +122,50 @@ function resolveGlob(repoPath: string, glob: string): string[] {
     return [];
   }
 
+  if (glob.endsWith("/**")) {
+    return listDirsRecursive(parentDir);
+  }
+
   if (glob.includes("*")) {
     return listChildDirs(parentDir);
   }
 
-  const stat = statSync(parentDir);
-  return stat.isDirectory() ? [parentDir] : [];
+  try {
+    const stat = statSync(parentDir);
+    return stat.isDirectory() ? [parentDir] : [];
+  } catch {
+    return [];
+  }
 }
 
 export function resolveWorkspaceGlobs(
   repoPath: string,
   globs: string[]
 ): string[] {
+  const seen = new Set<string>();
   const dirs: string[] = [];
+  const excluded = new Set<string>();
 
+  // First pass: resolve negation patterns to build exclusion set
+  for (const glob of globs) {
+    if (glob.startsWith("!")) {
+      for (const dir of resolveGlob(repoPath, glob.slice(1))) {
+        excluded.add(dir);
+      }
+    }
+  }
+
+  // Second pass: resolve inclusion patterns, filtering out excluded dirs
   for (const glob of globs) {
     if (glob.startsWith("!")) {
       continue;
     }
-    dirs.push(...resolveGlob(repoPath, glob));
+    for (const dir of resolveGlob(repoPath, glob)) {
+      if (!(seen.has(dir) || excluded.has(dir))) {
+        seen.add(dir);
+        dirs.push(dir);
+      }
+    }
   }
 
   return dirs;
