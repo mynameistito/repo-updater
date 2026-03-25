@@ -1,6 +1,6 @@
 {
   "name": "repo-updater",
-  "version": "0.3.2",
+  "version": "0.7.8",
   "description": "CLI tool to mass-update dependencies across multiple git repositories with auto package manager detection (npm, pnpm, yarn, Bun)",
   "type": "module",
   "license": "MIT",
@@ -28,40 +28,62 @@
     "batch-update"
   ],
   "bin": {
-    "repo-updater": "src/cli.ts"
+    "repo-updater": "./dist/cli.mjs"
   },
   "engines": {
     "bun": ">=1.0.0",
-    "node": ">=22.0.0"
+    "node": ">=22.6.0"
   },
   "files": [
-    "src"
+    "dist",
+    "scripts/install-windows-manifest.mjs"
   ],
   "scripts": {
     "typecheck": "tsgo --noEmit",
     "start": "bun run src/cli.ts",
-    "test": "bun test",
+    "test": "bun test; node .github/setup.js",
     "test:node": "vitest run",
     "check": "ultracite check",
     "fix": "ultracite fix",
-    "build": "bun build src/cli.ts --outdir dist --target bun",
+    "build": "tsdown",
+    "sync:jsr": "bun scripts/sync-jsr-version.ts",
+    "postinstall": "node scripts/install-windows-manifest.mjs",
     "prepublishOnly": "bun run build && bun run typecheck",
-    "version": "changeset version"
+    "version": "changeset version && bun run sync:jsr && bunx ultracite fix deno.json"
   },
   "dependencies": {
-    "@clack/prompts": "^1.1.0",
-    "better-result": "^2.7.0"
+    "@clack/prompts": "^1.5.0",
+    "@types/node": "25.9.1",
+    "better-result": "^2.9.2",
+    "yaml": "^2.9.0"
   },
   "devDependencies": {
-    "@biomejs/biome": "^2.4.8",
-    "@changesets/cli": "^2.30.0",
-    "@types/bun": "^1.3.11",
-    "@typescript/native-preview": "^7.0.0-dev.20260324.1",
-    "lefthook": "^2.1.4",
-    "ultracite": "^7.3.2",
-    "vitest": "^4.1.1"
+    "@biomejs/biome": "^2.4.16",
+    "@changesets/cli": "^2.31.0",
+    "@types/bun": "^1.3.14",
+    "@typescript/native-preview": "^7.0.0-dev.20260601.1",
+    "lefthook": "^2.1.9",
+    "publint": "^0.3.21",
+    "tsdown": "^0.22.1",
+    "typescript": "^6.0.3",
+    "ultracite": "^7.8.1",
+    "v8r": "^6.1.0",
+    "vitest": "^4.1.8"
   },
   "overrides": {
-    "minimatch": "^10.2.3"
+    "minimatch": "^10.2.3",
+    "brace-expansion": ">=5.0.5",
+    "picomatch": ">=4.0.4"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.mts",
+      "import": "./dist/index.mjs"
+    },
+    "./cli": {
+      "types": "./dist/cli.d.mts",
+      "import": "./dist/cli.mjs"
+    },
+    "./package.json": "./package.json"
   }
 }
