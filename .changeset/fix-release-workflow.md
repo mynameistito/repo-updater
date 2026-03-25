@@ -2,9 +2,12 @@
 "repo-updater": patch
 ---
 
-Fix release workflow: use npm pack and gate on CI success
+Fix release workflow and harden CI
 
-- Replace `bun pack --dry-run` with `npm pack --dry-run` in prepublishOnly (fixes `Script not found "pack"` error during npm publish)
-- Slim prepublishOnly to build + pack only (CI already validates typecheck + tests)
-- Gate Release workflow on CI success via `workflow_run`
-- Remove redundant `build:pack` script
+- Fix npm OIDC Trusted Publishing: remove `registry-url` injection, upgrade npm for OIDC support
+- Pin release checkout to `workflow_run.head_sha` for deterministic releases
+- Use commit SHA in concurrency keys to prevent injection risk
+- Add concurrency block to CI to deduplicate runs on rapid pushes
+- Gate release workflow on CI success via `workflow_run`
+- Remove redundant `npm pack --dry-run` from `prepublishOnly`
+- Delete redundant `.npmignore` (superseded by `files` allowlist)
