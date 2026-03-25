@@ -123,7 +123,7 @@ function resolveGlob(repoPath: string, glob: string): string[] {
   }
 
   if (glob.endsWith("/**")) {
-    return listDirsRecursive(parentDir);
+    return [parentDir, ...listDirsRecursive(parentDir)];
   }
 
   if (glob.includes("*")) {
