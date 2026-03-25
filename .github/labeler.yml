@@ -5,11 +5,27 @@ dependencies:
           - "package-lock.json"
           - "bun.lock"
           - "bunfig.toml"
+          - "pnpm-lock.yaml"
+          - "yarn.lock"
 
 ci:
   - changed-files:
       - any-glob-to-any-file:
-          - ".github/**"
+          - ".github/workflows/**"
+
+github-config:
+  - changed-files:
+      - any-glob-to-any-file:
+          - ".github/ISSUE_TEMPLATE/**"
+          - ".github/PULL_REQUEST_TEMPLATE.md"
+          - ".github/PULL_REQUEST_TEMPLATE/**"
+          - ".github/labeler.yml"
+          - ".github/settings.yml"
+          - ".github/dependabot.yml"
+          - ".github/CODEOWNERS"
+          - ".github/FUNDING.yml"
+          - ".github/renovate.json"
+          - ".github/renovate.json5"
 
 source:
   - changed-files:
@@ -20,17 +36,19 @@ tests:
   - changed-files:
       - any-glob-to-any-file:
           - "__tests__/**"
+          - "vitest.config.ts"
+          - "**/*.test.ts"
+          - "**/*.spec.ts"
 
 documentation:
   - changed-files:
       - any-glob-to-any-file:
-          - "*.md"
-          - "README"
-          - "README.*"
+          - "README.md"
           - "CHANGELOG.md"
           - "CONTRIBUTING.md"
           - "CODE_OF_CONDUCT.md"
           - "SECURITY.md"
+          - "docs/**"
 
 configuration:
   - changed-files:
@@ -38,6 +56,13 @@ configuration:
           - "tsconfig*.json"
           - "biome.jsonc"
           - "lefthook.yml"
-          - "vitest.config.ts"
-          - ".changeset/**"
+
+scripts:
+  - changed-files:
+      - any-glob-to-any-file:
           - "scripts/**"
+
+changeset:
+  - changed-files:
+      - any-glob-to-any-file:
+          - ".changeset/**"
