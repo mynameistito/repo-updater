@@ -6,6 +6,7 @@ import {
   writeFileSync,
 } from "node:fs";
 import { join } from "node:path";
+import type { WorkspacePackage } from "./workspaces.ts";
 
 export interface DepSnapshot {
   [pkg: string]: string;
@@ -117,6 +118,86 @@ export function writeChangesetFile(
     .join("\n");
 
   const content = `---\n"${packageName}": patch\n---\n\nUpdated dependencies:\n${bullets}\n`;
+
+  writeFileSync(
+    join(changesetDir, `dep-updates-${timestamp}.md`),
+    content,
+    "utf8"
+  );
+}
+
+export function snapshotWorkspaceDeps(
+  repoPath: string,
+  packages: WorkspacePackage[]
+): Map<string, DepSnapshot> {
+  const snapshots = new Map<string, DepSnapshot>();
+
+  // Include root package
+  const rootName = getPackageName(repoPath);
+  if (rootName !== "unknown") {
+    snapshots.set(rootName, snapshotDeps(repoPath));
+  }
+
+  // Include each workspace package
+  for (const pkg of packages) {
+    snapshots.set(pkg.name, snapshotDeps(pkg.path));
+  }
+
+  return snapshots;
+}
+
+export function diffWorkspaceDeps(
+  before: Map<string, DepSnapshot>,
+  after: Map<string, DepSnapshot>
+): Map<string, DepChange[]> {
+  const allNames = new Set([...before.keys(), ...after.keys()]);
+  const result = new Map<string, DepChange[]>();
+
+  for (const name of allNames) {
+    const b = before.get(name) ?? {};
+    const a = after.get(name) ?? {};
+    const changes = diffDeps(b, a);
+    if (changes.length > 0) {
+      result.set(name, changes);
+    }
+  }
+
+  return result;
+}
+
+export function writeWorkspaceChangesetFile(
+  repoPath: string,
+  changedPackages: Map<string, DepChange[]>,
+  timestamp: number
+): void {
+  if (changedPackages.size === 0) {
+    return;
+  }
+
+  const changesetDir = join(repoPath, ".changeset");
+  if (!existsSync(changesetDir)) {
+    mkdirSync(changesetDir, { recursive: true });
+  }
+
+  // Build frontmatter with all changed packages
+  const frontmatterLines = [...changedPackages.keys()]
+    .sort()
+    .map((name) => `"${name}": patch`);
+
+  // Build body with per-package change details
+  const bodyParts: string[] = [];
+  for (const [name, changes] of [...changedPackages.entries()].sort((a, b) =>
+    a[0].localeCompare(b[0])
+  )) {
+    const bullets = changes
+      .map(
+        (c) => `- ${c.name}: ${c.from || "(new)"} \u2192 ${c.to || "(removed)"}`
+      )
+      .join("\n");
+    bodyParts.push(`**${name}**:\n${bullets}`);
+  }
+
+  const content = `---\n${frontmatterLines.join("\n")}\n---\n\nUpdated dependencies:\n${bodyParts.join("\n\n")}\n`;
 
   writeFileSync(
     join(changesetDir, `dep-updates-${timestamp}.md`),

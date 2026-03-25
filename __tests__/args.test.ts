@@ -92,6 +92,37 @@ describe("parseArgs", () => {
     const args = parseArgs(["-c"]);
     expect(args.configPath).toBeUndefined();
   });
+
+  test("--no-changeset sets noChangeset to true", () => {
+    const args = parseArgs(["--no-changeset"]);
+    expect(args.noChangeset).toBe(true);
+  });
+
+  test("noChangeset defaults to false", () => {
+    const args = parseArgs([]);
+    expect(args.noChangeset).toBe(false);
+  });
+
+  test("--no-workspaces sets noWorkspaces to true", () => {
+    const args = parseArgs(["--no-workspaces"]);
+    expect(args.noWorkspaces).toBe(true);
+  });
+
+  test("noWorkspaces defaults to false", () => {
+    const args = parseArgs([]);
+    expect(args.noWorkspaces).toBe(false);
+  });
+
+  test("--no-changeset and --no-workspaces work together", () => {
+    const args = parseArgs([
+      "--no-changeset",
+      "--no-workspaces",
+      "/path/to/repo",
+    ]);
+    expect(args.noChangeset).toBe(true);
+    expect(args.noWorkspaces).toBe(true);
+    expect(args.positional).toEqual(["/path/to/repo"]);
+  });
 });
 
 describe("getDate", () => {

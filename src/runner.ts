@@ -3,13 +3,17 @@ import { join } from "node:path";
 import { Result } from "better-result";
 import {
   diffDeps,
+  diffWorkspaceDeps,
   getChangesetFiles,
   getPackageName,
   hasChangesets,
   snapshotDeps,
+  snapshotWorkspaceDeps,
   writeChangesetFile,
+  writeWorkspaceChangesetFile,
 } from "./changesets.ts";
 import { CommandFailedError, InvalidInputError } from "./errors.ts";
+import { detectWorkspaces } from "./workspaces.ts";
 
 const DEFAULT_BRANCH_REGEX = /refs\/remotes\/origin\/(.+)$/;
 const DATE_FORMAT_REGEX = /^\d{4}-\d{2}-\d{2}$/;
@@ -71,6 +75,28 @@ export function getInstallCommand(pm: PackageManager): string[] {
     pnpm: ["pnpm", "install"],
     yarn: ["yarn", "install"],
     bun: ["bun", "install"],
+  };
+  return commands[pm];
+}
+
+export function getWorkspaceUpdateCommand(
+  pm: PackageManager,
+  minor = false
+): string[] {
+  if (minor) {
+    const commands: Record<PackageManager, string[]> = {
+      npm: ["npm", "update", "--workspaces"],
+      pnpm: ["pnpm", "update", "-r"],
+      yarn: ["yarn", "upgrade"],
+      bun: ["bun", "update"],
+    };
+    return commands[pm];
+  }
+  const commands: Record<PackageManager, string[]> = {
+    npm: ["npx", "--yes", "npm-check-updates", "--upgrade", "--workspaces"],
+    pnpm: ["pnpm", "update", "--latest", "-r"],
+    yarn: ["yarn", "upgrade", "--latest"],
+    bun: ["bun", "update", "--latest"],
   };
   return commands[pm];
 }
@@ -246,16 +272,72 @@ async function performCleanup(
   }
 }
 
+interface ChangesetContext {
+  depsBefore: Map<string, import("./changesets.ts").DepSnapshot> | null;
+  isWorkspace: boolean;
+  noChangeset: boolean;
+  repo: string;
+  singleDepsBefore: import("./changesets.ts").DepSnapshot | null;
+  timestamp: number;
+  workspace: import("./workspaces.ts").WorkspaceConfig;
+}
+
+function handleChangesets(ctx: ChangesetContext): string | undefined {
+  if (ctx.noChangeset || !hasChangesets(ctx.repo)) {
+    return undefined;
+  }
+
+  const targetFile = `dep-updates-${ctx.timestamp}.md`;
+  if (getChangesetFiles(ctx.repo).includes(targetFile)) {
+    return undefined;
+  }
+
+  const filePath = join(ctx.repo, ".changeset", targetFile);
+
+  if (ctx.isWorkspace && ctx.depsBefore) {
+    const depsAfter = snapshotWorkspaceDeps(ctx.repo, ctx.workspace.packages);
+    const changes = diffWorkspaceDeps(ctx.depsBefore, depsAfter);
+    if (changes.size === 0) {
+      return undefined;
+    }
+    writeWorkspaceChangesetFile(ctx.repo, changes, ctx.timestamp);
+  } else if (ctx.singleDepsBefore) {
+    const depsAfter = snapshotDeps(ctx.repo);
+    const changes = diffDeps(ctx.singleDepsBefore, depsAfter);
+    const pkgName = getPackageName(ctx.repo);
+    if (changes.length === 0 || pkgName === "unknown") {
+      return undefined;
+    }
+    writeChangesetFile(ctx.repo, pkgName, changes, ctx.timestamp);
+  } else {
+    return undefined;
+  }
+
+  console.log(
+    `[info] Wrote changeset: .changeset/dep-updates-${ctx.timestamp}.md`
+  );
+  return filePath;
+}
+
 export function updateRepo(
   options: {
     repo: string;
     date: string;
     dryRun: boolean;
     minor?: boolean;
+    noChangeset?: boolean;
+    noWorkspaces?: boolean;
   },
   execFn = exec
 ): Promise<Result<RepoResult, CommandFailedError | InvalidInputError>> {
-  const { repo, date, dryRun, minor = false } = options;
+  const {
+    repo,
+    date,
+    dryRun,
+    minor = false,
+    noChangeset = false,
+    noWorkspaces = false,
+  } = options;
 
   if (!isValidCalendarDate(date)) {
     return Promise.resolve(
@@ -273,7 +355,16 @@ export function updateRepo(
 
   if (dryRun) {
     return Promise.resolve(
-      dryRunRepo(repo, date, branch, "main", minor, timestamp)
+      dryRunRepo(
+        repo,
+        date,
+        branch,
+        "main",
+        minor,
+        timestamp,
+        noChangeset,
+        noWorkspaces
+      )
     );
   }
 
@@ -305,35 +396,48 @@ export function updateRepo(
       yield* Result.await(execFn(["git", "checkout", "-b", branch], repo));
       branchCreated = true;
 
-      const depsBefore = snapshotDeps(repo);
+      // Auto-detect workspaces unless opted out
+      const workspace = noWorkspaces
+        ? { isWorkspace: false, packages: [] }
+        : detectWorkspaces(repo);
+      const isWorkspace = workspace.isWorkspace;
 
-      yield* Result.await(execFn(getUpdateCommand(pm, minor), repo));
+      if (isWorkspace) {
+        console.log(
+          `[info] Detected monorepo with ${workspace.packages.length} workspace packages`
+        );
+      }
+
+      // Snapshot deps before update
+      const depsBefore = isWorkspace
+        ? snapshotWorkspaceDeps(repo, workspace.packages)
+        : null;
+      const singleDepsBefore = isWorkspace ? null : snapshotDeps(repo);
+
+      // Run update + install
+      const updateCmd = isWorkspace
+        ? getWorkspaceUpdateCommand(pm, minor)
+        : getUpdateCommand(pm, minor);
+      yield* Result.await(execFn(updateCmd, repo));
       yield* Result.await(execFn(getInstallCommand(pm), repo));
 
-      const depsAfter = snapshotDeps(repo);
-      const depsChanged = diffDeps(depsBefore, depsAfter);
-
-      const targetFile = `dep-updates-${timestamp}.md`;
-      const pkgName = getPackageName(repo);
-      if (
-        hasChangesets(repo) &&
-        depsChanged.length > 0 &&
-        !getChangesetFiles(repo).includes(targetFile) &&
-        pkgName !== "unknown"
-      ) {
-        changesetFilePath = join(repo, ".changeset", targetFile);
-        try {
-          writeChangesetFile(repo, pkgName, depsChanged, timestamp);
-          console.log(
-            `[info] Wrote changeset: .changeset/dep-updates-${timestamp}.md`
-          );
-        } catch (e) {
-          throw new CommandFailedError({
-            message: `Failed to write changeset file: ${String(e)}`,
-            command: "writeChangesetFile",
-            stderr: String(e),
-          });
-        }
+      // Snapshot deps after update, diff, and optionally write changeset
+      try {
+        changesetFilePath = handleChangesets({
+          repo,
+          timestamp,
+          noChangeset,
+          isWorkspace,
+          workspace,
+          depsBefore,
+          singleDepsBefore,
+        });
+      } catch (e) {
+        throw new CommandFailedError({
+          message: `Failed to write changeset file: ${String(e)}`,
+          command: "writeChangesetFile",
+          stderr: String(e),
+        });
       }
 
       const status = yield* Result.await(
@@ -402,25 +506,44 @@ function dryRunRepo(
   branch: string,
   defaultBranch = "main",
   minor = false,
-  timestamp = Date.now()
+  timestamp = Date.now(),
+  noChangeset = false,
+  noWorkspaces = false
 ): Result<RepoResult, CommandFailedError> {
   const pm = detectPackageManager(repo);
+  const workspace = noWorkspaces
+    ? { isWorkspace: false, packages: [] }
+    : detectWorkspaces(repo);
+
   console.log(
     `  [dry-run] assuming default branch: ${defaultBranch} (actual branch will be detected at runtime)`
   );
   console.log(`  [dry-run] detected package manager: ${pm}`);
 
+  if (workspace.isWorkspace) {
+    console.log(
+      `  [dry-run] detected monorepo with ${workspace.packages.length} workspace packages`
+    );
+    for (const pkg of workspace.packages) {
+      console.log(`  [dry-run]   - ${pkg.name} (${pkg.relativePath})`);
+    }
+  }
+
+  const updateCmd = workspace.isWorkspace
+    ? getWorkspaceUpdateCommand(pm, minor).join(" ")
+    : getUpdateCommand(pm, minor).join(" ");
+
   const steps = [
     `git checkout ${defaultBranch}`,
     "git pull",
     `git checkout -b ${branch}`,
-    getUpdateCommand(pm, minor).join(" "),
+    updateCmd,
     getInstallCommand(pm).join(" "),
   ];
 
-  if (hasChangesets(repo)) {
+  if (!noChangeset && hasChangesets(repo)) {
     steps.push(
-      `write .changeset/dep-updates-${timestamp}.md (only if non-dev deps changed)`
+      `write .changeset/dep-updates-${timestamp}.md (only if deps changed)`
     );
   }
 

@@ -21,6 +21,8 @@ Options:
   -n, --dry-run        Print steps without executing
   -m, --minor          Only update minor/patch versions (avoid breaking changes)
   -c, --config <path>  Path to config file
+  --no-changeset       Skip changeset creation
+  --no-workspaces      Skip workspace detection (update root only)
 
 Examples:
   repo-updater                              # Update all repos from config
@@ -61,13 +63,22 @@ export async function processRepo(
   date: string,
   dryRun: boolean,
   updateFn: typeof updateRepo = updateRepo,
-  minor = false
+  minor = false,
+  noChangeset = false,
+  noWorkspaces = false
 ): Promise<{ repo: string; status: string; prUrl?: string }> {
   const repoName = basename(repo);
   log.step(repoName);
 
   if (dryRun) {
-    const result = await updateFn({ repo, date, dryRun: true, minor });
+    const result = await updateFn({
+      repo,
+      date,
+      dryRun: true,
+      minor,
+      noChangeset,
+      noWorkspaces,
+    });
     console.log();
     return result.isOk() ? result.value : { repo, status: "failed" };
   }
@@ -75,7 +86,14 @@ export async function processRepo(
   const s = spinner();
   s.start("Updating dependencies...");
 
-  const result = await updateFn({ repo, date, dryRun: false, minor });
+  const result = await updateFn({
+    repo,
+    date,
+    dryRun: false,
+    minor,
+    noChangeset,
+    noWorkspaces,
+  });
 
   if (result.isErr()) {
     s.stop(`Failed: ${repoName}`);
@@ -109,10 +127,20 @@ async function handleRepoProcessing(
   dryRun: boolean,
   prUrls: string[],
   updateFn: typeof updateRepo,
-  minor: boolean
+  minor: boolean,
+  noChangeset: boolean,
+  noWorkspaces: boolean
 ) {
   for (const repo of valid) {
-    const result = await processRepo(repo, date, dryRun, updateFn, minor);
+    const result = await processRepo(
+      repo,
+      date,
+      dryRun,
+      updateFn,
+      minor,
+      noChangeset,
+      noWorkspaces
+    );
     if (result.prUrl) {
       prUrls.push(result.prUrl);
     }
@@ -211,7 +239,9 @@ export async function main(
     args.dryRun,
     prUrls,
     updateFn,
-    args.minor
+    args.minor,
+    args.noChangeset,
+    args.noWorkspaces
   );
 
   if (prUrls.length > 0) {
