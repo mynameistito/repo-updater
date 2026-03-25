@@ -62,7 +62,5 @@
     "ultracite": "^7.3.2",
     "vitest": "^4.1.1"
   },
-  "overrides": {
-    "minimatch": "^10.2.3"
-  }
+  "overrides": {}
 }
