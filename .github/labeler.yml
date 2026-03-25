@@ -18,8 +18,14 @@ github-config:
       - any-glob-to-any-file:
           - ".github/ISSUE_TEMPLATE/**"
           - ".github/PULL_REQUEST_TEMPLATE.md"
+          - ".github/PULL_REQUEST_TEMPLATE/**"
           - ".github/labeler.yml"
           - ".github/settings.yml"
+          - ".github/dependabot.yml"
+          - ".github/CODEOWNERS"
+          - ".github/FUNDING.yml"
+          - ".github/renovate.json"
+          - ".github/renovate.json5"
 
 source:
   - changed-files:
