@@ -1,0 +1,9 @@
+{
+  "name": "@mynameistito/repo-updater",
+  "version": "0.4.0",
+  "exports": "./src/index.ts",
+  "publish": {
+    "include": ["LICENSE", "README.md", "src/**/*.ts"],
+    "exclude": ["src/**/*.test.ts"]
+  }
+}

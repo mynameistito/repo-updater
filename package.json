@@ -60,6 +60,7 @@
     "@typescript/native-preview": "^7.0.0-dev.20260327.2",
     "lefthook": "^2.1.4",
     "ultracite": "^7.3.2",
+    "v8r": "^6.0.0",
     "vitest": "^4.1.2"
   },
   "overrides": {

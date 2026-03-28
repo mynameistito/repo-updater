@@ -52,3 +52,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ github.token }}
           NPM_CONFIG_PROVENANCE: true
+
+      - name: Publish to JSR
+        if: steps.changesets.outputs.published == 'true'
+        run: npx jsr publish --allow-slow-types
