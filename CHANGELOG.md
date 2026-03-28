@@ -1,5 +1,12 @@
 # repo-updater
 
+## 0.4.1
+
+### Patch Changes
+
+- 48497c0: cve bumps
+- 246b264: added to jsr, testing jsr release
+
 ## 0.4.0
 
 ### Minor Changes
