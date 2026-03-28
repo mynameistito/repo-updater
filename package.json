@@ -46,7 +46,7 @@
     "fix": "ultracite fix",
     "build": "bun build src/cli.ts --outdir dist --target bun",
     "prepublishOnly": "bun run build && bun run typecheck",
-    "version": "changeset version && node -e \"const p=JSON.parse(require('fs').readFileSync('package.json'));const j=JSON.parse(require('fs').readFileSync('jsr.json'));j.version=p.version;require('fs').writeFileSync('jsr.json',JSON.stringify(j,null,2)+'\\n');\""
+    "version": "changeset version && bun scripts/sync-jsr-version.ts"
   },
   "dependencies": {
     "@clack/prompts": "^1.1.0",
