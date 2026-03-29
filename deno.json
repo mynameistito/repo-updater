@@ -5,6 +5,9 @@
     ".": "./src/index.ts",
     "./cli": "./src/cli.ts"
   },
+  "bin": {
+    "repo-updater": "./src/cli.ts"
+  },
   "publish": {
     "include": ["LICENSE", "README.md", "src/**/*.ts"],
     "exclude": ["src/**/*.test.ts"]
