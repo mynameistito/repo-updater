@@ -1,5 +1,11 @@
 # repo-updater
 
+## 0.5.2
+
+### Patch Changes
+
+- b4cf2e6: Add JSDoc module documentation to all source and test files. Add `.changeset/AGENTS.md` and `.changeset/CLAUDE.md` knowledge base files. Fix `openURLNodejs` to detach the spawned browser process so the CLI can exit independently.
+
 ## 0.5.1
 
 ### Patch Changes
