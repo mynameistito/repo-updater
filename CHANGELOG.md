@@ -1,5 +1,11 @@
 # repo-updater
 
+## 0.5.1
+
+### Patch Changes
+
+- 894f303: Add explicit type annotations to `TaggedError` exports to resolve JSR slow type warnings.
+
 ## 0.5.0
 
 ### Minor Changes
