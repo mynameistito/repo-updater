@@ -2,8 +2,9 @@
   "name": "@mynameistito/repo-updater",
   "version": "0.6.0",
   "exports": {
-    ".": "./src/index.ts",
-    "./cli": "./src/cli.ts"
+    ".": "./src/cli.ts",
+    "./cli": "./src/cli.ts",
+    "./index": "./src/index.ts"
   },
   "publish": {
     "include": ["LICENSE", "README.md", "src/**/*.ts"],
