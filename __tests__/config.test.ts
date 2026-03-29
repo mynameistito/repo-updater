@@ -1,8 +1,22 @@
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import {
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { loadConfig, validateRepos } from "../src/config.ts";
+import {
+  findConfigPath,
+  loadConfig,
+  saveBrowserToConfig,
+  validateRepos,
+} from "../src/config.ts";
+
+// biome-ignore lint/correctness/noUnusedVariables: available for Bun-specific test branches
+const isBun = typeof globalThis.Bun !== "undefined";
 
 let tempDir: string;
 
@@ -71,6 +85,117 @@ describe("loadConfig", () => {
     writeFileSync(configPath, JSON.stringify({}));
 
     const result = loadConfig(configPath);
+    expect(result.isErr()).toBe(true);
+    if (result.isErr()) {
+      expect(result.error._tag).toBe("ConfigParseError");
+    }
+  });
+
+  test("loads config with browser override", () => {
+    const configPath = join(tempDir, "config.json");
+    writeFileSync(
+      configPath,
+      JSON.stringify({
+        repos: ["/path/to/repo1"],
+        browser:
+          "C:\\Program Files\\BraveSoftware\\Brave-Browser\\Application\\brave.exe",
+      })
+    );
+
+    const result = loadConfig(configPath);
+    expect(result.isOk()).toBe(true);
+    if (result.isOk()) {
+      expect(result.value.browser).toBe(
+        "C:\\Program Files\\BraveSoftware\\Brave-Browser\\Application\\brave.exe"
+      );
+    }
+  });
+
+  test("returns ConfigParseError when browser is not a string", () => {
+    const configPath = join(tempDir, "config.json");
+    writeFileSync(
+      configPath,
+      JSON.stringify({ repos: ["/path"], browser: 42 })
+    );
+
+    const result = loadConfig(configPath);
+    expect(result.isErr()).toBe(true);
+    if (result.isErr()) {
+      expect(result.error._tag).toBe("ConfigParseError");
+    }
+  });
+
+  test("returns undefined browser when not specified", () => {
+    const configPath = join(tempDir, "config.json");
+    writeFileSync(configPath, JSON.stringify({ repos: ["/path"] }));
+
+    const result = loadConfig(configPath);
+    expect(result.isOk()).toBe(true);
+    if (result.isOk()) {
+      expect(result.value.browser).toBeUndefined();
+    }
+  });
+});
+
+describe("findConfigPath", () => {
+  test("returns path when config file exists", () => {
+    const configPath = join(tempDir, "repo-updater.config.json");
+    writeFileSync(configPath, JSON.stringify({ repos: [] }));
+
+    const oldCwd = process.cwd();
+    try {
+      process.chdir(tempDir);
+      const found = findConfigPath();
+      expect(found).toBe(configPath);
+    } finally {
+      process.chdir(oldCwd);
+    }
+  });
+
+  test("returns explicit path when it exists", () => {
+    const configPath = join(tempDir, "custom.json");
+    writeFileSync(configPath, JSON.stringify({ repos: [] }));
+    expect(findConfigPath(configPath)).toBe(configPath);
+  });
+
+  test("returns null when no config file exists", () => {
+    expect(findConfigPath(join(tempDir, "nonexistent.json"))).toBeNull();
+  });
+});
+
+describe("saveBrowserToConfig", () => {
+  test("saves browser to existing config file", () => {
+    const configPath = join(tempDir, "config.json");
+    writeFileSync(configPath, JSON.stringify({ repos: ["/test"] }));
+
+    const result = saveBrowserToConfig("chromium", configPath);
+    expect(result.isOk()).toBe(true);
+    if (result.isOk()) {
+      expect(result.value).toBe(configPath);
+    }
+
+    const updated = JSON.parse(readFileSync(configPath, "utf-8"));
+    expect(updated.browser).toBe("chromium");
+    expect(updated.repos).toEqual(["/test"]);
+  });
+
+  test("creates config when file not found", () => {
+    const configPath = join(tempDir, "missing.json");
+    const result = saveBrowserToConfig("chromium", configPath);
+    expect(result.isOk()).toBe(true);
+    if (result.isOk()) {
+      expect(result.value).toBe(configPath);
+    }
+    const created = JSON.parse(readFileSync(configPath, "utf-8"));
+    expect(created.browser).toBe("chromium");
+    expect(created.repos).toEqual([]);
+  });
+
+  test("returns error when config file has invalid JSON", () => {
+    const configPath = join(tempDir, "bad.json");
+    writeFileSync(configPath, "{not valid json");
+
+    const result = saveBrowserToConfig("chromium", configPath);
     expect(result.isErr()).toBe(true);
     if (result.isErr()) {
       expect(result.error._tag).toBe("ConfigParseError");

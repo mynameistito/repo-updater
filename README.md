@@ -74,6 +74,7 @@ repo-updater [options] [repo paths...]
 | `-n`, `--dry-run` | Print every step without executing any commands |
 | `-m`, `--minor` | Restrict updates to minor/patch versions (uses base update command without major version bumps) |
 | `-c`, `--config <path>` | Path to a custom config file |
+| `-b`, `--browser <path>` | Path to browser executable (e.g. `brave.exe`). Auto-saved to config file for future runs |
 | `--no-workspaces` | Skip workspace detection and update root only |
 | `--no-changeset` | Skip automatic changeset creation |
 
@@ -105,6 +106,9 @@ repo-updater --no-workspaces C:\path\to\monorepo
 
 # Update without generating changeset files
 repo-updater --no-changeset
+
+# Specify a browser (auto-saved to config for future runs)
+repo-updater -b "C:\Program Files\BraveSoftware\Brave-Browser\Application\brave.exe"
 ```
 
 ## Config file
@@ -124,11 +128,14 @@ The tool searches for a config file in this order:
     "C:\\path\\to\\repo-two",
     "/home/user/project-one",
     "/path/to/repo-three"
-  ]
+  ],
+  "browser": "C:\\Program Files\\BraveSoftware\\Brave-Browser\\Application\\brave.exe"
 }
 ```
 
 The `repos` array contains absolute paths to git repositories. Directories that don't exist or aren't git repositories are skipped with a warning.
+
+The optional `browser` field specifies the path to a browser executable. When set, PR URLs are opened in this browser instead of the system default. This is useful on Windows where the OS may silently reset your default browser to Edge. You can also set this with the `-b` / `--browser` CLI flag, which auto-saves it to the config file.
 
 ## How it works
 
@@ -168,6 +175,8 @@ For each repository, the tool runs this pipeline sequentially:
 If step 9 shows no changes, the branch is deleted and the repo is skipped (reported as "no changes").
 
 After all repos are processed, a summary box lists every PR URL. You're then prompted to open them all in the browser.
+
+All URLs open in a single browser window. The tool detects your default browser automatically. On Windows, detection can be unreliable — if PRs keep opening in the wrong browser, use `-b` to specify the correct executable path.
 
 **On failure:** if any step fails after a branch has been created, the tool automatically cleans up — it checks out the default branch, deletes the local branch, and (if already pushed) deletes the remote branch too. Repos are never left in a dirty state.
 
