@@ -5,6 +5,6 @@
     "globals": ["Bun"]
   },
   "files": {
-    "includes": ["**", "!assets"]
+    "includes": ["!assets"]
   }
 }
