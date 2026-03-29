@@ -1,4 +1,5 @@
 export interface ParsedArgs {
+  browser: string | undefined;
   configPath: string | undefined;
   dryRun: boolean;
   help: boolean;
@@ -29,6 +30,7 @@ export function parseArgs(argv: string[]): ParsedArgs {
     noChangeset: false,
     noWorkspaces: false,
   };
+  let browser: string | undefined;
   let configPath: string | undefined;
   const positional: string[] = [];
 
@@ -44,6 +46,13 @@ export function parseArgs(argv: string[]): ParsedArgs {
       } else {
         configPath = next.value;
       }
+    } else if (arg === "-b" || arg === "--browser") {
+      const next = iter.next();
+      if (next.done) {
+        console.error(`${arg} requires a value`);
+      } else {
+        browser = next.value;
+      }
     } else if (arg.startsWith("-")) {
       console.error(`Unknown flag: ${arg}`);
     } else {
@@ -51,7 +60,7 @@ export function parseArgs(argv: string[]): ParsedArgs {
     }
   }
 
-  return { ...flags, configPath, positional };
+  return { ...flags, browser, configPath, positional };
 }
 
 export function getDate(): string {

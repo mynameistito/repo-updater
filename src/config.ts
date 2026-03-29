@@ -1,14 +1,45 @@
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 import { Result } from "better-result";
 import { ConfigNotFoundError, ConfigParseError } from "./errors.ts";
 
 export interface Config {
+  browser?: string;
   repos: string[];
 }
 
 const CONFIG_FILENAME = "repo-updater.config.json";
+
+export function findConfigPath(configPath?: string): string | null {
+  const candidates = configPath
+    ? [configPath]
+    : [
+        join(process.cwd(), CONFIG_FILENAME),
+        join(homedir(), ".config", "repo-updater", "config.json"),
+      ];
+
+  return candidates.find((p) => existsSync(p)) ?? null;
+}
+
+export function saveBrowserToConfig(
+  browser: string,
+  configPath?: string
+): string | null {
+  const found = findConfigPath(configPath);
+  if (!found) {
+    return null;
+  }
+
+  const raw = JSON.parse(readFileSync(found, "utf-8")) as Record<
+    string,
+    unknown
+  >;
+  raw.browser = browser;
+  mkdirSync(dirname(found), { recursive: true });
+  writeFileSync(found, `${JSON.stringify(raw, null, 2)}\n`);
+  return found;
+}
 
 export function loadConfig(
   configPath?: string
@@ -44,6 +75,13 @@ export function loadConfig(
         )
       ) {
         throw new Error("Config must contain a 'repos' array");
+      }
+
+      if (
+        "browser" in raw &&
+        typeof (raw as { browser: unknown }).browser !== "string"
+      ) {
+        throw new Error("'browser' must be a string");
       }
 
       return raw as Config;

@@ -9,7 +9,7 @@ import {
   spinner,
 } from "@clack/prompts";
 import { getDate, type ParsedArgs, parseArgs } from "./args.ts";
-import { loadConfig, validateRepos } from "./config.ts";
+import { loadConfig, saveBrowserToConfig, validateRepos } from "./config.ts";
 import { execBun, execNodejs, updateRepo } from "./runner.ts";
 
 export function printUsage() {
@@ -21,6 +21,7 @@ Options:
   -n, --dry-run        Print steps without executing
   -m, --minor          Only update minor/patch versions (avoid breaking changes)
   -c, --config <path>  Path to config file
+  -b, --browser <path> Path to browser executable (e.g. brave.exe)
   --no-changeset       Skip changeset creation
   --no-workspaces      Skip workspace detection (update root only)
 
@@ -29,6 +30,7 @@ Examples:
   repo-updater --dry-run                    # Preview without executing
   repo-updater --minor                      # Only minor/patch updates
   repo-updater -c ./my-config.json          # Use custom config
+  repo-updater -b "C:\\Program Files\\BraveSoftware\\Brave-Browser\\Application\\brave.exe"
   repo-updater E:\\GitHub\\org\\repo1          # Update specific repos
 `);
 }
@@ -181,6 +183,15 @@ export function openURLBun(cmd: string[]): void {
   Bun.spawn(cmd, { stdout: "ignore", stderr: "ignore" });
 }
 
+export function openURLBunSync(cmd: string[]): number | null {
+  try {
+    const proc = Bun.spawnSync(cmd, { stdout: "ignore", stderr: "ignore" });
+    return proc.exitCode;
+  } catch {
+    return 1;
+  }
+}
+
 export async function openURLNodejs(cmd: string[]): Promise<void> {
   const { spawn } = await import("node:child_process");
   spawn(cmd[0], cmd.slice(1), { stdio: "ignore" });
@@ -193,6 +204,9 @@ export type ExecFn = (
 
 const PROG_ID_REGEX = /ProgId\s+REG_SZ\s+(\S+)/;
 const DESKTOP_SUFFIX_REGEX = /\.desktop$/;
+const MACOS_FIREFOX_REGEX =
+  /LSHandlerURLScheme\s*=\s*https[\s\S]*?LSHandlerRoleAll\s*=\s*"?(org\.mozilla\.firefox)"?/;
+const REG_COMMAND_REGEX = /\(Default\)\s+REG_SZ\s+"?([^"]+\.exe)"?/i;
 
 const windowsProgIdMap: Record<string, string> = {
   ChromeHTML: "chrome",
@@ -210,82 +224,209 @@ const linuxDesktopMap: Record<string, string> = {
   "microsoft-edge": "microsoft-edge",
 };
 
-export async function detectBrowser(
-  platform: string = process.platform,
-  execFn: ExecFn = typeof Bun === "undefined" ? execNodejs : execBun
+async function detectMacosBrowser(
+  execFn: ExecFn
 ): Promise<{ browser: string } | null> {
-  if (platform === "darwin") {
-    return null;
-  }
-
+  // Detect if Firefox is the default browser on macOS
+  // Firefox enforces single-instance locking, so we need to know
+  // whether to use `open -n` (new instance) or just `open`
   try {
-    if (platform === "win32") {
-      const result = await execFn(
-        [
-          "reg",
-          "query",
-          "HKCU\\Software\\Microsoft\\Windows\\Shell\\Associations\\UrlAssociations\\https\\UserChoice",
-          "/v",
-          "ProgId",
-        ],
-        "."
-      );
-      if (result.exitCode !== 0) {
-        return null;
-      }
-
-      const match = result.stdout.match(PROG_ID_REGEX);
-      if (!match) {
-        return null;
-      }
-
-      const progId = match[1];
-      if (progId.startsWith("FirefoxURL")) {
-        return { browser: "firefox" };
-      }
-      for (const [prefix, exe] of Object.entries(windowsProgIdMap)) {
-        if (progId.startsWith(prefix)) {
-          return { browser: exe };
-        }
-      }
-      return null;
-    }
-
     const result = await execFn(
-      ["xdg-settings", "get", "default-web-browser"],
+      [
+        "defaults",
+        "read",
+        "com.apple.LaunchServices/com.apple.launchservices.secure",
+        "LSHandlers",
+      ],
       "."
     );
-    if (result.exitCode !== 0) {
-      return null;
+    if (result.exitCode === 0 && MACOS_FIREFOX_REGEX.test(result.stdout)) {
+      return { browser: "firefox" };
     }
-
-    const name = result.stdout.trim().replace(DESKTOP_SUFFIX_REGEX, "");
-    return linuxDesktopMap[name] ? { browser: linuxDesktopMap[name] } : null;
   } catch {
+    // Fall through
+  }
+  return null;
+}
+
+async function getWindowsDefaultBrowserPath(
+  execFn: ExecFn
+): Promise<string | null> {
+  const psScript = `
+    $progId = (Get-ItemProperty -Path "HKCU:\\Software\\Microsoft\\Windows\\Shell\\Associations\\UrlAssociations\\https\\UserChoice" -Name "ProgId" -ErrorAction SilentlyContinue).ProgId
+    if ($progId) {
+      $cmd = (Get-ItemProperty -Path "HKLM:\\SOFTWARE\\Classes\\$progId\\shell\\open\\command" -ErrorAction SilentlyContinue).'(Default)'
+      if ($cmd -match '"([^"]+.exe)"') { $matches[1] }
+    }
+  `;
+  const result = await execFn(
+    ["powershell", "-NoProfile", "-Command", psScript.trim()],
+    "."
+  );
+  if (result.exitCode === 0 && result.stdout.trim()) {
+    const path = result.stdout.trim();
+    const verifyResult = await execFn(
+      ["cmd", "/c", "if", "exist", `"${path}"`, "echo", "exists"],
+      "."
+    );
+    if (
+      verifyResult.exitCode === 0 &&
+      verifyResult.stdout.trim() === "exists"
+    ) {
+      return path;
+    }
+  }
+  return null;
+}
+
+async function detectWindowsBrowser(
+  execFn: ExecFn
+): Promise<{ browser: string; path?: string } | null> {
+  // First, try to get the actual browser path using PowerShell
+  const browserPath = await getWindowsDefaultBrowserPath(execFn);
+  if (browserPath) {
+    return { browser: browserPath, path: browserPath };
+  }
+
+  // Fallback to registry detection
+  const result = await execFn(
+    [
+      "reg",
+      "query",
+      "HKCU\\Software\\Microsoft\\Windows\\Shell\\Associations\\UrlAssociations\\https\\UserChoice",
+      "/v",
+      "ProgId",
+    ],
+    "."
+  );
+  if (result.exitCode !== 0) {
     return null;
   }
+
+  const match = result.stdout.match(PROG_ID_REGEX);
+  if (!match) {
+    return null;
+  }
+
+  const progId = match[1];
+
+  // Get the actual executable path from the ProgId class
+  const cmdResult = await execFn(
+    [
+      "reg",
+      "query",
+      `HKLM\\SOFTWARE\\Classes\\${progId}\\shell\\open\\command`,
+      "/ve",
+    ],
+    "."
+  );
+  if (cmdResult.exitCode !== 0) {
+    // Fallback to known browser names
+    if (progId.startsWith("FirefoxURL")) {
+      return { browser: "firefox" };
+    }
+    for (const [prefix, exe] of Object.entries(windowsProgIdMap)) {
+      if (progId.startsWith(prefix)) {
+        return { browser: exe };
+      }
+    }
+    return null;
+  }
+
+  // Extract the executable path from the command
+  const cmdMatch = cmdResult.stdout.match(REG_COMMAND_REGEX);
+  if (cmdMatch) {
+    return { browser: cmdMatch[1], path: cmdMatch[1] };
+  }
+
+  // Fallback to browser name
+  if (progId.startsWith("FirefoxURL")) {
+    return { browser: "firefox" };
+  }
+  for (const [prefix, exe] of Object.entries(windowsProgIdMap)) {
+    if (progId.startsWith(prefix)) {
+      return { browser: exe };
+    }
+  }
+  return null;
+}
+
+async function detectLinuxBrowser(
+  execFn: ExecFn
+): Promise<{ browser: string } | null> {
+  const result = await execFn(
+    ["xdg-settings", "get", "default-web-browser"],
+    "."
+  );
+  if (result.exitCode !== 0) {
+    return null;
+  }
+
+  const name = result.stdout.trim().replace(DESKTOP_SUFFIX_REGEX, "");
+  return linuxDesktopMap[name] ? { browser: linuxDesktopMap[name] } : null;
+}
+
+export function detectBrowser(
+  platform: string = process.platform,
+  execFn: ExecFn = typeof Bun === "undefined" ? execNodejs : execBun
+): Promise<{ browser: string; path?: string } | null> {
+  if (platform === "darwin") {
+    return detectMacosBrowser(execFn);
+  }
+
+  if (platform === "win32") {
+    return detectWindowsBrowser(execFn).catch(() => null);
+  }
+  return detectLinuxBrowser(execFn).catch(() => null);
+}
+
+function buildOpenCommands(
+  urls: string[],
+  platform: string,
+  browserInfo: { browser: string; path?: string } | null
+): string[][] {
+  if (platform === "darwin") {
+    return urls.map((url, i) =>
+      i === 0 && browserInfo?.browser !== "firefox"
+        ? ["open", "-n", url]
+        : ["open", url]
+    );
+  }
+
+  if (platform === "win32") {
+    const browserPath = browserInfo?.path;
+    if (browserPath) {
+      // Pass all URLs in a single command so they open in one window
+      return [[browserPath, "--new-window", ...urls]];
+    }
+    // Fallback to cmd start for each URL
+    return urls.map((url) => ["cmd", "/c", "start", "", url]);
+  }
+
+  if (browserInfo) {
+    // Linux: pass all URLs in a single command
+    return [[browserInfo.browser, "--new-window", ...urls]];
+  }
+
+  return urls.map((url) => ["xdg-open", url]);
 }
 
 export async function openURLs(
   urls: string[],
   platform: string = process.platform,
-  execFn?: ExecFn
+  execFn?: ExecFn,
+  browserOverride?: string
 ) {
-  const browserInfo = await detectBrowser(platform, execFn);
+  if (urls.length === 0) {
+    return;
+  }
 
-  for (const url of urls) {
-    let cmd: string[];
+  const browserInfo = browserOverride
+    ? { browser: browserOverride, path: browserOverride }
+    : await detectBrowser(platform, execFn);
+  const commands = buildOpenCommands(urls, platform, browserInfo);
 
-    if (platform === "darwin") {
-      cmd = ["open", "-n", url];
-    } else if (browserInfo) {
-      cmd = [browserInfo.browser, "--new-window", url];
-    } else if (platform === "win32") {
-      cmd = ["cmd", "/c", "start", "", url];
-    } else {
-      cmd = ["xdg-open", url];
-    }
-
+  for (const cmd of commands) {
     if (typeof Bun === "undefined") {
       openURLNodejs(cmd);
     } else {
@@ -314,6 +455,20 @@ export async function main(
   }
 
   const { valid, missing, notGit } = validateRepos(repos);
+
+  const browser =
+    args.browser ??
+    (() => {
+      const result = loadConfig(args.configPath);
+      return result.isOk() ? result.value.browser : undefined;
+    })();
+
+  if (args.browser) {
+    const saved = saveBrowserToConfig(args.browser, args.configPath);
+    if (saved) {
+      log.info(`Browser saved to ${saved}`);
+    }
+  }
 
   for (const m of missing) {
     log.warn(`Directory not found: ${m}`);
@@ -350,7 +505,7 @@ export async function main(
   if (prUrls.length > 0) {
     const shouldOpen = await handlePRDisplay(prUrls);
     if (shouldOpen) {
-      await openURLs(prUrls);
+      await openURLs(prUrls, undefined, undefined, browser);
     }
   } else if (!args.dryRun) {
     log.info("No pull requests were created.");

@@ -76,6 +76,51 @@ describe("loadConfig", () => {
       expect(result.error._tag).toBe("ConfigParseError");
     }
   });
+
+  test("loads config with browser override", () => {
+    const configPath = join(tempDir, "config.json");
+    writeFileSync(
+      configPath,
+      JSON.stringify({
+        repos: ["/path/to/repo1"],
+        browser:
+          "C:\\Program Files\\BraveSoftware\\Brave-Browser\\Application\\brave.exe",
+      })
+    );
+
+    const result = loadConfig(configPath);
+    expect(result.isOk()).toBe(true);
+    if (result.isOk()) {
+      expect(result.value.browser).toBe(
+        "C:\\Program Files\\BraveSoftware\\Brave-Browser\\Application\\brave.exe"
+      );
+    }
+  });
+
+  test("returns ConfigParseError when browser is not a string", () => {
+    const configPath = join(tempDir, "config.json");
+    writeFileSync(
+      configPath,
+      JSON.stringify({ repos: ["/path"], browser: 42 })
+    );
+
+    const result = loadConfig(configPath);
+    expect(result.isErr()).toBe(true);
+    if (result.isErr()) {
+      expect(result.error._tag).toBe("ConfigParseError");
+    }
+  });
+
+  test("returns undefined browser when not specified", () => {
+    const configPath = join(tempDir, "config.json");
+    writeFileSync(configPath, JSON.stringify({ repos: ["/path"] }));
+
+    const result = loadConfig(configPath);
+    expect(result.isOk()).toBe(true);
+    if (result.isOk()) {
+      expect(result.value.browser).toBeUndefined();
+    }
+  });
 });
 
 describe("validateRepos", () => {
