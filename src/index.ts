@@ -44,7 +44,9 @@ export function resolveRepos(
   args: ParsedArgs
 ): { repos: string[]; config?: Config } | null {
   if (args.positional.length > 0) {
-    return { repos: args.positional };
+    const configResult = loadConfig(args.configPath);
+    const config = configResult.isOk() ? configResult.value : undefined;
+    return { repos: args.positional, config };
   }
 
   const configResult = loadConfig(args.configPath);
