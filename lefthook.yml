@@ -14,3 +14,4 @@ pre-commit:
 
     - run: bun run sync:jsr && git add deno.json
       glob: "package.json"
+      parallel: false

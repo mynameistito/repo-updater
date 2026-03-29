@@ -55,7 +55,7 @@ Replaces manually running a dependency update workflow in each repo one-by-one.
 bun install repo-updater -g                                    # with Bun
 npm install repo-updater -g                                    # with npm
 pnpm install repo-updater -g                                   # with pnpm
-deno install -g -n repo-updater jsr:@mynameistito/repo-updater # with Deno
+deno install -g -n repo-updater jsr:@mynameistito/repo-updater/cli # with Deno
 ```
 
 ## Usage

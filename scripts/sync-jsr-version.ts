@@ -20,10 +20,10 @@ if (!pkg.version) {
 deno.version = pkg.version;
 
 const deps: Record<string, string> = pkg.dependencies ?? {};
-const imports: Record<string, string> = {};
+const updatedImports: Record<string, string> = { ...deno.imports };
 for (const [name, version] of Object.entries(deps)) {
-  imports[name] = `npm:${name}@${version}`;
+  updatedImports[name] = `npm:${name}@${version}`;
 }
-deno.imports = imports;
+deno.imports = updatedImports;
 
 writeFileSync("deno.json", `${JSON.stringify(deno, null, 2)}\n`);
