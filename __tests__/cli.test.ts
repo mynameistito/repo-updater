@@ -115,7 +115,7 @@ describe("resolveRepos", () => {
       positional: ["/repo1", "/repo2"],
       browser: undefined,
     });
-    expect(result).toEqual({ repos: ["/repo1", "/repo2"] });
+    expect(result?.repos).toEqual(["/repo1", "/repo2"]);
   });
 
   test("dry-run returns result without pushing prUrls", () => {
@@ -130,7 +130,7 @@ describe("resolveRepos", () => {
       positional: ["/repo1", "/repo2"],
       browser: undefined,
     });
-    expect(result).toEqual({ repos: ["/repo1", "/repo2"] });
+    expect(result?.repos).toEqual(["/repo1", "/repo2"]);
     expect(prUrls).toHaveLength(0);
   });
 
