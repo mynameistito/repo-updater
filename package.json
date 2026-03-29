@@ -46,7 +46,7 @@
     "fix": "ultracite fix",
     "build": "bun build src/cli.ts --outdir dist --target bun",
     "prepublishOnly": "bun run build && bun run typecheck",
-    "version": "changeset version"
+    "version": "changeset version && bun scripts/sync-jsr-version.ts"
   },
   "dependencies": {
     "@clack/prompts": "^1.1.0",
