@@ -14,6 +14,8 @@ import { Result } from "better-result";
 import { CommandFailedError } from "../src/errors.ts";
 import type { RepoResult } from "../src/runner.ts";
 
+// biome-ignore lint/correctness/noUnusedVariables: available for Bun-specific test branches
+const isBun = typeof globalThis.Bun !== "undefined";
 const noop = () => undefined;
 const logMock = {
   step: mock(noop),
@@ -103,7 +105,7 @@ describe("printUsage", () => {
 
 describe("resolveRepos", () => {
   test("returns positional args directly", () => {
-    const repos = resolveRepos({
+    const result = resolveRepos({
       help: false,
       dryRun: false,
       minor: false,
@@ -113,12 +115,12 @@ describe("resolveRepos", () => {
       positional: ["/repo1", "/repo2"],
       browser: undefined,
     });
-    expect(repos).toEqual(["/repo1", "/repo2"]);
+    expect(result).toEqual({ repos: ["/repo1", "/repo2"] });
   });
 
   test("dry-run returns result without pushing prUrls", () => {
     const prUrls: string[] = [];
-    const repos = resolveRepos({
+    const result = resolveRepos({
       help: false,
       dryRun: true,
       minor: false,
@@ -128,14 +130,14 @@ describe("resolveRepos", () => {
       positional: ["/repo1", "/repo2"],
       browser: undefined,
     });
-    expect(repos).toEqual(["/repo1", "/repo2"]);
+    expect(result).toEqual({ repos: ["/repo1", "/repo2"] });
     expect(prUrls).toHaveLength(0);
   });
 
   test("loads repos from config file", () => {
     const configPath = join(tempDir, "config.json");
     writeFileSync(configPath, JSON.stringify({ repos: ["/a", "/b"] }));
-    const repos = resolveRepos({
+    const result = resolveRepos({
       help: false,
       dryRun: false,
       minor: false,
@@ -145,7 +147,7 @@ describe("resolveRepos", () => {
       positional: [],
       browser: undefined,
     });
-    expect(repos).toEqual(["/a", "/b"]);
+    expect(result?.repos).toEqual(["/a", "/b"]);
   });
 
   test("returns null when config is not found", () => {
@@ -345,7 +347,7 @@ describe("main", () => {
     }
   });
 
-  test("openURLs opens new window on darwin with -n flag", async () => {
+  test("openURLs uses osascript on darwin when browser not detected", async () => {
     const spawnSpy = spyOn(Bun, "spawn").mockReturnValue(
       {} as ReturnType<typeof Bun.spawn>
     );
@@ -355,8 +357,9 @@ describe("main", () => {
 
     try {
       await openURLs(["https://example.com/2"], "darwin", noopExec);
+      expect(spawnSpy).toHaveBeenCalledTimes(1);
       expect(spawnSpy).toHaveBeenLastCalledWith(
-        ["open", "-n", "https://example.com/2"],
+        ["osascript", "-e", 'open location "https://example.com/2"'],
         {
           stdout: "ignore",
           stderr: "ignore",
@@ -389,7 +392,7 @@ describe("main", () => {
     }
   });
 
-  test("openURLs opens first URL in new window, rest in same window on darwin", async () => {
+  test("openURLs batches URLs via osascript on darwin without detected browser", async () => {
     const spawnSpy = spyOn(Bun, "spawn").mockReturnValue(
       {} as ReturnType<typeof Bun.spawn>
     );
@@ -403,17 +406,13 @@ describe("main", () => {
         "darwin",
         noopExec
       );
-      expect(spawnSpy).toHaveBeenNthCalledWith(
-        1,
-        ["open", "-n", "https://example.com/1"],
-        {
-          stdout: "ignore",
-          stderr: "ignore",
-        }
-      );
-      expect(spawnSpy).toHaveBeenNthCalledWith(
-        2,
-        ["open", "https://example.com/2"],
+      expect(spawnSpy).toHaveBeenCalledTimes(1);
+      expect(spawnSpy).toHaveBeenLastCalledWith(
+        [
+          "osascript",
+          "-e",
+          'open location "https://example.com/1"\nopen location "https://example.com/2"',
+        ],
         {
           stdout: "ignore",
           stderr: "ignore",

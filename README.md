@@ -176,7 +176,7 @@ If step 9 shows no changes, the branch is deleted and the repo is skipped (repor
 
 After all repos are processed, a summary box lists every PR URL. You're then prompted to open them all in the browser.
 
-All URLs open in a single browser window. The tool detects your default browser from the system registry. On Windows, this detection can be unreliable — if PRs keep opening in the wrong browser, use `-b` to specify the correct executable path.
+All URLs open in a single browser window. The tool detects your default browser automatically. On Windows, detection can be unreliable — if PRs keep opening in the wrong browser, use `-b` to specify the correct executable path.
 
 **On failure:** if any step fails after a branch has been created, the tool automatically cleans up — it checks out the default branch, deletes the local branch, and (if already pushed) deletes the remote branch too. Repos are never left in a dirty state.
 

@@ -1,6 +1,6 @@
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
-import { dirname, join } from "node:path";
+import { join } from "node:path";
 import { Result } from "better-result";
 import { ConfigNotFoundError, ConfigParseError } from "./errors.ts";
 
@@ -25,38 +25,40 @@ export function findConfigPath(configPath?: string): string | null {
 export function saveBrowserToConfig(
   browser: string,
   configPath?: string
-): string | null {
+): Result<string, ConfigNotFoundError | ConfigParseError> {
   const found = findConfigPath(configPath);
   if (!found) {
-    return null;
+    return Result.err(
+      new ConfigNotFoundError({ message: "Config file not found" })
+    );
   }
 
-  const raw = JSON.parse(readFileSync(found, "utf-8")) as Record<
-    string,
-    unknown
-  >;
-  raw.browser = browser;
-  mkdirSync(dirname(found), { recursive: true });
-  writeFileSync(found, `${JSON.stringify(raw, null, 2)}\n`);
-  return found;
+  return Result.try({
+    try: () => {
+      const raw = JSON.parse(readFileSync(found, "utf-8")) as Record<
+        string,
+        unknown
+      >;
+      raw.browser = browser;
+      writeFileSync(found, `${JSON.stringify(raw, null, 2)}\n`);
+      return found;
+    },
+    catch: (e) =>
+      new ConfigParseError({
+        message: `Failed to update ${found}: ${e instanceof Error ? e.message : String(e)}`,
+      }),
+  });
 }
 
 export function loadConfig(
   configPath?: string
 ): Result<Config, ConfigNotFoundError | ConfigParseError> {
-  const candidates = configPath
-    ? [configPath]
-    : [
-        join(process.cwd(), CONFIG_FILENAME),
-        join(homedir(), ".config", "repo-updater", "config.json"),
-      ];
-
-  const found = candidates.find((p) => existsSync(p));
+  const found = findConfigPath(configPath);
 
   if (!found) {
     return Result.err(
       new ConfigNotFoundError({
-        message: `Config file not found. Searched: ${candidates.join(", ")}`,
+        message: `Config file not found${configPath ? `: ${configPath}` : ""}`,
       })
     );
   }

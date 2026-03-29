@@ -1,3 +1,4 @@
+import { existsSync } from "node:fs";
 import { basename } from "node:path";
 import {
   confirm,
@@ -9,7 +10,12 @@ import {
   spinner,
 } from "@clack/prompts";
 import { getDate, type ParsedArgs, parseArgs } from "./args.ts";
-import { loadConfig, saveBrowserToConfig, validateRepos } from "./config.ts";
+import {
+  type Config,
+  loadConfig,
+  saveBrowserToConfig,
+  validateRepos,
+} from "./config.ts";
 import { execBun, execNodejs, updateRepo } from "./runner.ts";
 
 export function printUsage() {
@@ -35,9 +41,11 @@ Examples:
 `);
 }
 
-export function resolveRepos(args: ParsedArgs): string[] | null {
+export function resolveRepos(
+  args: ParsedArgs
+): { repos: string[]; config?: Config } | null {
   if (args.positional.length > 0) {
-    return args.positional;
+    return { repos: args.positional };
   }
 
   const configResult = loadConfig(args.configPath);
@@ -57,7 +65,7 @@ export function resolveRepos(args: ParsedArgs): string[] | null {
     return null;
   }
 
-  return configResult.value.repos;
+  return { repos: configResult.value.repos, config: configResult.value };
 }
 
 export async function processRepo(
@@ -187,8 +195,9 @@ export function openURLBunSync(cmd: string[]): number | null {
   try {
     const proc = Bun.spawnSync(cmd, { stdout: "ignore", stderr: "ignore" });
     return proc.exitCode;
-  } catch {
-    return 1;
+  } catch (err) {
+    console.error(`openURLBunSync failed for ${cmd.join(" ")}:`, err);
+    return null;
   }
 }
 
@@ -265,14 +274,7 @@ async function getWindowsDefaultBrowserPath(
   );
   if (result.exitCode === 0 && result.stdout.trim()) {
     const path = result.stdout.trim();
-    const verifyResult = await execFn(
-      ["cmd", "/c", "if", "exist", `"${path}"`, "echo", "exists"],
-      "."
-    );
-    if (
-      verifyResult.exitCode === 0 &&
-      verifyResult.stdout.trim() === "exists"
-    ) {
+    if (existsSync(path)) {
       return path;
     }
   }
@@ -354,16 +356,20 @@ async function detectWindowsBrowser(
 async function detectLinuxBrowser(
   execFn: ExecFn
 ): Promise<{ browser: string } | null> {
-  const result = await execFn(
-    ["xdg-settings", "get", "default-web-browser"],
-    "."
-  );
-  if (result.exitCode !== 0) {
+  try {
+    const result = await execFn(
+      ["xdg-settings", "get", "default-web-browser"],
+      "."
+    );
+    if (result.exitCode !== 0) {
+      return null;
+    }
+
+    const name = result.stdout.trim().replace(DESKTOP_SUFFIX_REGEX, "");
+    return linuxDesktopMap[name] ? { browser: linuxDesktopMap[name] } : null;
+  } catch {
     return null;
   }
-
-  const name = result.stdout.trim().replace(DESKTOP_SUFFIX_REGEX, "");
-  return linuxDesktopMap[name] ? { browser: linuxDesktopMap[name] } : null;
 }
 
 export function detectBrowser(
@@ -371,7 +377,7 @@ export function detectBrowser(
   execFn: ExecFn = typeof Bun === "undefined" ? execNodejs : execBun
 ): Promise<{ browser: string; path?: string } | null> {
   if (platform === "darwin") {
-    return detectMacosBrowser(execFn);
+    return detectMacosBrowser(execFn).catch(() => null);
   }
 
   if (platform === "win32") {
@@ -386,11 +392,14 @@ function buildOpenCommands(
   browserInfo: { browser: string; path?: string } | null
 ): string[][] {
   if (platform === "darwin") {
-    return urls.map((url, i) =>
-      i === 0 && browserInfo?.browser !== "firefox"
-        ? ["open", "-n", url]
-        : ["open", url]
-    );
+    if (browserInfo?.browser) {
+      return [
+        ["open", "-na", browserInfo.browser, "--args", "--new-window", ...urls],
+      ];
+    }
+    // No detected browser — use osascript to open all URLs together
+    const script = urls.map((u) => `open location "${u}"`).join("\n");
+    return [["osascript", "-e", script]];
   }
 
   if (platform === "win32") {
@@ -448,25 +457,20 @@ export async function main(
 
   intro("repo-updater");
 
-  const repos = resolveRepos(args);
-  if (!repos) {
+  const resolved = resolveRepos(args);
+  if (!resolved) {
     outro("Exiting.");
     process.exit(1);
   }
 
-  const { valid, missing, notGit } = validateRepos(repos);
+  const { valid, missing, notGit } = validateRepos(resolved.repos);
 
-  const browser =
-    args.browser ??
-    (() => {
-      const result = loadConfig(args.configPath);
-      return result.isOk() ? result.value.browser : undefined;
-    })();
+  const browser = args.browser ?? resolved.config?.browser;
 
   if (args.browser) {
     const saved = saveBrowserToConfig(args.browser, args.configPath);
-    if (saved) {
-      log.info(`Browser saved to ${saved}`);
+    if (saved.isOk()) {
+      log.info(`Browser saved to ${saved.value}`);
     }
   }
 
