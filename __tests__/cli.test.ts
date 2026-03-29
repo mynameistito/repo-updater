@@ -44,6 +44,7 @@ mock.module("@clack/prompts", () => ({
 }));
 
 import {
+  detectBrowser,
   main,
   openURLBun,
   openURLNodejs,
@@ -340,14 +341,64 @@ describe("main", () => {
     }
   });
 
-  test("openURLs launches correct command for each platform", () => {
+  test("openURLs opens in new window on darwin", async () => {
     const spawnSpy = spyOn(Bun, "spawn").mockReturnValue(
       {} as ReturnType<typeof Bun.spawn>
     );
+    const noopExec = mock(() =>
+      Promise.resolve({ stdout: "", stderr: "", exitCode: 1 })
+    );
 
     try {
-      // Test win32
-      openURLs(["https://example.com/1"], "win32");
+      await openURLs(["https://example.com/2"], "darwin", noopExec);
+      expect(spawnSpy).toHaveBeenLastCalledWith(
+        ["open", "-n", "https://example.com/2"],
+        {
+          stdout: "ignore",
+          stderr: "ignore",
+        }
+      );
+    } finally {
+      spawnSpy.mockRestore();
+    }
+  });
+
+  test("openURLs uses detected browser with --new-window on win32", async () => {
+    const spawnSpy = spyOn(Bun, "spawn").mockReturnValue(
+      {} as ReturnType<typeof Bun.spawn>
+    );
+    const mockExec = mock(() =>
+      Promise.resolve({
+        stdout: "    ProgId    REG_SZ    ChromeHTML",
+        stderr: "",
+        exitCode: 0,
+      })
+    );
+
+    try {
+      await openURLs(["https://example.com/1"], "win32", mockExec);
+      expect(spawnSpy).toHaveBeenLastCalledWith(
+        ["chrome", "--new-window", "https://example.com/1"],
+        {
+          stdout: "ignore",
+          stderr: "ignore",
+        }
+      );
+    } finally {
+      spawnSpy.mockRestore();
+    }
+  });
+
+  test("openURLs falls back to cmd start on win32 when detection fails", async () => {
+    const spawnSpy = spyOn(Bun, "spawn").mockReturnValue(
+      {} as ReturnType<typeof Bun.spawn>
+    );
+    const failExec = mock(() =>
+      Promise.resolve({ stdout: "", stderr: "", exitCode: 1 })
+    );
+
+    try {
+      await openURLs(["https://example.com/1"], "win32", failExec);
       expect(spawnSpy).toHaveBeenLastCalledWith(
         ["cmd", "/c", "start", "", "https://example.com/1"],
         {
@@ -355,21 +406,47 @@ describe("main", () => {
           stderr: "ignore",
         }
       );
+    } finally {
+      spawnSpy.mockRestore();
+    }
+  });
 
-      // Test darwin
-      spawnSpy.mockClear();
-      openURLs(["https://example.com/2"], "darwin");
+  test("openURLs uses detected browser with --new-window on linux", async () => {
+    const spawnSpy = spyOn(Bun, "spawn").mockReturnValue(
+      {} as ReturnType<typeof Bun.spawn>
+    );
+    const mockExec = mock(() =>
+      Promise.resolve({
+        stdout: "firefox.desktop\n",
+        stderr: "",
+        exitCode: 0,
+      })
+    );
+
+    try {
+      await openURLs(["https://example.com/3"], "linux", mockExec);
       expect(spawnSpy).toHaveBeenLastCalledWith(
-        ["open", "https://example.com/2"],
+        ["firefox", "--new-window", "https://example.com/3"],
         {
           stdout: "ignore",
           stderr: "ignore",
         }
       );
+    } finally {
+      spawnSpy.mockRestore();
+    }
+  });
 
-      // Test linux
-      spawnSpy.mockClear();
-      openURLs(["https://example.com/3"], "linux");
+  test("openURLs falls back to xdg-open on linux when detection fails", async () => {
+    const spawnSpy = spyOn(Bun, "spawn").mockReturnValue(
+      {} as ReturnType<typeof Bun.spawn>
+    );
+    const failExec = mock(() =>
+      Promise.resolve({ stdout: "", stderr: "", exitCode: 1 })
+    );
+
+    try {
+      await openURLs(["https://example.com/3"], "linux", failExec);
       expect(spawnSpy).toHaveBeenLastCalledWith(
         ["xdg-open", "https://example.com/3"],
         {
@@ -417,10 +494,141 @@ describe("main", () => {
     // If it succeeds, that's fine
   });
 
-  test("openURLs handles empty URL list", () => {
-    // Test that openURLs doesn't throw with empty list
-    expect(() => {
-      openURLs([]);
-    }).not.toThrow();
+  test("openURLs handles empty URL list", async () => {
+    const noopExec = mock(() =>
+      Promise.resolve({ stdout: "", stderr: "", exitCode: 1 })
+    );
+    await expect(openURLs([], "darwin", noopExec)).resolves.toBeUndefined();
+  });
+});
+
+describe("detectBrowser", () => {
+  test("returns null on macOS without calling execFn", async () => {
+    const mockExec = mock(() =>
+      Promise.resolve({ stdout: "", stderr: "", exitCode: 0 })
+    );
+    const result = await detectBrowser("darwin", mockExec);
+    expect(result).toBeNull();
+    expect(mockExec).not.toHaveBeenCalled();
+  });
+
+  test("detects Chrome on Windows", async () => {
+    const mockExec = mock(() =>
+      Promise.resolve({
+        stdout: "    ProgId    REG_SZ    ChromeHTML",
+        stderr: "",
+        exitCode: 0,
+      })
+    );
+    expect(await detectBrowser("win32", mockExec)).toEqual({
+      browser: "chrome",
+    });
+  });
+
+  test("detects Edge on Windows", async () => {
+    const mockExec = mock(() =>
+      Promise.resolve({
+        stdout: "    ProgId    REG_SZ    MSEdgeHTM",
+        stderr: "",
+        exitCode: 0,
+      })
+    );
+    expect(await detectBrowser("win32", mockExec)).toEqual({
+      browser: "msedge",
+    });
+  });
+
+  test("detects Firefox on Windows", async () => {
+    const mockExec = mock(() =>
+      Promise.resolve({
+        stdout: "    ProgId    REG_SZ    FirefoxURL-308046B0AF4A39CB",
+        stderr: "",
+        exitCode: 0,
+      })
+    );
+    expect(await detectBrowser("win32", mockExec)).toEqual({
+      browser: "firefox",
+    });
+  });
+
+  test("detects Brave on Windows", async () => {
+    const mockExec = mock(() =>
+      Promise.resolve({
+        stdout: "    ProgId    REG_SZ    BraveHTML",
+        stderr: "",
+        exitCode: 0,
+      })
+    );
+    expect(await detectBrowser("win32", mockExec)).toEqual({
+      browser: "brave",
+    });
+  });
+
+  test("returns null on Windows when reg query fails", async () => {
+    const mockExec = mock(() =>
+      Promise.resolve({ stdout: "", stderr: "error", exitCode: 1 })
+    );
+    expect(await detectBrowser("win32", mockExec)).toBeNull();
+  });
+
+  test("returns null on Windows for unknown ProgId", async () => {
+    const mockExec = mock(() =>
+      Promise.resolve({
+        stdout: "    ProgId    REG_SZ    UnknownBrowserHTML",
+        stderr: "",
+        exitCode: 0,
+      })
+    );
+    expect(await detectBrowser("win32", mockExec)).toBeNull();
+  });
+
+  test("detects Firefox on Linux", async () => {
+    const mockExec = mock(() =>
+      Promise.resolve({
+        stdout: "firefox.desktop\n",
+        stderr: "",
+        exitCode: 0,
+      })
+    );
+    expect(await detectBrowser("linux", mockExec)).toEqual({
+      browser: "firefox",
+    });
+  });
+
+  test("detects Chrome on Linux", async () => {
+    const mockExec = mock(() =>
+      Promise.resolve({
+        stdout: "google-chrome.desktop\n",
+        stderr: "",
+        exitCode: 0,
+      })
+    );
+    expect(await detectBrowser("linux", mockExec)).toEqual({
+      browser: "google-chrome",
+    });
+  });
+
+  test("returns null on Linux when xdg-settings fails", async () => {
+    const mockExec = mock(() =>
+      Promise.resolve({ stdout: "", stderr: "error", exitCode: 1 })
+    );
+    expect(await detectBrowser("linux", mockExec)).toBeNull();
+  });
+
+  test("returns null on Linux for unknown desktop entry", async () => {
+    const mockExec = mock(() =>
+      Promise.resolve({
+        stdout: "some-unknown-browser.desktop\n",
+        stderr: "",
+        exitCode: 0,
+      })
+    );
+    expect(await detectBrowser("linux", mockExec)).toBeNull();
+  });
+
+  test("returns null when execFn throws", async () => {
+    const mockExec = mock(() => Promise.reject(new Error("spawn failed")));
+    expect(await detectBrowser("win32", mockExec)).toBeNull();
+    expect(await detectBrowser("linux", mockExec)).toBeNull();
   });
 });

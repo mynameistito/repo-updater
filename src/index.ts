@@ -10,7 +10,7 @@ import {
 } from "@clack/prompts";
 import { getDate, type ParsedArgs, parseArgs } from "./args.ts";
 import { loadConfig, validateRepos } from "./config.ts";
-import { updateRepo } from "./runner.ts";
+import { execBun, execNodejs, updateRepo } from "./runner.ts";
 
 export function printUsage() {
   console.log(`
@@ -186,13 +186,102 @@ export async function openURLNodejs(cmd: string[]): Promise<void> {
   spawn(cmd[0], cmd.slice(1), { stdio: "ignore" });
 }
 
-export function openURLs(urls: string[], platform: string = process.platform) {
+export type ExecFn = (
+  cmd: string[],
+  cwd: string
+) => Promise<{ stdout: string; stderr: string; exitCode: number }>;
+
+const PROG_ID_REGEX = /ProgId\s+REG_SZ\s+(\S+)/;
+const DESKTOP_SUFFIX_REGEX = /\.desktop$/;
+
+const windowsProgIdMap: Record<string, string> = {
+  ChromeHTML: "chrome",
+  MSEdgeHTM: "msedge",
+  BraveHTML: "brave",
+};
+
+const linuxDesktopMap: Record<string, string> = {
+  "google-chrome": "google-chrome",
+  "google-chrome-stable": "google-chrome-stable",
+  firefox: "firefox",
+  chromium: "chromium",
+  "chromium-browser": "chromium-browser",
+  "brave-browser": "brave-browser",
+  "microsoft-edge": "microsoft-edge",
+};
+
+export async function detectBrowser(
+  platform: string = process.platform,
+  execFn: ExecFn = typeof Bun === "undefined" ? execNodejs : execBun
+): Promise<{ browser: string } | null> {
+  if (platform === "darwin") {
+    return null;
+  }
+
+  try {
+    if (platform === "win32") {
+      const result = await execFn(
+        [
+          "reg",
+          "query",
+          "HKCU\\Software\\Microsoft\\Windows\\Shell\\Associations\\UrlAssociations\\https\\UserChoice",
+          "/v",
+          "ProgId",
+        ],
+        "."
+      );
+      if (result.exitCode !== 0) {
+        return null;
+      }
+
+      const match = result.stdout.match(PROG_ID_REGEX);
+      if (!match) {
+        return null;
+      }
+
+      const progId = match[1];
+      if (progId.startsWith("FirefoxURL")) {
+        return { browser: "firefox" };
+      }
+      for (const [prefix, exe] of Object.entries(windowsProgIdMap)) {
+        if (progId.startsWith(prefix)) {
+          return { browser: exe };
+        }
+      }
+      return null;
+    }
+
+    const result = await execFn(
+      ["xdg-settings", "get", "default-web-browser"],
+      "."
+    );
+    if (result.exitCode !== 0) {
+      return null;
+    }
+
+    const name = result.stdout.trim().replace(DESKTOP_SUFFIX_REGEX, "");
+    return linuxDesktopMap[name] ? { browser: linuxDesktopMap[name] } : null;
+  } catch {
+    return null;
+  }
+}
+
+export async function openURLs(
+  urls: string[],
+  platform: string = process.platform,
+  execFn?: ExecFn
+) {
+  const browserInfo = await detectBrowser(platform, execFn);
+
   for (const url of urls) {
     let cmd: string[];
-    if (platform === "win32") {
+
+    if (platform === "darwin") {
+      cmd = ["open", "-n", url];
+    } else if (browserInfo) {
+      cmd = [browserInfo.browser, "--new-window", url];
+    } else if (platform === "win32") {
       cmd = ["cmd", "/c", "start", "", url];
-    } else if (platform === "darwin") {
-      cmd = ["open", url];
     } else {
       cmd = ["xdg-open", url];
     }
@@ -261,7 +350,7 @@ export async function main(
   if (prUrls.length > 0) {
     const shouldOpen = await handlePRDisplay(prUrls);
     if (shouldOpen) {
-      openURLs(prUrls);
+      await openURLs(prUrls);
     }
   } else if (!args.dryRun) {
     log.info("No pull requests were created.");
