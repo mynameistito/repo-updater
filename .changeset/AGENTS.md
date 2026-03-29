@@ -18,7 +18,7 @@ Files without this frontmatter (like this `AGENTS.md`) are ignored by the CLI.
 
 ## Naming Convention
 
-Changeset filenames should be **three random words joined by hyphens** (e.g. `chore-fix-jsr-slow-types.md`, `velvet-moon-crane.md`, `solar-pine-otter.md`). Do not use literal descriptions of the change — pick three arbitrary words.
+Changeset filenames should be **three random words joined by hyphens** (e.g. `velvet-moon-crane.md`, `solar-pine-otter.md`, `brave-fox-ember.md`). Do not use literal descriptions of the change — pick three arbitrary words.
 
 ## Key Files
 
