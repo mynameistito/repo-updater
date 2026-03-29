@@ -1,4 +1,3 @@
-import { existsSync } from "node:fs";
 import { basename } from "node:path";
 import {
   confirm,
@@ -273,10 +272,7 @@ async function getWindowsDefaultBrowserPath(
     "."
   );
   if (result.exitCode === 0 && result.stdout.trim()) {
-    const path = result.stdout.trim();
-    if (existsSync(path)) {
-      return path;
-    }
+    return result.stdout.trim();
   }
   return null;
 }
