@@ -549,7 +549,7 @@ function prepareWorkspaceContext(
  *   dryRun: false,
  *   minor: true,
  * });
- * if (Result.isOk(result)) console.log("PR:", result.value.prUrl);
+ * if (result.isOk()) console.log("PR:", result.value.prUrl);
  * ```
  */
 export function updateRepo(

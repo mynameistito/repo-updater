@@ -33,7 +33,7 @@ export interface ParsedArgs {
 type BooleanFlag = "help" | "dryRun" | "minor" | "noChangeset" | "noWorkspaces";
 
 /**
- * Maps flag argument strings (both `--kebab-case` and `--camelCase`) to their
+ * Maps flag argument strings (both `--kebab-case` and short aliases) to their
  * canonical {@link BooleanFlag} key.
  */
 const BOOLEAN_FLAGS: Record<string, BooleanFlag> = {

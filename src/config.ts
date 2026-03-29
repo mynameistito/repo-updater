@@ -27,11 +27,11 @@ export interface Config {
 const CONFIG_FILENAME = "repo-updater.config.json";
 
 /**
- * Searches for a configuration file at the explicit path, then the current
- * working directory, and finally the global config location.
+ * Resolves a configuration file path. When `configPath` is provided, only that
+ * explicit path is checked (no fallback to CWD or global locations).
  *
- * @param configPath - Explicit path to check first. When omitted, only the
- *   default locations are searched.
+ * @param configPath - Explicit path to check. When omitted, the current
+ *   working directory and global config directory are searched in order.
  * @returns The absolute path to the found config file, or `null` if none exists.
  */
 export function findConfigPath(configPath?: string): string | null {

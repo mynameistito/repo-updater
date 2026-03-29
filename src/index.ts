@@ -59,7 +59,8 @@ Examples:
  * falls back to the `repos` array from the configuration file.
  *
  * @param args - The parsed CLI arguments.
- * @returns An array of repository paths to process.
+ * @returns An object with `repos` and optional `config`, or `null` if
+ *   no config was found and no positional arguments were given.
  */
 export function resolveRepos(
   args: ParsedArgs
@@ -104,7 +105,7 @@ export function resolveRepos(
  * @param minor - When `true`, restricts updates to the current minor range.
  * @param noChangeset - When `true`, skips changeset generation.
  * @param noWorkspaces - When `true`, skips workspace-aware updates.
- * @returns The PR URL if one was created, or `undefined`.
+ * @returns A result object with `repo`, `status`, and optional `prUrl`.
  */
 export async function processRepo(
   repo: string,
@@ -248,7 +249,8 @@ async function handlePRDisplay(prUrls: string[]) {
 }
 
 /**
- * Opens a URL using Bun's native `Bun.spawn` with detached mode.
+ * Opens a URL using Bun's native `Bun.spawn` (fire-and-forget, the
+ * returned subprocess is not awaited).
  *
  * @param cmd - The browser command and arguments.
  */
@@ -279,7 +281,11 @@ export function openURLBunSync(cmd: string[]): number | null {
  */
 export async function openURLNodejs(cmd: string[]): Promise<void> {
   const { spawn } = await import("node:child_process");
-  spawn(cmd[0], cmd.slice(1), { stdio: "ignore" });
+  const child = spawn(cmd[0], cmd.slice(1), {
+    detached: true,
+    stdio: "ignore",
+  });
+  child.unref();
 }
 
 /**
