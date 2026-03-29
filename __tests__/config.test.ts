@@ -179,15 +179,16 @@ describe("saveBrowserToConfig", () => {
     expect(updated.repos).toEqual(["/test"]);
   });
 
-  test("returns error when config file not found", () => {
-    const result = saveBrowserToConfig(
-      "chromium",
-      join(tempDir, "missing.json")
-    );
-    expect(result.isErr()).toBe(true);
-    if (result.isErr()) {
-      expect(result.error._tag).toBe("ConfigNotFoundError");
+  test("creates config when file not found", () => {
+    const configPath = join(tempDir, "missing.json");
+    const result = saveBrowserToConfig("chromium", configPath);
+    expect(result.isOk()).toBe(true);
+    if (result.isOk()) {
+      expect(result.value).toBe(configPath);
     }
+    const created = JSON.parse(readFileSync(configPath, "utf-8"));
+    expect(created.browser).toBe("chromium");
+    expect(created.repos).toEqual([]);
   });
 
   test("returns error when config file has invalid JSON", () => {

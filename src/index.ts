@@ -215,6 +215,7 @@ const DESKTOP_SUFFIX_REGEX = /\.desktop$/;
 const MACOS_FIREFOX_REGEX =
   /LSHandlerURLScheme\s*=\s*https[\s\S]*?LSHandlerRoleAll\s*=\s*"?(org\.mozilla\.firefox)"?/;
 const REG_COMMAND_REGEX = /\(Default\)\s+REG_SZ\s+"?([^"]+\.exe)"?/i;
+const EXE_SUFFIX_REGEX = /\.exe$/i;
 
 const windowsProgIdMap: Record<string, string> = {
   ChromeHTML: "chrome",
@@ -271,8 +272,9 @@ async function getWindowsDefaultBrowserPath(
     ["powershell", "-NoProfile", "-Command", psScript.trim()],
     "."
   );
-  if (result.exitCode === 0 && result.stdout.trim()) {
-    return result.stdout.trim();
+  const path = result.stdout.trim();
+  if (result.exitCode === 0 && path && EXE_SUFFIX_REGEX.test(path)) {
+    return path;
   }
   return null;
 }
@@ -382,6 +384,10 @@ export function detectBrowser(
   return detectLinuxBrowser(execFn).catch(() => null);
 }
 
+function escapeForAppleScript(s: string): string {
+  return s.replace(/\\/g, "\\\\").replace(/"/g, '\\"');
+}
+
 function buildOpenCommands(
   urls: string[],
   platform: string,
@@ -389,12 +395,21 @@ function buildOpenCommands(
 ): string[][] {
   if (platform === "darwin") {
     if (browserInfo?.browser) {
+      // If the browser is a direct executable path, invoke it directly
+      if (
+        browserInfo.browser.startsWith("/") &&
+        !browserInfo.browser.endsWith(".app")
+      ) {
+        return [[browserInfo.browser, "--new-window", ...urls]];
+      }
       return [
         ["open", "-na", browserInfo.browser, "--args", "--new-window", ...urls],
       ];
     }
     // No detected browser — use osascript to open all URLs together
-    const script = urls.map((u) => `open location "${u}"`).join("\n");
+    const script = urls
+      .map((u) => `open location "${escapeForAppleScript(u)}"`)
+      .join("\n");
     return [["osascript", "-e", script]];
   }
 

@@ -1,6 +1,6 @@
-import { existsSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 import { Result } from "better-result";
 import { ConfigNotFoundError, ConfigParseError } from "./errors.ts";
 
@@ -27,25 +27,41 @@ export function saveBrowserToConfig(
   configPath?: string
 ): Result<string, ConfigNotFoundError | ConfigParseError> {
   const found = findConfigPath(configPath);
-  if (!found) {
-    return Result.err(
-      new ConfigNotFoundError({ message: "Config file not found" })
-    );
+
+  if (found) {
+    return Result.try({
+      try: () => {
+        const raw = JSON.parse(readFileSync(found, "utf-8")) as Record<
+          string,
+          unknown
+        >;
+        raw.browser = browser;
+        writeFileSync(found, `${JSON.stringify(raw, null, 2)}\n`);
+        return found;
+      },
+      catch: (e) =>
+        new ConfigParseError({
+          message: `Failed to update ${found}: ${e instanceof Error ? e.message : String(e)}`,
+        }),
+    });
   }
+
+  // No config exists — create one at the explicit path or the default location
+  const target =
+    configPath ?? join(homedir(), ".config", "repo-updater", "config.json");
 
   return Result.try({
     try: () => {
-      const raw = JSON.parse(readFileSync(found, "utf-8")) as Record<
-        string,
-        unknown
-      >;
-      raw.browser = browser;
-      writeFileSync(found, `${JSON.stringify(raw, null, 2)}\n`);
-      return found;
+      mkdirSync(dirname(target), { recursive: true });
+      writeFileSync(
+        target,
+        `${JSON.stringify({ browser, repos: [] }, null, 2)}\n`
+      );
+      return target;
     },
     catch: (e) =>
       new ConfigParseError({
-        message: `Failed to update ${found}: ${e instanceof Error ? e.message : String(e)}`,
+        message: `Failed to create ${target}: ${e instanceof Error ? e.message : String(e)}`,
       }),
   });
 }
