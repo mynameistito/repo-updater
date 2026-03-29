@@ -1,7 +1,10 @@
 #!/usr/bin/env bun
 /**
- * Syncs the version from package.json into deno.json
- * Run after `changeset version` to keep JSR in sync
+ * Syncs the version and dependencies from package.json into deno.json.
+ * Run after `changeset version` to keep JSR in sync.
+ *
+ * - version: copied directly
+ * - dependencies: mapped to npm: specifiers in deno.json imports
  */
 
 import { readFileSync, writeFileSync } from "node:fs";
@@ -15,5 +18,12 @@ if (!pkg.version) {
 }
 
 deno.version = pkg.version;
+
+const deps: Record<string, string> = pkg.dependencies ?? {};
+const imports: Record<string, string> = {};
+for (const [name, version] of Object.entries(deps)) {
+  imports[name] = `npm:${name}@${version}`;
+}
+deno.imports = imports;
 
 writeFileSync("deno.json", `${JSON.stringify(deno, null, 2)}\n`);
