@@ -1,4 +1,11 @@
 #!/usr/bin/env bun
+/**
+ * @module cli
+ *
+ * CLI entry point. Imports the {@link main} function from {@link ./index},
+ * invokes it, and catches any rejected promise to log the error and exit
+ * the process with code 1.
+ */
 import { main } from "./index.ts";
 
 main().catch((err) => {

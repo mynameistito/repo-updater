@@ -1,3 +1,10 @@
+/**
+ * @module runner
+ *
+ * Core repository update workflow. Handles package manager detection,
+ * dependency updates, Git branch management, PR creation, changeset
+ * generation, and workspace-aware updates across multiple repositories.
+ */
 import { existsSync, unlinkSync } from "node:fs";
 import { join } from "node:path";
 import { Result } from "better-result";
@@ -17,9 +24,17 @@ import { CommandFailedError, InvalidInputError } from "./errors.ts";
 import type { WorkspaceConfig } from "./workspaces.ts";
 import { detectWorkspaces } from "./workspaces.ts";
 
+/** Matches the default branch line from `git symbolic-ref` output. */
 const DEFAULT_BRANCH_REGEX = /refs\/remotes\/origin\/(.+)$/;
+/** Matches a calendar date in `YYYY-MM-DD` format. */
 const DATE_FORMAT_REGEX = /^\d{4}-\d{2}-\d{2}$/;
 
+/**
+ * Validates that a string conforms to `YYYY-MM-DD` calendar date format.
+ *
+ * @param date - The date string to validate.
+ * @returns `true` if the date is valid.
+ */
 function isValidCalendarDate(date: string): boolean {
   if (!DATE_FORMAT_REGEX.test(date)) {
     return false;
@@ -33,8 +48,22 @@ function isValidCalendarDate(date: string): boolean {
   );
 }
 
+/**
+ * Supported package managers for dependency updates.
+ *
+ * Detection priority (checked via lockfile presence): `bun` → `pnpm` → `yarn` → `npm`.
+ */
 export type PackageManager = "npm" | "pnpm" | "yarn" | "bun";
 
+/**
+ * Detects the package manager used by a repository by checking for lockfiles.
+ *
+ * Checks in priority order: `bun.lock` → `pnpm-lock.yaml` → `yarn.lock` →
+ * `package-lock.json`. Falls back to `"npm"` if no lockfile is found.
+ *
+ * @param repoPath - Absolute path to the repository root.
+ * @returns The detected {@link PackageManager}.
+ */
 export function detectPackageManager(repoPath: string): PackageManager {
   // Check in priority order (most specific lock files first)
   const checks: Array<{ file: string; pm: PackageManager }> = [
@@ -52,6 +81,13 @@ export function detectPackageManager(repoPath: string): PackageManager {
   return "npm"; // fallback
 }
 
+/**
+ * Returns the CLI command array to update root dependencies.
+ *
+ * @param pm - The detected {@link PackageManager}.
+ * @param minor - When `true`, restricts updates to the current minor range.
+ * @returns The command tokens to pass to {@link exec}.
+ */
 export function getUpdateCommand(pm: PackageManager, minor = false): string[] {
   if (minor) {
     const commands: Record<PackageManager, string[]> = {
@@ -71,6 +107,12 @@ export function getUpdateCommand(pm: PackageManager, minor = false): string[] {
   return commands[pm];
 }
 
+/**
+ * Returns the CLI command array to install dependencies after an update.
+ *
+ * @param pm - The detected {@link PackageManager}.
+ * @returns The command tokens to pass to {@link exec}.
+ */
 export function getInstallCommand(pm: PackageManager): string[] {
   const commands: Record<PackageManager, string[]> = {
     npm: ["npm", "install"],
@@ -122,17 +164,38 @@ export function getWorkspaceUpdateCommand(
   return commands[pm];
 }
 
+/**
+ * Captures the output of a spawned child process.
+ *
+ * @property stdout - Standard output captured as a string.
+ * @property stderr - Standard error captured as a string.
+ */
 export interface ExecOutput {
   stderr: string;
   stdout: string;
 }
 
+/**
+ * Describes the result of processing a single repository.
+ *
+ * @property repo - The repository path that was processed.
+ * @property prUrl - The URL of the created pull request, if applicable.
+ * @property status - Whether a PR was created or no changes were detected.
+ */
 export interface RepoResult {
   prUrl?: string;
   repo: string;
   status: "pr-created" | "no-changes";
 }
 
+/**
+ * Internal error wrapping a failed child process execution.
+ *
+ * @property message - Human-readable error description including the exit code.
+ * @property stdout - Captured standard output.
+ * @property stderr - Captured standard error output.
+ * @property exitCode - The process exit code.
+ */
 class ExecError extends Error {
   stdout: string;
   stderr: string;
@@ -146,6 +209,13 @@ class ExecError extends Error {
   }
 }
 
+/**
+ * Executes a command using Bun's native `Bun.spawn` with synchronous output capture.
+ *
+ * @param cmd - The command and arguments to execute.
+ * @param cwd - The working directory for the command.
+ * @returns The captured {@link ExecOutput} with exit code.
+ */
 export async function execBun(
   cmd: string[],
   cwd: string
@@ -165,6 +235,14 @@ export async function execBun(
   return { stdout: stdout.trim(), stderr: stderr.trim(), exitCode };
 }
 
+/**
+ * Executes a command using Node.js `child_process.spawn` as a fallback
+ * when running outside the Bun runtime.
+ *
+ * @param cmd - The command and arguments to execute.
+ * @param cwd - The working directory for the command.
+ * @returns The captured {@link ExecOutput} with exit code.
+ */
 export async function execNodejs(
   cmd: string[],
   cwd: string
@@ -201,6 +279,15 @@ export async function execNodejs(
   return { stdout: stdout.trim(), stderr: stderr.trim(), exitCode };
 }
 
+/**
+ * Executes a command, automatically selecting Bun or Node.js based on the
+ * current runtime.
+ *
+ * @param cmd - The command and arguments to execute.
+ * @param cwd - The working directory for the command.
+ * @returns `Ok` with the captured {@link ExecOutput}, or `Err` with a
+ *   {@link CommandFailedError} if the process exits non-zero.
+ */
 export function exec(
   cmd: string[],
   cwd: string
@@ -230,6 +317,17 @@ export function exec(
   });
 }
 
+/**
+ * Options required for branch cleanup after a failed update.
+ *
+ * @property repo - Repository filesystem path.
+ * @property branch - The branch name to delete.
+ * @property branchCreated - Whether the branch was created locally.
+ * @property branchPushed - Whether the branch was pushed to the remote.
+ * @property changesetFile - Path to a changeset file to remove, if any.
+ * @property defaultBranch - The repository's default branch to reset to.
+ * @property execFn - Command executor function.
+ */
 interface CleanupOptions {
   branch: string;
   branchCreated: boolean;
@@ -243,6 +341,12 @@ interface CleanupOptions {
   repo: string;
 }
 
+/**
+ * Removes a failed update branch and resets the working directory to the
+ * default branch.
+ *
+ * @param options - The {@link CleanupOptions} specifying repo, branch, and executor.
+ */
 async function performCleanup({
   defaultBranch,
   branch,
@@ -303,6 +407,17 @@ async function performCleanup({
   }
 }
 
+/**
+ * Aggregates the state needed for changeset generation during a repo update.
+ *
+ * @property repo - Repository filesystem path.
+ * @property isWorkspace - Whether the repo uses workspace packages.
+ * @property noChangeset - Whether changeset generation was disabled.
+ * @property depsBefore - Pre-update workspace dependency snapshot, or `null` for single-package repos.
+ * @property singleDepsBefore - Pre-update root dependency snapshot, or `null` for workspace repos.
+ * @property timestamp - Unix timestamp used in the changeset filename.
+ * @property workspace - The detected {@link WorkspaceConfig}.
+ */
 interface ChangesetContext {
   depsBefore: Map<string, DepSnapshot> | null;
   isWorkspace: boolean;
@@ -366,6 +481,17 @@ function handleChangesets(ctx: ChangesetContext): string | undefined {
   return filePath;
 }
 
+/**
+ * Determines whether workspace-aware changeset handling should be used and
+ * prepares the necessary context.
+ *
+ * @param repo - Repository path.
+ * @param pm - Detected package manager.
+ * @param minor - Whether minor-only updates are requested.
+ * @param noWorkspaces - Whether workspace detection was disabled by the user.
+ * @returns An object containing workspace configuration, update command, and
+ *   pre-update dependency snapshots.
+ */
 function prepareWorkspaceContext(
   repo: string,
   pm: PackageManager,
@@ -394,6 +520,38 @@ function prepareWorkspaceContext(
   return { workspace, isWorkspace, depsBefore, singleDepsBefore, updateCmd };
 }
 
+/**
+ * Performs a full dependency update cycle on a single repository.
+ *
+ * Clones the target branch from the default branch, runs the package manager
+ * update command, installs dependencies, commits changes, pushes, and creates
+ * a pull request via `gh pr create`. Supports changeset generation and
+ * workspace-aware updates when enabled.
+ *
+ * @param options - Repository path, date, flags, and optional overrides.
+ * @param options.repo - Repository filesystem path.
+ * @param options.date - Date string in `YYYY-MM-DD` format (used in branch name and PR title).
+ * @param options.dryRun - When `true`, prints the steps without executing them.
+ * @param options.minor - When `true`, restricts updates to the current minor range.
+ * @param options.noChangeset - When `true`, skips changeset file generation.
+ * @param options.noWorkspaces - When `true`, disables workspace detection.
+ * @param execFn - Optional command executor (defaults to {@link exec}).
+ *   Useful for testing or custom runtime environments.
+ * @returns `Ok` with the {@link RepoResult}, or `Err` with a
+ *   {@link CommandFailedError} if any step fails. On failure the branch
+ *   is cleaned up automatically.
+ *
+ * @example
+ * ```ts
+ * const result = await updateRepo({
+ *   repo: "./my-repo",
+ *   date: "2026-03-30",
+ *   dryRun: false,
+ *   minor: true,
+ * });
+ * if (result.isOk()) console.log("PR:", result.value.prUrl);
+ * ```
+ */
 export function updateRepo(
   options: {
     repo: string;
@@ -563,6 +721,18 @@ export function updateRepo(
   });
 }
 
+/**
+ * Options for performing a dry-run dependency update.
+ *
+ * @property repo - Repository filesystem path.
+ * @property date - Date string for the branch name and PR title.
+ * @property branch - Pre-computed branch name.
+ * @property defaultBranch - Assumed default branch (actual detected at runtime).
+ * @property minor - Whether minor-only updates are requested.
+ * @property noChangeset - Whether changeset generation was disabled.
+ * @property noWorkspaces - Whether workspace detection was disabled.
+ * @property timestamp - Unix timestamp for the changeset filename.
+ */
 interface DryRunOptions {
   branch: string;
   date: string;
@@ -574,6 +744,13 @@ interface DryRunOptions {
   timestamp?: number;
 }
 
+/**
+ * Simulates a dependency update without modifying the repository.
+ *
+ * @param options - The {@link DryRunOptions} for the dry run.
+ * @returns Always `Ok` with a synthetic {@link RepoResult} listing what
+ *   would change.
+ */
 function dryRunRepo({
   repo,
   date,

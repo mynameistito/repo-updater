@@ -15,6 +15,7 @@ import {
   validateRepos,
 } from "../src/config.ts";
 
+/** Runtime detection flag for Bun-specific test branches. */
 // biome-ignore lint/correctness/noUnusedVariables: available for Bun-specific test branches
 const isBun = typeof globalThis.Bun !== "undefined";
 

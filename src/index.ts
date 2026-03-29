@@ -1,3 +1,12 @@
+/**
+ * @module index
+ *
+ * Main orchestrator for repo-updater. Resolves repository paths from CLI
+ * arguments and configuration, processes each repository for dependency
+ * updates, and opens created PR URLs in the system browser. Also provides
+ * cross-platform browser detection and URL opening utilities.
+ */
+
 import { basename } from "node:path";
 import {
   confirm,
@@ -17,6 +26,9 @@ import {
 } from "./config.ts";
 import { execBun, execNodejs, updateRepo } from "./runner.ts";
 
+/**
+ * Prints CLI usage information and available flags to standard output.
+ */
 export function printUsage() {
   console.log(`
 Usage: repo-updater [options] [repo paths...]
@@ -40,6 +52,16 @@ Examples:
 `);
 }
 
+/**
+ * Resolves the list of repository paths from CLI arguments and configuration.
+ *
+ * If positional arguments are provided, they are used directly. Otherwise,
+ * falls back to the `repos` array from the configuration file.
+ *
+ * @param args - The parsed CLI arguments.
+ * @returns An object with `repos` and optional `config`, or `null` if
+ *   no config was found and no positional arguments were given.
+ */
 export function resolveRepos(
   args: ParsedArgs
 ): { repos: string[]; config?: Config } | null {
@@ -69,6 +91,22 @@ export function resolveRepos(
   return { repos: configResult.value.repos, config: configResult.value };
 }
 
+/**
+ * Processes a single repository for dependency updates.
+ *
+ * Handles both dry-run and live modes. In live mode, delegates to
+ * {@link updateRepo} (or a custom `updateFn`). Collects PR URLs for
+ * later display.
+ *
+ * @param repo - Filesystem path to the repository.
+ * @param date - Date string for branch naming (from {@link getDate}).
+ * @param dryRun - When `true`, only simulates the update.
+ * @param updateFn - Optional custom update function (defaults to {@link updateRepo}).
+ * @param minor - When `true`, restricts updates to the current minor range.
+ * @param noChangeset - When `true`, skips changeset generation.
+ * @param noWorkspaces - When `true`, skips workspace-aware updates.
+ * @returns A result object with `repo`, `status`, and optional `prUrl`.
+ */
 export async function processRepo(
   repo: string,
   date: string,
@@ -136,6 +174,18 @@ export async function processRepo(
   return result.value;
 }
 
+/**
+ * Aggregates all parameters needed to process a single repository.
+ *
+ * @property date - Date string for branch naming.
+ * @property dryRun - Whether to simulate the update.
+ * @property minor - Restrict to minor-range updates.
+ * @property noChangeset - Skip changeset generation.
+ * @property noWorkspaces - Skip workspace-aware logic.
+ * @property prUrls - Shared array to collect created PR URLs.
+ * @property updateFn - Custom update function override.
+ * @property valid - Validated repository paths to process.
+ */
 interface RepoProcessingOptions {
   date: string;
   dryRun: boolean;
@@ -147,6 +197,11 @@ interface RepoProcessingOptions {
   valid: string[];
 }
 
+/**
+ * Executes the repository update and collects the resulting PR URL.
+ *
+ * @param options - The {@link RepoProcessingOptions} for this repository.
+ */
 async function handleRepoProcessing({
   valid,
   date,
@@ -173,6 +228,11 @@ async function handleRepoProcessing({
   }
 }
 
+/**
+ * Displays collected PR URLs and offers to open them in the browser.
+ *
+ * @param prUrls - Array of PR URLs created during the run.
+ */
 async function handlePRDisplay(prUrls: string[]) {
   note(prUrls.join("\n"), "Pull Requests");
 
@@ -188,10 +248,21 @@ async function handlePRDisplay(prUrls: string[]) {
   return shouldOpen === true;
 }
 
+/**
+ * Opens a URL using Bun's native `Bun.spawn` (fire-and-forget, the
+ * returned subprocess is not awaited).
+ *
+ * @param cmd - The browser command and arguments.
+ */
 export function openURLBun(cmd: string[]): void {
   Bun.spawn(cmd, { stdout: "ignore", stderr: "ignore" });
 }
 
+/**
+ * Opens a URL using Bun's native `Bun.spawnSync`.
+ *
+ * @param cmd - The browser command and arguments.
+ */
 export function openURLBunSync(cmd: string[]): number | null {
   try {
     const proc = Bun.spawnSync(cmd, { stdout: "ignore", stderr: "ignore" });
@@ -202,29 +273,53 @@ export function openURLBunSync(cmd: string[]): number | null {
   }
 }
 
+/**
+ * Opens a URL using Node.js `child_process.spawn` with `detached: true`
+ * and `stdio: "ignore"`.
+ *
+ * @param cmd - The browser command and arguments.
+ */
 export async function openURLNodejs(cmd: string[]): Promise<void> {
   const { spawn } = await import("node:child_process");
-  spawn(cmd[0], cmd.slice(1), { stdio: "ignore" });
+  const child = spawn(cmd[0], cmd.slice(1), {
+    detached: true,
+    stdio: "ignore",
+  });
+  child.unref();
 }
 
+/**
+ * Function signature for executing shell commands.
+ *
+ * @param cmd - The command and arguments to execute.
+ * @param cwd - The working directory for the command.
+ * @returns A promise resolving to the command's captured output.
+ */
 export type ExecFn = (
   cmd: string[],
   cwd: string
 ) => Promise<{ stdout: string; stderr: string; exitCode: number }>;
 
+/** Matches a Windows registry prog ID value from `reg query` output. */
 const PROG_ID_REGEX = /ProgId\s+REG_SZ\s+(\S+)/;
+/** Matches a `.desktop` file suffix string from `xdg-settings` output. */
 const DESKTOP_SUFFIX_REGEX = /\.desktop$/;
+/** Matches Firefox's bundle identifier in macOS defaults output. */
 const MACOS_FIREFOX_REGEX =
   /LSHandlerURLScheme\s*=\s*https[\s\S]*?LSHandlerRoleAll\s*=\s*"?(org\.mozilla\.firefox)"?/;
+/** Matches the HTTP handler prog ID from Windows registry output. */
 const REG_COMMAND_REGEX = /\(Default\)\s+REG_SZ\s+"?([^"]+\.exe)"?/i;
+/** Matches `.exe` file extension in a Windows path. */
 const EXE_SUFFIX_REGEX = /\.exe$/i;
 
+/** Maps Windows HTTP handler prog IDs to browser executable names. */
 const windowsProgIdMap: Record<string, string> = {
   ChromeHTML: "chrome",
   MSEdgeHTM: "msedge",
   BraveHTML: "brave",
 };
 
+/** Maps `.desktop` file names to browser executable commands. */
 const linuxDesktopMap: Record<string, string> = {
   "google-chrome": "google-chrome",
   "google-chrome-stable": "google-chrome-stable",
@@ -235,6 +330,13 @@ const linuxDesktopMap: Record<string, string> = {
   "microsoft-edge": "microsoft-edge",
 };
 
+/**
+ * Detects the default browser on macOS by reading `com.apple.LaunchServices`
+ * defaults for the `http` URL scheme.
+ *
+ * @param execFn - Command executor function.
+ * @returns The browser command name, or `null` if undetermined.
+ */
 async function detectMacosBrowser(
   execFn: ExecFn
 ): Promise<{ browser: string } | null> {
@@ -260,6 +362,12 @@ async function detectMacosBrowser(
   return null;
 }
 
+/**
+ * Resolves the full executable path for a Windows browser from its registry prog ID.
+ *
+ * @param execFn - Command executor function.
+ * @returns The absolute path to the browser executable, or `null` if not found.
+ */
 async function getWindowsDefaultBrowserPath(
   execFn: ExecFn
 ): Promise<string | null> {
@@ -281,6 +389,13 @@ async function getWindowsDefaultBrowserPath(
   return null;
 }
 
+/**
+ * Detects the default browser on Windows by querying the registry for the
+ * HTTP handler prog ID and resolving it to an executable path.
+ *
+ * @param execFn - Command executor function.
+ * @returns The browser executable name, or `null` if undetermined.
+ */
 async function detectWindowsBrowser(
   execFn: ExecFn
 ): Promise<{ browser: string; path?: string } | null> {
@@ -353,6 +468,12 @@ async function detectWindowsBrowser(
   return null;
 }
 
+/**
+ * Detects the default browser on Linux by querying `xdg-settings get default-web-browser`.
+ *
+ * @param execFn - Command executor function.
+ * @returns The browser command name, or `null` if undetermined.
+ */
 async function detectLinuxBrowser(
   execFn: ExecFn
 ): Promise<{ browser: string } | null> {
@@ -372,6 +493,17 @@ async function detectLinuxBrowser(
   }
 }
 
+/**
+ * Detects the default browser for the current operating system.
+ *
+ * Uses platform-specific detection: reads `LSHandlerURLScheme` defaults on
+ * macOS, queries the Windows registry for HTTP handler prog IDs on Windows,
+ * and checks `xdg-settings` on Linux.
+ *
+ * @param platform - The OS platform (defaults to `process.platform`).
+ * @param execFn - Optional command executor for testing.
+ * @returns The detected browser command name, or `null` if detection fails.
+ */
 export function detectBrowser(
   platform: string = process.platform,
   execFn: ExecFn = typeof Bun === "undefined" ? execNodejs : execBun
@@ -386,10 +518,24 @@ export function detectBrowser(
   return detectLinuxBrowser(execFn).catch(() => null);
 }
 
+/**
+ * Escapes a string for safe interpolation into an AppleScript command.
+ *
+ * @param s - The string to escape.
+ * @returns The escaped string.
+ */
 function escapeForAppleScript(s: string): string {
   return s.replace(/\\/g, "\\\\").replace(/"/g, '\\"');
 }
 
+/**
+ * Builds platform-specific command arrays for opening URLs in a browser.
+ *
+ * @param urls - The URLs to open.
+ * @param platform - The OS platform string.
+ * @param browserInfo - The detected browser name and optional path.
+ * @returns Array of command arrays to execute.
+ */
 function buildOpenCommands(
   urls: string[],
   platform: string,
@@ -433,6 +579,17 @@ function buildOpenCommands(
   return urls.map((url) => ["xdg-open", url]);
 }
 
+/**
+ * Opens one or more URLs in the system browser.
+ *
+ * Builds platform-appropriate open commands (macOS `open`, Windows `start`,
+ * Linux `xdg-open`) and executes them sequentially.
+ *
+ * @param urls - Array of URLs to open.
+ * @param platform - The OS platform (defaults to `process.platform`).
+ * @param execFn - Optional command executor for testing.
+ * @param browserOverride - Override the auto-detected browser.
+ */
 export async function openURLs(
   urls: string[],
   platform: string = process.platform,
@@ -457,6 +614,25 @@ export async function openURLs(
   }
 }
 
+/**
+ * Main entry point for repo-updater.
+ *
+ * Parses CLI arguments, loads configuration, validates repositories, and
+ * processes each repository for dependency updates. Supports interactive
+ * browser selection, dry-run mode, and automatic PR URL opening.
+ *
+ * @param argv - Raw CLI arguments (defaults to `process.argv.slice(2)`).
+ * @param updateFn - Optional custom update function for testing or programmatic use.
+ *
+ * @example
+ * ```ts
+ * // Run with default arguments
+ * await main();
+ *
+ * // Run with custom arguments and updater
+ * await main(["--dry-run", "./my-repo"], myUpdateFn);
+ * ```
+ */
 export async function main(
   argv?: string[],
   updateFn: typeof updateRepo = updateRepo

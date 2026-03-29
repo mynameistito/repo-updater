@@ -24,6 +24,7 @@ import {
   updateRepo,
 } from "../src/runner.ts";
 
+/** Matches a version string containing at least major.minor (e.g. `1.2`). */
 const VERSION_PATTERN = /\d+\.\d+/;
 const isBun = typeof globalThis.Bun !== "undefined";
 
@@ -43,6 +44,7 @@ afterEach(() => {
   warnSpy.mockRestore();
 });
 
+/** Creates a resolved `Ok` exec result with the given stdout. */
 const ok = (stdout = ""): Promise<Result<ExecOutput, CommandFailedError>> =>
   Promise.resolve(Result.ok({ stdout, stderr: "" }));
 
@@ -323,6 +325,7 @@ describe("updateRepo", () => {
 // ---------------------------------------------------------------------------
 
 describe("updateRepo changeset integration", () => {
+  /** Creates a fake repo with a `package.json` (with `deps`) and `.changeset/config.json`. */
   function setupChangesetsRepo(deps: Record<string, string>) {
     writeFileSync(
       join(tempDir, "package.json"),
@@ -333,6 +336,7 @@ describe("updateRepo changeset integration", () => {
     writeFileSync(join(tempDir, ".changeset", "config.json"), "{}", "utf8");
   }
 
+  /** Builds a mock exec function that simulates git and ncu commands for changeset tests. */
   function makeExec(
     updatedDeps?: Record<string, string>
   ): (
@@ -585,6 +589,7 @@ describe("getWorkspaceUpdateCommand", () => {
 // ---------------------------------------------------------------------------
 
 describe("updateRepo workspace integration", () => {
+  /** Creates a fake monorepo with root + two workspace packages (`pkg-a`, `pkg-b`). */
   function setupWorkspaceRepo() {
     writeFileSync(
       join(tempDir, "package.json"),
@@ -615,6 +620,7 @@ describe("updateRepo workspace integration", () => {
     );
   }
 
+  /** Builds a mock exec function that simulates workspace-aware update commands. */
   function makeWorkspaceExec(
     updatedPkgA?: Record<string, string>,
     updatedPkgB?: Record<string, string>

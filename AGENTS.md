@@ -28,6 +28,9 @@ repo-updater/
 | Argument parsing | `src/args.ts` | CLI flags |
 | Config loading | `src/config.ts` | JSON config validation |
 | Error types | `src/errors.ts` | TaggedError classes |
+| Changeset management | `src/changesets.ts` | Snapshot, diff, and write changeset files for dep updates |
+| Workspace detection | `src/workspaces.ts` | Workspace glob resolution and package discovery |
+| Package JSON reading | `src/package-json.ts` | Utility to read and parse package.json |
 
 ## CONVENTIONS
 
