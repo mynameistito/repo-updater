@@ -46,15 +46,16 @@ Replaces manually running a dependency update workflow in each repo one-by-one.
 
 - [Git](https://git-scm.com)
 - [GitHub CLI (`gh`)](https://cli.github.com) — authenticated via `gh auth login`
-- [Bun](https://bun.sh) ≥ 1.0.0 **or** [Node.js](https://nodejs.org) ≥ 22.0.0
+- [Bun](https://bun.sh) ≥ 1.0.0, [Node.js](https://nodejs.org) ≥ 22.0.0, **or** [Deno](https://deno.land) ≥ 2.0.0
 
 ## Setup
 
 
 ```sh
-bun install repo-updater -g # with Bun
-npm install repo-updater -g # with npm
-pnpm install repo-updater -g # with PNPM
+bun install repo-updater -g                                    # with Bun
+npm install repo-updater -g                                    # with npm
+pnpm install repo-updater -g                                   # with pnpm
+deno install -g -n repo-updater jsr:@mynameistito/repo-updater # with Deno
 ```
 
 ## Usage
