@@ -522,6 +522,11 @@ export async function main(
   if (prUrls.length > 0) {
     const shouldOpen = await handlePRDisplay(prUrls);
     if (shouldOpen) {
+      if (browser) {
+        log.info(`Using browser: ${browser}`);
+      } else {
+        log.info("Using browser: auto-detected");
+      }
       await openURLs(prUrls, undefined, undefined, browser);
     }
   } else if (!args.dryRun) {

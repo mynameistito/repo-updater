@@ -25,7 +25,7 @@ export function findConfigPath(configPath?: string): string | null {
 export function saveBrowserToConfig(
   browser: string,
   configPath?: string
-): Result<string, ConfigNotFoundError | ConfigParseError> {
+): Result<string, ConfigParseError> {
   const found = findConfigPath(configPath);
 
   if (found) {
