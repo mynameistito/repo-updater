@@ -1,5 +1,11 @@
 # repo-updater
 
+## 0.6.1
+
+### Patch Changes
+
+- a67b10e: Add `bin` field to `deno.json` so `deno install -g` creates a proper executable shim for the CLI.
+
 ## 0.6.0
 
 ### Minor Changes
