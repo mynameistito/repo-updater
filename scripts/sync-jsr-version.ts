@@ -1,12 +1,4 @@
 #!/usr/bin/env bun
-/**
- * Syncs the version and dependencies from package.json into deno.json.
- * Run after `changeset version` to keep JSR in sync.
- *
- * - version: copied directly
- * - dependencies: mapped to npm: specifiers in deno.json imports
- */
-
 import { readFileSync, writeFileSync } from "node:fs";
 
 const pkg = JSON.parse(readFileSync("package.json", "utf-8"));
