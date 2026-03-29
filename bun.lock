@@ -7,6 +7,7 @@
       "dependencies": {
         "@clack/prompts": "^1.1.0",
         "better-result": "^2.7.0",
+        "picocolors": "^1.1.1",
         "yaml": "^2.8.3",
       },
       "devDependencies": {

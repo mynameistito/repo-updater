@@ -38,7 +38,6 @@
     "src"
   ],
   "scripts": {
-    "postinstall": "bun scripts/sync-jsr-version.ts",
     "typecheck": "tsgo --noEmit",
     "start": "bun run src/cli.ts",
     "test": "bun test",
@@ -52,6 +51,7 @@
   "dependencies": {
     "@clack/prompts": "^1.1.0",
     "better-result": "^2.7.0",
+    "picocolors": "^1.1.1",
     "yaml": "^2.8.3"
   },
   "devDependencies": {
