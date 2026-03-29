@@ -1,3 +1,12 @@
+/**
+ * @module workspaces
+ *
+ * Workspace and monorepo package detection. Resolves workspace globs from
+ * `pnpm-workspace.yaml`, `package.json` `workspaces` fields, and Bun
+ * workspaces. Provides utilities for discovering workspace packages and
+ * resolving glob patterns to concrete directory paths.
+ */
+
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { basename, join, relative } from "node:path";
 import { parse as parseYaml } from "yaml";
@@ -5,17 +14,37 @@ import { readPackageJson } from "./package-json.ts";
 
 const TRAILING_WILDCARD_RE = /\/\*\*?$/;
 
+/**
+ * Describes a single workspace package discovered within a monorepo.
+ *
+ * @property name - The package name from its `package.json`.
+ * @property path - Absolute path to the package directory.
+ * @property relativePath - The package directory path relative to the repo root.
+ */
 export interface WorkspacePackage {
   name: string;
   path: string;
   relativePath: string;
 }
 
+/**
+ * Describes the workspace configuration for a repository.
+ *
+ * @property isWorkspace - Whether the repository uses workspace packages.
+ * @property packages - Array of discovered {@link WorkspacePackage} entries.
+ */
 export interface WorkspaceConfig {
   isWorkspace: boolean;
   packages: WorkspacePackage[];
 }
 
+/**
+ * Parses a `pnpm-workspace.yaml` file and extracts workspace glob patterns.
+ *
+ * @param repoPath - Absolute path to the repository root.
+ * @returns Array of glob pattern strings, or `null` if no file exists or
+ *   the file contains no valid `packages` array.
+ */
 function parsePnpmWorkspaceYaml(repoPath: string): string[] | null {
   const yamlPath = join(repoPath, "pnpm-workspace.yaml");
   if (!existsSync(yamlPath)) {
@@ -40,6 +69,15 @@ function parsePnpmWorkspaceYaml(repoPath: string): string[] | null {
   }
 }
 
+/**
+ * Extracts workspace glob patterns from the repository, checking
+ * `pnpm-workspace.yaml` first, then the `workspaces` field in
+ * `package.json` (both array and `{ packages: [...] }` forms).
+ *
+ * @param repoPath - Absolute path to the repository root.
+ * @returns Array of glob pattern strings, or `null` if no workspace
+ *   configuration is found.
+ */
 function getWorkspaceGlobs(repoPath: string): string[] | null {
   // Check pnpm-workspace.yaml first
   const pnpmGlobs = parsePnpmWorkspaceYaml(repoPath);
@@ -78,6 +116,13 @@ function getWorkspaceGlobs(repoPath: string): string[] | null {
   return null;
 }
 
+/**
+ * Lists immediate child directories of the given parent directory.
+ *
+ * @param parentDir - Absolute path to the directory to scan.
+ * @returns Array of absolute directory paths for each direct child directory,
+ *   or an empty array on error.
+ */
 function listChildDirs(parentDir: string): string[] {
   try {
     const entries = readdirSync(parentDir);
@@ -98,6 +143,12 @@ function listChildDirs(parentDir: string): string[] {
   }
 }
 
+/**
+ * Recursively lists all directories under the given parent directory.
+ *
+ * @param parentDir - Absolute path to the directory to scan.
+ * @returns Array of absolute directory paths for all descendant directories.
+ */
 function listDirsRecursive(parentDir: string): string[] {
   const results: string[] = [];
   for (const dir of listChildDirs(parentDir)) {
@@ -107,6 +158,16 @@ function listDirsRecursive(parentDir: string): string[] {
   return results;
 }
 
+/**
+ * Resolves a single workspace glob pattern to concrete directory paths.
+ * Handles trailing wildcards (`*`, `**`), inline wildcards, and literal
+ * directory paths.
+ *
+ * @param repoPath - Absolute path to the repository root.
+ * @param glob - The workspace glob pattern to resolve.
+ * @returns Array of absolute directory paths matching the glob, or an empty
+ *   array if the parent directory does not exist.
+ */
 function resolveGlob(repoPath: string, glob: string): string[] {
   const cleaned = glob.replace(TRAILING_WILDCARD_RE, "");
   const parentDir = join(repoPath, cleaned);

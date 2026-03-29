@@ -14,6 +14,7 @@ afterEach(() => {
   console.error = originalConsoleError;
 });
 
+/** Matches a `YYYY-MM-DD` date string. */
 const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 
 describe("parseArgs", () => {

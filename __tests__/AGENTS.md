@@ -14,6 +14,8 @@ Test directory with Bun/Vitest dual-runner support. Uses compatibility shim for 
 | Errors tests | `errors.test.ts` | Error type behavior |
 | CLI tests | `cli.test.ts` | CLI integration (Bun-only) |
 | Compat shim | `bun-test-compat.ts` | Maps `bun:test` to `vitest` |
+| Changeset tests | `changesets.test.ts` | Tests for changeset file generation and management |
+| Workspace tests | `workspaces.test.ts` | Tests for workspace glob resolution and package discovery |
 
 ## CONVENTIONS
 

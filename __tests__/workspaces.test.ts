@@ -8,6 +8,7 @@ import {
   resolveWorkspaceGlobs,
 } from "../src/workspaces.ts";
 
+/** Matches relative path segments for the "my-pkg" workspace package. */
 const RELATIVE_PATH_RE = /packages[\\/]my-pkg/;
 
 let tempDir: string;
@@ -20,6 +21,7 @@ afterEach(() => {
   rmSync(tempDir, { recursive: true, force: true });
 });
 
+/** Creates a minimal package.json in the given directory for test fixtures. */
 function createPackage(
   dir: string,
   name: string,

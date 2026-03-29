@@ -16,7 +16,11 @@ import type { RepoResult } from "../src/runner.ts";
 
 // biome-ignore lint/correctness/noUnusedVariables: available for Bun-specific test branches
 const isBun = typeof globalThis.Bun !== "undefined";
+
+/** No-op function used as default mock implementation. */
 const noop = () => undefined;
+
+/** Mock object for the `@clack/prompts` `log` utility. */
 const logMock = {
   step: mock(noop),
   error: mock(noop),
@@ -24,15 +28,26 @@ const logMock = {
   info: mock(noop),
   success: mock(noop),
 };
+
+/** Mock spinner instance returned by the `@clack/prompts` `spinner()` factory. */
 const spinnerInstance = {
   start: mock(noop),
   stop: mock(noop),
 };
+
+/** Mock for `@clack/prompts` `confirm()`. Defaults to declining. */
 const confirmMock = mock(() => Promise.resolve(false));
+
+/** Mock for `@clack/prompts` `note()`. */
 const noteMock = mock(noop);
+
+/** Mock for `@clack/prompts` `outro()`. */
 const outroMock = mock(noop);
 
+/** Mock for `@clack/prompts` `isCancel()`. Always returns `false` by default. */
 const isCancelMock = mock((_val: unknown) => false);
+
+/** Mock replacing `console.log` to suppress output during tests. */
 const consoleLogMock = mock(noop);
 
 mock.module("@clack/prompts", () => ({
@@ -59,6 +74,7 @@ import {
 let tempDir: string;
 let originalConsoleLog: typeof console.log;
 
+/** Creates a resolved `Ok` result wrapping a mock {@link RepoResult}. */
 const okResult = (
   repo: string,
   status: "no-changes" | "pr-created",
@@ -68,6 +84,7 @@ const okResult = (
     Result.ok<RepoResult, CommandFailedError>({ repo, status, prUrl })
   );
 
+/** Creates a resolved `Err` result wrapping a {@link CommandFailedError}. */
 const errResult = (message: string, command: string, stderr: string) =>
   Promise.resolve(
     Result.err<RepoResult, CommandFailedError>(
