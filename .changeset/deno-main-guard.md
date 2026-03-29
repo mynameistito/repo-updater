@@ -1,5 +1,5 @@
 ---
-"repo-updater": patch
+"repo-updater": minor
 ---
 
-Change deno.json default export (`"."`) to point to `cli.ts` so `deno install jsr:@mynameistito/repo-updater` runs the CLI out of the box, matching the npm/bun `bin` pattern. Library access via `jsr:@mynameistito/repo-updater/index`.
+Add `bin` field to `deno.json` and `exports` field to `package.json` so both registries have consistent entry points. `deno install -g -n repo-updater jsr:@mynameistito/repo-updater/cli` now creates a proper executable shim.

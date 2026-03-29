@@ -30,6 +30,10 @@
   "bin": {
     "repo-updater": "src/cli.ts"
   },
+  "exports": {
+    ".": "./src/index.ts",
+    "./cli": "./src/cli.ts"
+  },
   "engines": {
     "bun": ">=1.0.0",
     "node": ">=22.6.0"

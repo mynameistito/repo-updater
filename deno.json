@@ -2,13 +2,21 @@
   "name": "@mynameistito/repo-updater",
   "version": "0.6.0",
   "exports": {
-    ".": "./src/cli.ts",
-    "./cli": "./src/cli.ts",
-    "./index": "./src/index.ts"
+    ".": "./src/index.ts",
+    "./cli": "./src/cli.ts"
+  },
+  "bin": {
+    "repo-updater": "./src/cli.ts"
   },
   "publish": {
-    "include": ["LICENSE", "README.md", "src/**/*.ts"],
-    "exclude": ["src/**/*.test.ts"]
+    "include": [
+      "LICENSE",
+      "README.md",
+      "src/**/*.ts"
+    ],
+    "exclude": [
+      "src/**/*.test.ts"
+    ]
   },
   "imports": {
     "@clack/prompts": "npm:@clack/prompts@^1.1.0",
