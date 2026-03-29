@@ -50,14 +50,11 @@ Replaces manually running a dependency update workflow in each repo one-by-one.
 
 ## Setup
 
-**With Bun:**
-```sh
-bun install repo-updater -g
-```
 
-**With npm:**
 ```sh
-npm install repo-updater -g
+bun install repo-updater -g # with Bun
+npm install repo-updater -g # with npm
+pnpm install repo-updater -g # with PNPM
 ```
 
 ## Usage
