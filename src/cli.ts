@@ -1,4 +1,4 @@
-#!/usr/bin/env bun
+#!/usr/bin/env -S node --experimental-strip-types
 /**
  * @module cli
  *

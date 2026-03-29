@@ -32,7 +32,7 @@
   },
   "engines": {
     "bun": ">=1.0.0",
-    "node": ">=22.0.0"
+    "node": ">=22.6.0"
   },
   "files": [
     "src"
@@ -45,8 +45,9 @@
     "check": "ultracite check",
     "fix": "ultracite fix",
     "build": "bun build src/cli.ts --outdir dist --target bun",
+    "sync:jsr": "bun scripts/sync-jsr-version.ts",
     "prepublishOnly": "bun run build && bun run typecheck",
-    "version": "changeset version && bun scripts/sync-jsr-version.ts && bunx ultracite fix jsr.json"
+    "version": "changeset version && bun run sync:jsr && bunx ultracite fix deno.json"
   },
   "dependencies": {
     "@clack/prompts": "^1.1.0",
