@@ -1,5 +1,21 @@
 # repo-updater
 
+## 0.5.0
+
+### Minor Changes
+
+- 9bd5743: Add `--browser` flag and open PR URLs in a new browser window
+
+  - Open PR URLs in a new browser window instead of reusing an existing one
+  - Add `--browser` flag to override default browser detection
+  - Persist browser choice to config file
+  - Support cross-platform browser launching (Windows, macOS, Linux)
+
+### Patch Changes
+
+- 15dc792: added ignore for assets folder
+- 14fc0e1: Add `scripts/sync-jsr-version.ts` to auto-sync package.json version into jsr.json after `changeset version`. Guard against missing version field. Wire the sync script into the `version` npm script.
+
 ## 0.4.1
 
 ### Patch Changes
