@@ -1,0 +1,48 @@
+{
+  "$schema": "https://holocron.so/holocron.json",
+  "siteId": "01KMYX9PY89PYMV25Y69P79T67",
+  "name": "repo-updater",
+  "disableEditButton": false,
+  "favicon": {
+    "light": "/favicon.svg",
+    "dark": "/favicon.svg"
+  },
+  "logo": {
+    "light": "https://holocron.so/logo/dark.svg",
+    "dark": "https://holocron.so/logo/light.svg"
+  },
+  "navbar": {
+    "links": [
+      {
+        "label": "Home",
+        "href": "https://holocron.so",
+        "icon": "document"
+      }
+    ],
+    "primary": {
+      "type": "button",
+      "label": "Get Started",
+      "href": "https://holocron.so/login"
+    }
+  },
+  "footer": {
+    "socials": {
+      "twitter": "https://x.com/__morse",
+      "github": "https://github.com/remorses"
+    },
+    "links": [
+      {
+        "header": "Documentation",
+        "items": [
+          {
+            "label": "Holocron",
+            "href": "https://holocron.so"
+          }
+        ]
+      }
+    ]
+  },
+  "domains": [
+    "repo-updater-6g0tgdcq.holocronsites.com"
+  ]
+}
