@@ -10,8 +10,6 @@ pre-commit:
     - run: bunx tsgo --noEmit
       glob: "**/*.{ts,tsx}"
 
-    - run: bun run scripts/cleanup.ts
-
-    - run: bun run sync:jsr && git add deno.json
+    - name: cleanup-and-sync
+      run: bun run scripts/cleanup.ts && bun run sync:jsr && git add deno.json
       glob: "package.json"
-      parallel: false

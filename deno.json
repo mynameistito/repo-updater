@@ -6,7 +6,7 @@
     "./cli": "./src/cli.ts"
   },
   "bin": {
-    "repo-updater": "./src/cli.ts"
+    "repo-updater": "./src/deno-cli.ts"
   },
   "publish": {
     "include": ["LICENSE", "README.md", "src/**/*.ts"],
