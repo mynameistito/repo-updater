@@ -12,7 +12,7 @@ This is worth doing before any real run because it confirms that the tool can fi
 
 Point the tool at a single repo on disk:
 
-```
+```bash
 repo-updater /path/to/your/repo
 ```
 
@@ -24,7 +24,7 @@ After that, it checks out the default branch, pulls latest, and creates a new br
 
 A successful run looks like this:
 
-```
+```text
 │
 │  repo-updater
 │
@@ -51,7 +51,7 @@ At the end, the tool prints all PR URLs and asks whether you want to open them i
 
 If all dependencies are already at their latest versions, the update command produces no file changes. The tool notices this when `git status --porcelain` comes back empty. It skips the commit, push, and PR steps entirely. No branch is left behind.
 
-```
+```text
 │  my-project
 │  ◼ Updating dependencies...
 │  No changes: my-project
@@ -64,7 +64,7 @@ This is normal. The tool moves on to the next repo, or prints "No pull requests 
 
 Pass several paths at once:
 
-```
+```bash
 repo-updater /path/to/repo-one /path/to/repo-two /path/to/repo-three
 ```
 
@@ -76,13 +76,13 @@ For more than a handful of repos, or to avoid typing paths every time, use a con
 
 Pass `-n` to preview what the tool would do:
 
-```
+```bash
 repo-updater -n /path/to/your/repo
 ```
 
 The output lists every step. For example:
 
-```
+```text
 │
 │  repo-updater
 │
