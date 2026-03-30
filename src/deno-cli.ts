@@ -10,13 +10,15 @@
 
 /** Ambient type declaration for the Deno global used by this entry point. */
 declare const Deno: {
+  /** Command-line arguments passed to the script. */
+  readonly args: string[];
   /** Terminate the process with the given status code. */
   exit(code?: number): never;
 };
 
 import { main } from "./index.ts";
 
-main().catch((err: unknown) => {
+main(Deno.args).catch((err: unknown) => {
   if (err instanceof Error) {
     console.error("Error:", err.message);
     if (err.stack) {
