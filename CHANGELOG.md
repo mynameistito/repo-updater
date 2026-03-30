@@ -1,5 +1,11 @@
 # repo-updater
 
+## 0.7.0
+
+### Minor Changes
+
+- 52da3c0: Add tsdown build pipeline with compiled JS output and `.d.ts` type declarations. Replace raw TS publishing with built `dist/` artifacts for npm consumers while Deno continues to use raw `src/` files. Add consistent `exports` and `bin` fields to both `package.json` and `deno.json`.
+
 ## 0.6.1
 
 ### Patch Changes
