@@ -4,7 +4,7 @@
 
 The codebase is organized into five layers. Higher layers orchestrate lower layers. Lower layers have no knowledge of the layers above them.
 
-```
+```text
 Layer 4  Entry points       cli.ts, deno-cli.ts
 Layer 3  Orchestrator       index.ts
 Layer 2  Core engine        runner.ts
@@ -24,7 +24,7 @@ Layer 4 are thin entry points with no logic of their own. `cli.ts` calls `main()
 
 ## Module dependency graph
 
-```
+```text
 cli.ts ─────────────────────────┐
                                 v
 deno-cli.ts ──────────────> index.ts ──> @clack/prompts

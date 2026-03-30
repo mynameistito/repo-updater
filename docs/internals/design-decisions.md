@@ -1,9 +1,9 @@
-Design decisions
+# Design decisions
 
 This doc covers the reasoning behind specific technical choices in repo-updater.
 Architecture, error handling, testing, build, and CI each have their own docs.
 
-Three runtimes without build-time conditionals
+## Three runtimes without build-time conditionals
 
 The project targets Bun, Node, and Deno from a single TypeScript codebase. There are
 no build-time conditionals, no `#ifdef` blocks, and no separate compiled outputs per
@@ -24,7 +24,7 @@ The tradeoff is that the source has occasional `if (typeof Bun !== "undefined")`
 blocks that look a bit noisy. But they're localized to `src/runner.ts` and the entry
 points, and they're straightforward to read.
 
-Result type over try/catch
+## Result type over try/catch
 
 Every function that can fail returns `Result<T, E>` from `better-result` instead of
 throwing. Errors flow through the return channel, not the exception channel.
@@ -50,7 +50,7 @@ The downside is that Result has a learning curve and the `yield*` syntax inside
 generators looks unusual if you haven't seen it before. But once you're familiar with
 it, the code reads top-to-bottom without the nesting that try/catch chains create.
 
-Dependency injection over module mocking
+## Dependency injection over module mocking
 
 `updateRepo(opts, execFn?)` and `main(argv?, updateFn?)` accept optional function
 parameters that override their default implementations. Tests pass mock functions
@@ -70,7 +70,7 @@ The cost is slightly more verbose function signatures. Each injectable dependenc
 a parameter with a default value. But the project only has a few injection points, so
 it stays manageable.
 
-tsdown over tsc
+## tsdown over tsc
 
 The build step uses tsdown, not the TypeScript compiler's own `tsc --build` or `esbuild`
 directly.
@@ -87,7 +87,7 @@ after publish.
 The project doesn't use tsc for output at all. The `tsconfig.json` exists purely for
 type checking with tsgo. TypeScript compiles nothing.
 
-declare const Deno over @types/deno
+## declare const Deno over @types/deno
 
 The `deno-cli.ts` file declares `Deno` as an ambient type:
 
@@ -106,7 +106,7 @@ reading CLI arguments and `Deno.exit()` for exiting. If the Deno entry point eve
 needs more of the Deno API, the declaration gets extended at that point. Until then,
 there's no reason to pull in the full type package.
 
-neverBundle for three dependencies
+## neverBundle for three dependencies
 
 `@clack/prompts`, `better-result`, and `yaml` are marked `neverBundle` in the tsdown
 configuration. They remain as external imports in the compiled output instead of being
@@ -122,7 +122,7 @@ Keeping them external follows the standard pattern for Node.js libraries. The to
 itself is small enough that there's no performance gain from bundling these
 dependencies. The installed package size stays reasonable either way.
 
-Sequential lefthook hooks
+## Sequential lefthook hooks
 
 The pre-commit hooks run sequentially, not in parallel. The order is: ultracite lint
 fix, YAML validation, typecheck, build artifact cleanup, and JSR version sync.
@@ -138,7 +138,7 @@ typecheck running at the same time could race on the same files. Sequential exec
 is slower but deterministic, and pre-commit hooks run on a small codebase so the wall
 clock difference is under a second.
 
-Branch naming with timestamp
+## Branch naming with timestamp
 
 Branches are named `chore/dep-updates-{YYYY-MM-DD}-{unix-timestamp}`.
 
@@ -154,7 +154,7 @@ check out the existing branch, neither of which is what you want.
 The timestamp is ugly to look at, but branch names are ephemeral. They get deleted
 after the PR merges. Readability matters less than uniqueness here.
 
-tsgo over tsc for type checking
+## tsgo over tsc for type checking
 
 The project uses tsgo, the Go-native TypeScript compiler, for `bun run typecheck`.
 Not `tsc --noEmit`.
@@ -168,7 +168,7 @@ The project doesn't use tsc for compilation at all (that's tsdown's job), so tsc
 no role in the build pipeline. Type checking is the only place where a TypeScript
 compiler runs, and tsgo is the better tool for that specific job.
 
-Separate CLI entry points instead of one
+## Separate CLI entry points instead of one
 
 There are two entry point files: `cli.ts` for Bun and Node, and `deno-cli.ts` for
 Deno. They could theoretically be one file with runtime detection, but they aren't.

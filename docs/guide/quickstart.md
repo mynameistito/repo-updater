@@ -43,7 +43,7 @@ A successful run looks like this:
 │  ? Open all PR URLs in browser? (Y/n)
 ```
 
-The PR title follows the pattern `Dep updates {YYYY-MM-DD}`. The body matches.
+The PR title follows the pattern `Dep Updates {YYYY-MM-DD}`. The body matches.
 
 At the end, the tool prints all PR URLs and asks whether you want to open them in your browser. It auto-detects your default browser on macOS, Windows, and Linux. You can also set a specific browser with the `-b` flag.
 

@@ -6,7 +6,7 @@ This page covers scenarios beyond the basic update-and-PR workflow. For config d
 
 repo-updater detects workspace configuration automatically. It checks for `pnpm-workspace.yaml` first, then the `workspaces` array in `package.json`, then the `workspaces.packages` field (used by Yarn classic). If any of these are present, the repo is treated as a monorepo.
 
-In workspace mode, the tool runs update commands that cover every package in the workspace rather than just the root. The commands differ by package manager. With pnpm, it runs `pnpm update --latest -r`. With npm or Yarn, it uses `npx npm-check-updates --workspaces`. Bun handles workspace updates natively without a special flag.
+In workspace mode, the tool runs update commands that cover every package in the workspace rather than just the root. The commands differ by package manager. With pnpm, it runs `pnpm update --latest -r`. With npm, it uses `npx npm-check-updates -u --workspaces && npm install`. With Yarn, it uses `npx npm-check-updates -u --workspaces && yarn install`. Bun handles workspace updates natively without a special flag.
 
 If you want to skip workspace detection and update only root dependencies, pass `--no-workspaces`.
 
@@ -21,7 +21,8 @@ The tool snapshots the dependency versions before and after the update, diffs th
 "my-package": patch
 ---
 
-- dep: 1.2.3 -> 1.4.0
+Updated dependencies:
+- dep: 1.2.3 → 1.4.0
 ```
 
 In a workspace repo, the changeset covers every package that changed. The frontmatter lists all affected packages, and the body has per-package sections:
@@ -32,10 +33,12 @@ In a workspace repo, the changeset covers every package that changed. The frontm
 "packages/ui": patch
 ---
 
-- packages/core
-  - dep: 2.0.1 -> 2.1.0
-- packages/ui
-  - dep: 3.0.0 -> 3.1.2
+Updated dependencies:
+**packages/core**:
+- dep: 2.0.1 → 2.1.0
+
+**packages/ui**:
+- dep: 3.0.0 → 3.1.2
 ```
 
 If the repo does not have changesets configured, this step is skipped with no warning. To skip it manually even when changesets are present, pass `--no-changeset`.
@@ -46,13 +49,13 @@ If the update fails partway through, the tool cleans up the branch and removes a
 
 By default, repo-updater uses `npm-check-updates --latest` (or the equivalent for the detected package manager). This jumps every dependency to the latest published version, major bumps included.
 
-The `--minor` flag switches to the native update command for the package manager (`npm update`, `pnpm update`, etc.). These commands respect semver ranges in your `package.json`, so a dependency pinned to `^1.2.3` will only move within `>=1.2.3 <2.0.0`.
+The `--minor` flag switches to the native update command for most package managers (`npm update`, `pnpm update`, etc.). These commands respect semver ranges in your `package.json`, so a dependency pinned to `^1.2.3` will only move within `>=1.2.3 <2.0.0`. Yarn workspaces are an exception: they use `npx npm-check-updates --upgrade --target minor --workspaces` since Yarn lacks a native minor-only workspace update flag.
 
 Use the default mode when you want to stay current and are willing to handle breaking changes. Use `--minor` when stability matters more and you want updates without surprises. The flag applies to every repo in the run.
 
 ## Browser config
 
-After creating a PR, repo-updater opens the PR URL in your browser. It detects the default browser differently on each platform. On macOS it reads LaunchServices defaults. On Windows it queries the registry. On Linux it uses `xdg-settings`.
+After creating a PR, repo-updater opens the PR URL in your browser. It detects the default browser differently on each platform: macOS reads LaunchServices defaults, Windows queries the registry, and Linux systems use `xdg-settings`.
 
 To override the detected browser, pass `-b` followed by the browser name:
 
@@ -88,7 +91,7 @@ jobs:
         run: echo "${{ secrets.GH_TOKEN }}" | gh auth login --with-token
 
       - name: Run repo-updater
-        run: repo-updater
+        run: repo-updater --config repo-updater.config.json
         env:
           GH_TOKEN: ${{ secrets.GH_TOKEN }}
 ```

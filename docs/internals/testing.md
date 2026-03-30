@@ -25,13 +25,13 @@ The CLI test file uses `mock.module("@clack/prompts")` to replace the entire `@c
 
 The test strategy relies on injecting dependencies at two points rather than mocking the filesystem, network, or process spawning.
 
-### Level 1: `updateRepo(opts, execFn?)` in `src/runner.ts`
+### Level 1: `updateRepo(opts, execFn = exec)` in `src/runner.ts`
 
-The `execFn` parameter replaces all shell command execution. The default is the runtime-aware `exec()` function that actually spawns subprocesses. Tests pass mock functions that return deterministic `Result` values and track which commands were executed. This single injection point mocks git operations, package manager commands, `gh pr create`, and every other subprocess call. A test can assert that `execFn` was called with `["git", "checkout", "-b", "chore/dep-updates-..."]` without running git at all.
+The `execFn` parameter replaces all shell command execution. The default is the runtime-aware `exec()` function that actually spawns subprocesses (`execFn = exec`). Tests pass mock functions that return deterministic `Result` values and track which commands were executed. This single injection point mocks git operations, package manager commands, `gh pr create`, and every other subprocess call. A test can assert that `execFn` was called with `["git", "checkout", "-b", "chore/dep-updates-..."]` without running git at all.
 
-### Level 2: `main(argv?, updateFn?)` in `src/index.ts`
+### Level 2: `main(argv?, updateFn: typeof updateRepo = updateRepo)` in `src/index.ts`
 
-The `updateFn` parameter replaces the entire `updateRepo` call. CLI tests use this to bypass all git and package manager operations, testing only orchestration logic. Combined with `mock.module("@clack/prompts")`, this gives complete isolation for CLI-level tests.
+The `updateFn` parameter replaces the entire `updateRepo` call (defaulting to `updateRepo` itself). CLI tests use this to bypass all git and package manager operations, testing only orchestration logic. Combined with `mock.module("@clack/prompts")`, this gives complete isolation for CLI-level tests.
 
 The same pattern applies to `detectBrowser` and `openURLs` in `src/index.ts`, both of which accept an `execFn` parameter for the same reason.
 

@@ -187,7 +187,7 @@ Exported functions:
 
 Non-exported internals:
 
-- `DEPENDENCY_ARROW` -- string constant `"->"` used in changeset diff lines
+- `DEPENDENCY_ARROW` -- string constant `"→"` used in changeset diff lines
 
 Imported by: `runner.ts` (all exports except DepSnapshot type).
 
