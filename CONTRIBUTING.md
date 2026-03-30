@@ -15,12 +15,13 @@ cd repo-updater
 bun install
 ```
 
-Pre-commit hooks are managed by [Lefthook](https://github.com/evilmartians/lefthook) and run automatically on commit. They run in parallel:
+Pre-commit hooks are managed by [Lefthook](https://github.com/evilmartians/lefthook) and run automatically on commit. They run sequentially:
 
 - **Lint & format** (`ultracite fix`) — auto-fixes JS/TS/JSON/CSS files
-- **Type check** (`tsgo --noEmit`) — TypeScript validation on changed `.ts` files
 - **YAML validation** (`v8r`) — validates `.yml`/`.yaml` files
+- **Type check** (`tsgo --noEmit`) — TypeScript validation on changed `.ts` files
 - **Cleanup script** — runs `scripts/cleanup.ts` on every commit
+- **JSR sync** — runs `scripts/sync-jsr-version.ts` to keep `deno.json` version in sync
 
 If a hook fails, fix the reported issue before re-committing. Do **not** use `--no-verify` to bypass hooks.
 
@@ -28,23 +29,30 @@ If a hook fails, fix the reported issue before re-committing. Do **not** use `--
 
 ```
 src/
-  cli.ts       # Shebang entry point — delegates to index.ts
-  index.ts     # Main orchestration (argument resolution, repo processing, URL opening)
-  args.ts      # CLI argument parser
-  config.ts    # Config file loading and repo validation
-  runner.ts    # Package manager detection, git ops, PR creation
-  errors.ts    # Tagged error types (ConfigNotFoundError, CommandFailedError, …)
+  cli.ts          # Shebang entry point — delegates to index.ts
+  deno-cli.ts     # Deno-specific entry point
+  index.ts        # Main orchestration (argument resolution, repo processing, URL opening)
+  args.ts         # CLI argument parser
+  config.ts       # Config file loading and repo validation
+  runner.ts       # Package manager detection, git ops, PR creation
+  changesets.ts   # Changeset snapshot, diff, and file generation
+  workspaces.ts   # Workspace detection and package resolution
+  package-json.ts # Utility for reading/parsing package.json
+  errors.ts       # Tagged error types (ConfigNotFoundError, CommandFailedError, …)
 
 __tests__/
-  bun-test-compat.ts  # Vitest shim for bun:test API
+  bun-test-compat.ts   # Vitest shim for bun:test API
   args.test.ts
   config.test.ts
   runner.test.ts
-  cli.test.ts         # Bun-only (uses mock.module — excluded from vitest)
+  changesets.test.ts
+  workspaces.test.ts
+  cli.test.ts          # Bun-only (uses mock.module — excluded from vitest)
   errors.test.ts
 
 scripts/
-  cleanup.ts   # Pre-commit cleanup hook
+  cleanup.ts           # Pre-commit cleanup hook
+  sync-jsr-version.ts  # Syncs deno.json version with package.json
 
 .github/workflows/
   ci.yml       # Typecheck → lint → test (Bun latest/canary, Node 22/24)
@@ -54,10 +62,11 @@ scripts/
 ## Development
 
 ```sh
+bun run build     # build with tsdown
 bun test          # run full test suite with Bun
 bun run test:node # run tests with Vitest/Node (excludes cli.test.ts)
 bun run typecheck # type-check with tsgo
-bun run lint      # lint with Biome/Ultracite (report only)
+bun run check     # lint with Biome/Ultracite (report only)
 bun run fix       # lint + auto-fix
 ```
 
@@ -85,7 +94,7 @@ See `config.json.example` for the expected shape.
 
 - **ESM only** — all files use `import`/`export`; no `require()`.
 - **Result types** — use `better-result` tagged errors instead of thrown exceptions. Add new error tags to `src/errors.ts`.
-- **No external runtime deps** unless strictly necessary. The only runtime dependencies are `@clack/prompts` and `better-result`.
+- **No external runtime deps** unless strictly necessary. The only runtime dependencies are `@clack/prompts`, `better-result`, and `yaml`.
 - **Formatting/linting** is enforced by Biome via Ultracite. Run `bun run fix` to auto-fix before committing.
 
 ## Testing
