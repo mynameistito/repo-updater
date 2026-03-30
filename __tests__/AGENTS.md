@@ -67,6 +67,6 @@ await expect(main(["--help"], noopUpdate)).rejects.toThrow("exit");
 ## NOTES
 
 - `bun-test-compat.ts` exports: `afterAll`, `afterEach`, `beforeAll`, `beforeEach`, `describe`, `expect`, `it`, `test`, `mock`, `spyOn`
-- `mock()` maps to `vi.fn()`; `mock.module()` throws — no Vitest equivalent
+- `mock()` maps to `vi.fn()`; `mock.module()` throws (Bun-specific API, cannot be trivially shimmed — use `vi.mock()` / `vi.doMock()` directly)
 - `vitest.config.ts` excludes `cli.test.ts` via `exclude: ["__tests__/cli.test.ts"]`
 - Two console-suppression styles coexist: manual stub-and-restore (`args.test.ts`) and `spyOn` (`runner.test.ts`)

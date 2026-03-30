@@ -10,7 +10,7 @@ CLI tool to mass-update dependencies across multiple git repos with auto package
 
 ## STRUCTURE
 
-```
+```text
 repo-updater/
 ├── src/               # Core logic (orchestrator, runner, config, args, errors, changesets, workspaces)
 ├── __tests__/         # Dual-runner tests (Bun + Vitest via compat shim)
