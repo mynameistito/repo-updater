@@ -4,7 +4,7 @@
 [![npm downloads](https://img.shields.io/npm/dm/repo-updater)](https://www.npmjs.com/package/repo-updater)
 [![CI](https://github.com/mynameistito/repo-updater/actions/workflows/ci.yml/badge.svg)](https://github.com/mynameistito/repo-updater/actions/workflows/ci.yml)
 [![License](https://img.shields.io/npm/l/repo-updater)](LICENSE)
-[![pkg.pr.new](/badge/mynameistito/repo-updater)](/~/mynameistito/repo-updater)
+
 
 CLI tool that mass-updates dependencies across multiple git repositories using your preferred package manager ([npm](https://www.npmjs.com/), [pnpm](https://pnpm.io/), [yarn](https://yarnpkg.com/), or [Bun](https://bun.sh)). Automatically detects the package manager, commits changes, creates pull requests via [`gh`](https://cli.github.com), and opens all resulting PR URLs in the browser.
 
