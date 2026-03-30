@@ -1,5 +1,5 @@
 pre-commit:
-  parallel: true
+  parallel: false
   jobs:
     - run: bun ultracite fix {staged_files}
       glob: "**/*.{js,jsx,ts,tsx,json,jsonc,css}"
@@ -10,8 +10,9 @@ pre-commit:
     - run: bunx tsgo --noEmit
       glob: "**/*.{ts,tsx}"
 
-    - run: bun run scripts/cleanup.ts
+    - name: cleanup
+      run: bun run scripts/cleanup.ts
 
-    - run: bun run sync:jsr && git add deno.json
+    - name: sync-jsr
+      run: bun run sync:jsr && git add deno.json
       glob: "package.json"
-      parallel: false

@@ -47,7 +47,7 @@ Replaces manually running a dependency update workflow in each repo one-by-one.
 
 - [Git](https://git-scm.com)
 - [GitHub CLI (`gh`)](https://cli.github.com) — authenticated via `gh auth login`
-- [Bun](https://bun.sh) ≥ 1.0.0, [Node.js](https://nodejs.org) ≥ 22.0.0, **or** [Deno](https://deno.land) ≥ 2.0.0
+- [Bun](https://bun.sh) ≥ 1.0.0, [Node.js](https://nodejs.org) ≥ 22.6.0, **or** [Deno](https://deno.land) ≥ 2.0.0
 
 ## Setup
 
@@ -269,6 +269,9 @@ No config file needed — just pass the path directly.
 ```sh
 # Install dependencies
 bun install
+
+# Build (tsdown)
+bun run build
 
 # Run tests (Bun)
 bun test
