@@ -9,11 +9,17 @@
     "repo-updater": "./src/deno-cli.ts"
   },
   "publish": {
-    "include": ["LICENSE", "README.md", "src/**/*.ts"],
-    "exclude": ["src/**/*.test.ts"]
+    "include": [
+      "LICENSE",
+      "README.md",
+      "src/**/*.ts"
+    ],
+    "exclude": [
+      "src/**/*.test.ts"
+    ]
   },
   "imports": {
-    "@clack/prompts": "npm:@clack/prompts@^1.1.0",
+    "@clack/prompts": "npm:@clack/prompts@^1.2.0",
     "better-result": "npm:better-result@^2.7.0",
     "yaml": "npm:yaml@^2.8.3"
   }
