@@ -1,5 +1,12 @@
 # repo-updater
 
+## 0.7.1
+
+### Patch Changes
+
+- 8bbc816: Updated dependencies:
+  - @clack/prompts: ^1.1.0 → ^1.2.0
+
 ## 0.7.0
 
 ### Minor Changes
