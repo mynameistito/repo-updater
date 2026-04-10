@@ -1,5 +1,14 @@
 # repo-updater
 
+## 0.7.2
+
+### Patch Changes
+
+- 4fb3e5f: Updated dependencies:
+  - better-result: ^2.7.0 → ^2.8.1
+- 4d8b923: Updated dependencies:
+  - better-result: ^2.8.1 → ^2.8.2
+
 ## 0.7.1
 
 ### Patch Changes
