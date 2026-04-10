@@ -3,8 +3,5 @@
   "extends": ["ultracite/biome/core"],
   "javascript": {
     "globals": ["Bun", "Deno"]
-  },
-  "files": {
-    "includes": ["!assets"]
   }
 }
