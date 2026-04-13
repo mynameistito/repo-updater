@@ -26,7 +26,7 @@ jobs:
 
       - name: Add triage label if no labels present
         if: ${{ toJson(github.event.issue.labels) == '[]' }}
-        uses: actions/github-script@v8
+        uses: actions/github-script@v9
         with:
           script: |
             await github.rest.issues.addLabels({
@@ -37,7 +37,7 @@ jobs:
             })
 
       - name: Assign CODEOWNER to issue
-        uses: actions/github-script@v8
+        uses: actions/github-script@v9
         with:
           script: |
             await github.rest.issues.addAssignees({
