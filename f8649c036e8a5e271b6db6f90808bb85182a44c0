@@ -1,0 +1,23 @@
+assets/social-preview.html
+  abb5b7c43d225344 77-79,81,87,332,334
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.2.8",
+  "base_commit_sha": "f8649c036e8a5e271b6db6f90808bb85182a44c0",
+  "prompts": {
+    "abb5b7c43d225344": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "90aba349-219a-46ba-ab96-a9c6282b7c7f",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Tito",
+      "messages": [],
+      "total_additions": 800,
+      "total_deletions": 962,
+      "accepted_lines": 800,
+      "overriden_lines": 0
+    }
+  }
+}
