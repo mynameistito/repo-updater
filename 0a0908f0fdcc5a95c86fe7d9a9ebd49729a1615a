@@ -1,0 +1,23 @@
+scripts/sync-jsr-version.ts
+  395d47b4bf485053 21-33
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.2.8",
+  "base_commit_sha": "0a0908f0fdcc5a95c86fe7d9a9ebd49729a1615a",
+  "prompts": {
+    "395d47b4bf485053": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "29764856-642c-4a89-ad84-88cfb9ebf6ea",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Tito",
+      "messages": [],
+      "total_additions": 17,
+      "total_deletions": 5,
+      "accepted_lines": 13,
+      "overriden_lines": 0
+    }
+  }
+}
