@@ -62,7 +62,7 @@ jobs:
         run: bun run build
 
       - name: Pack (dry-run)
-        run: npm pack --dry-run
+        run: cd packages/repo-updater && npm pack --dry-run
 
   test-bun:
     name: Test with Bun

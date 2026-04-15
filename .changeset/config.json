@@ -3,7 +3,7 @@
   "changelog": "@changesets/cli/changelog",
   "commit": false,
   "fixed": [],
-  "linked": [],
+  "linked": [["repo-updater", "repoupdater"]],
   "access": "public",
   "baseBranch": "main",
   "updateInternalDependencies": "patch",

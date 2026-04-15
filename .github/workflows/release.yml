@@ -55,4 +55,4 @@ jobs:
 
       - name: Publish to JSR
         if: steps.changesets.outputs.published == 'true'
-        run: npx jsr publish --allow-slow-types
+        run: cd packages/repo-updater && npx jsr publish --allow-slow-types

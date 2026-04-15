@@ -40,4 +40,4 @@ jobs:
         run: bun run build
 
       - name: Publish preview
-        run: bunx pkg-pr-new publish --compact --comment=create --packageManager=bun
+        run: bunx pkg-pr-new publish ./packages/repo-updater ./packages/repoupdater --compact --comment=create --packageManager=bun

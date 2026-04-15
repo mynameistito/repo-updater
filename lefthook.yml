@@ -9,10 +9,11 @@ pre-commit:
 
     - run: bunx tsgo --noEmit
       glob: "**/*.{ts,tsx}"
+      root: packages/repo-updater
 
     - name: cleanup
-      run: bun run scripts/cleanup.ts
+      run: bun packages/repo-updater/scripts/cleanup.ts
 
     - name: sync-jsr
-      run: bun run sync:jsr && git add deno.json
-      glob: "package.json"
+      run: bun run sync:jsr && git add packages/repo-updater/deno.json
+      glob: "packages/repo-updater/package.json"
