@@ -446,12 +446,12 @@ interface ChangesetContext {
  */
 function handleChangesets(ctx: ChangesetContext): string | undefined {
   if (ctx.noChangeset || !hasChangesets(ctx.repo)) {
-    return undefined;
+    return;
   }
 
   const targetFile = `dep-updates-${ctx.timestamp}.md`;
   if (getChangesetFiles(ctx.repo).includes(targetFile)) {
-    return undefined;
+    return;
   }
 
   const filePath = join(ctx.repo, ".changeset", targetFile);
@@ -460,7 +460,7 @@ function handleChangesets(ctx: ChangesetContext): string | undefined {
     const depsAfter = snapshotWorkspaceDeps(ctx.repo, ctx.workspace.packages);
     const changes = diffWorkspaceDeps(ctx.depsBefore, depsAfter);
     if (changes.size === 0) {
-      return undefined;
+      return;
     }
     writeWorkspaceChangesetFile(ctx.repo, changes, ctx.timestamp);
   } else if (ctx.singleDepsBefore) {
@@ -468,11 +468,11 @@ function handleChangesets(ctx: ChangesetContext): string | undefined {
     const changes = diffDeps(ctx.singleDepsBefore, depsAfter);
     const pkgName = getPackageName(ctx.repo);
     if (changes.length === 0 || pkgName === "unknown") {
-      return undefined;
+      return;
     }
     writeChangesetFile(ctx.repo, pkgName, changes, ctx.timestamp);
   } else {
-    return undefined;
+    return;
   }
 
   console.log(
