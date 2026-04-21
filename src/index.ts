@@ -255,7 +255,7 @@ async function handlePRDisplay(prUrls: string[]) {
  * @param cmd - The browser command and arguments.
  */
 export function openURLBun(cmd: string[]): void {
-  Bun.spawn(cmd, { stdout: "ignore", stderr: "ignore" });
+  Bun.spawn(cmd, { stdout: "ignore", stderr: "ignore", windowsHide: true });
 }
 
 /**
@@ -265,7 +265,11 @@ export function openURLBun(cmd: string[]): void {
  */
 export function openURLBunSync(cmd: string[]): number | null {
   try {
-    const proc = Bun.spawnSync(cmd, { stdout: "ignore", stderr: "ignore" });
+    const proc = Bun.spawnSync(cmd, {
+      stdout: "ignore",
+      stderr: "ignore",
+      windowsHide: true,
+    });
     return proc.exitCode;
   } catch (err) {
     console.error(`openURLBunSync failed for ${cmd.join(" ")}:`, err);
@@ -274,16 +278,18 @@ export function openURLBunSync(cmd: string[]): number | null {
 }
 
 /**
- * Opens a URL using Node.js `child_process.spawn` with `detached: true`
- * and `stdio: "ignore"`.
+ * Opens a URL using Node.js `child_process.spawn` with `stdio: "ignore"`.
  *
  * @param cmd - The browser command and arguments.
  */
 export async function openURLNodejs(cmd: string[]): Promise<void> {
   const { spawn } = await import("node:child_process");
+  // Do NOT use detached: true — DETACHED_PROCESS causes CREATE_NO_WINDOW
+  // (windowsHide) to be ignored on Windows, letting cmd.exe allocate a new
+  // console window and making ShellExecuteEx appear suspicious (UAC prompt).
   const child = spawn(cmd[0], cmd.slice(1), {
-    detached: true,
     stdio: "ignore",
+    windowsHide: true,
   });
   child.unref();
 }
@@ -605,12 +611,13 @@ export async function openURLs(
     : await detectBrowser(platform, execFn);
   const commands = buildOpenCommands(urls, platform, browserInfo);
 
+  // Always route through openURLNodejs regardless of runtime. On Windows,
+  // Bun's node:child_process ignores windowsHide and triggers UAC prompts,
+  // so cli.ts re-execs under Node.js and all spawns must stay on the Node
+  // path. The POSIX perf impact of skipping the Bun spawn path is negligible.
+  // Do not revert this to a conditional branch between Bun and Node spawn.
   for (const cmd of commands) {
-    if (typeof Bun === "undefined") {
-      openURLNodejs(cmd);
-    } else {
-      openURLBun(cmd);
-    }
+    await openURLNodejs(cmd);
   }
 }
 

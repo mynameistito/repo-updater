@@ -224,6 +224,7 @@ export async function execBun(
     cwd,
     stdout: "pipe",
     stderr: "pipe",
+    windowsHide: true,
   });
 
   const [stdout, stderr, exitCode] = await Promise.all([
@@ -256,6 +257,7 @@ export async function execNodejs(
   const childProcess = spawn(cmd[0], cmd.slice(1), {
     cwd,
     stdio: ["pipe", "pipe", "pipe"],
+    windowsHide: true,
   });
 
   await new Promise<void>((resolve, reject) => {

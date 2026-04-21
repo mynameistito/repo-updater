@@ -1,4 +1,5 @@
 import {
+  afterAll,
   afterEach,
   beforeEach,
   describe,
@@ -7,6 +8,7 @@ import {
   spyOn,
   test,
 } from "bun:test";
+import { spawn as realSpawn } from "node:child_process";
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -49,6 +51,27 @@ const isCancelMock = mock((_val: unknown) => false);
 
 /** Mock replacing `console.log` to suppress output during tests. */
 const consoleLogMock = mock(noop);
+
+// Capture the real function value BEFORE mock.module overwrites the live
+// ES-module binding — otherwise `realSpawn` inside the closure would point
+// back to `spawnMock` and recurse infinitely.
+const capturedSpawn = realSpawn;
+
+/** Mock for `node:child_process` `spawn`.
+ * Intercepts fire-and-forget calls from `openURLNodejs` (stdio: "ignore").
+ * Delegates to the real spawn for all other callers (e.g. `execNodejs`). */
+const spawnMock = mock(
+  (cmd: string, args: string[], opts?: Parameters<typeof realSpawn>[2]) => {
+    if (opts && "stdio" in opts && opts.stdio === "ignore") {
+      return { unref: mock(noop) } as unknown as ReturnType<typeof realSpawn>;
+    }
+    return capturedSpawn(cmd, args, opts as Parameters<typeof realSpawn>[2]);
+  }
+);
+
+mock.module("node:child_process", () => ({
+  spawn: spawnMock,
+}));
 
 mock.module("@clack/prompts", () => ({
   intro: mock(noop),
@@ -107,11 +130,18 @@ beforeEach(() => {
   spinnerInstance.start.mockClear();
   spinnerInstance.stop.mockClear();
   isCancelMock.mockClear();
+  spawnMock.mockClear();
 });
 
 afterEach(() => {
   console.log = originalConsoleLog;
   rmSync(tempDir, { recursive: true, force: true });
+});
+
+// Restore the real node:child_process after all cli tests so later test files
+// (e.g. runner.test.ts) are not affected by the module-level mock.
+afterAll(() => {
+  mock.module("node:child_process", () => ({ spawn: realSpawn }));
 });
 
 describe("printUsage", () => {
@@ -311,19 +341,12 @@ describe("main", () => {
       okResult(opts.repo, "pr-created", url)
     );
     confirmMock.mockImplementation(() => Promise.resolve(true));
-    const spawnSpy = spyOn(Bun, "spawn").mockReturnValue(
-      {} as ReturnType<typeof Bun.spawn>
-    );
 
-    try {
-      await main([tempDir], prUpdate);
+    await main([tempDir], prUpdate);
 
-      expect(noteMock).toHaveBeenCalled();
-      expect(confirmMock).toHaveBeenCalled();
-      expect(spawnSpy).toHaveBeenCalled();
-    } finally {
-      spawnSpy.mockRestore();
-    }
+    expect(noteMock).toHaveBeenCalled();
+    expect(confirmMock).toHaveBeenCalled();
+    expect(spawnMock).toHaveBeenCalled();
   });
 
   test("does not open browser when declined", async () => {
@@ -332,18 +355,11 @@ describe("main", () => {
       okResult(opts.repo, "pr-created", url)
     );
     confirmMock.mockImplementation(() => Promise.resolve(false));
-    const spawnSpy = spyOn(Bun, "spawn").mockReturnValue(
-      {} as ReturnType<typeof Bun.spawn>
-    );
 
-    try {
-      await main([tempDir], prUpdate);
+    await main([tempDir], prUpdate);
 
-      expect(noteMock).toHaveBeenCalled();
-      expect(spawnSpy).not.toHaveBeenCalled();
-    } finally {
-      spawnSpy.mockRestore();
-    }
+    expect(noteMock).toHaveBeenCalled();
+    expect(spawnMock).not.toHaveBeenCalled();
   });
 
   test("exits when user cancels PR confirmation", async () => {
@@ -365,114 +381,78 @@ describe("main", () => {
   });
 
   test("openURLs uses osascript on darwin when browser not detected", async () => {
-    const spawnSpy = spyOn(Bun, "spawn").mockReturnValue(
-      {} as ReturnType<typeof Bun.spawn>
-    );
     const noopExec = mock(() =>
       Promise.resolve({ stdout: "", stderr: "", exitCode: 1 })
     );
 
-    try {
-      await openURLs(["https://example.com/2"], "darwin", noopExec);
-      expect(spawnSpy).toHaveBeenCalledTimes(1);
-      expect(spawnSpy).toHaveBeenLastCalledWith(
-        ["osascript", "-e", 'open location "https://example.com/2"'],
-        {
-          stdout: "ignore",
-          stderr: "ignore",
-        }
-      );
-    } finally {
-      spawnSpy.mockRestore();
-    }
+    await openURLs(["https://example.com/2"], "darwin", noopExec);
+    expect(spawnMock).toHaveBeenCalledTimes(1);
+    expect(spawnMock).toHaveBeenLastCalledWith(
+      "osascript",
+      ["-e", 'open location "https://example.com/2"'],
+      { stdio: "ignore", windowsHide: true }
+    );
   });
 
   test("openURLs falls back to cmd start on win32 when browser not detected", async () => {
-    const spawnSpy = spyOn(Bun, "spawn").mockReturnValue(
-      {} as ReturnType<typeof Bun.spawn>
-    );
     const noopExec = mock(() =>
       Promise.resolve({ stdout: "", stderr: "", exitCode: 1 })
     );
 
-    try {
-      await openURLs(["https://example.com/1"], "win32", noopExec);
-      expect(spawnSpy).toHaveBeenLastCalledWith(
-        ["cmd", "/c", "start", "", "https://example.com/1"],
-        {
-          stdout: "ignore",
-          stderr: "ignore",
-        }
-      );
-    } finally {
-      spawnSpy.mockRestore();
-    }
+    await openURLs(["https://example.com/1"], "win32", noopExec);
+    expect(spawnMock).toHaveBeenLastCalledWith(
+      "cmd",
+      ["/c", "start", "", "https://example.com/1"],
+      { stdio: "ignore", windowsHide: true }
+    );
   });
 
   test("openURLs batches URLs via osascript on darwin without detected browser", async () => {
-    const spawnSpy = spyOn(Bun, "spawn").mockReturnValue(
-      {} as ReturnType<typeof Bun.spawn>
-    );
     const noopExec = mock(() =>
       Promise.resolve({ stdout: "", stderr: "", exitCode: 1 })
     );
 
-    try {
-      await openURLs(
-        ["https://example.com/1", "https://example.com/2"],
-        "darwin",
-        noopExec
-      );
-      expect(spawnSpy).toHaveBeenCalledTimes(1);
-      expect(spawnSpy).toHaveBeenLastCalledWith(
-        [
-          "osascript",
-          "-e",
-          'open location "https://example.com/1"\nopen location "https://example.com/2"',
-        ],
-        {
-          stdout: "ignore",
-          stderr: "ignore",
-        }
-      );
-    } finally {
-      spawnSpy.mockRestore();
-    }
+    await openURLs(
+      ["https://example.com/1", "https://example.com/2"],
+      "darwin",
+      noopExec
+    );
+    expect(spawnMock).toHaveBeenCalledTimes(1);
+    expect(spawnMock).toHaveBeenLastCalledWith(
+      "osascript",
+      [
+        "-e",
+        'open location "https://example.com/1"\nopen location "https://example.com/2"',
+      ],
+      { stdio: "ignore", windowsHide: true }
+    );
   });
 
   test("openURLs uses cmd start for all URLs on win32", async () => {
-    const spawnSpy = spyOn(Bun, "spawn").mockReturnValue(
-      {} as ReturnType<typeof Bun.spawn>
-    );
     const noopExec = mock(() =>
       Promise.resolve({ stdout: "", stderr: "", exitCode: 1 })
     );
 
-    try {
-      await openURLs(
-        ["https://example.com/1", "https://example.com/2"],
-        "win32",
-        noopExec
-      );
-      expect(spawnSpy).toHaveBeenNthCalledWith(
-        1,
-        ["cmd", "/c", "start", "", "https://example.com/1"],
-        { stdout: "ignore", stderr: "ignore" }
-      );
-      expect(spawnSpy).toHaveBeenNthCalledWith(
-        2,
-        ["cmd", "/c", "start", "", "https://example.com/2"],
-        { stdout: "ignore", stderr: "ignore" }
-      );
-    } finally {
-      spawnSpy.mockRestore();
-    }
+    await openURLs(
+      ["https://example.com/1", "https://example.com/2"],
+      "win32",
+      noopExec
+    );
+    expect(spawnMock).toHaveBeenNthCalledWith(
+      1,
+      "cmd",
+      ["/c", "start", "", "https://example.com/1"],
+      { stdio: "ignore", windowsHide: true }
+    );
+    expect(spawnMock).toHaveBeenNthCalledWith(
+      2,
+      "cmd",
+      ["/c", "start", "", "https://example.com/2"],
+      { stdio: "ignore", windowsHide: true }
+    );
   });
 
   test("openURLs batches all URLs in single command on win32 with detected browser", async () => {
-    const spawnSpy = spyOn(Bun, "spawn").mockReturnValue(
-      {} as ReturnType<typeof Bun.spawn>
-    );
     const mockExec = mock((cmd: string[]) => {
       if (cmd[0] === "powershell") {
         return Promise.resolve({
@@ -492,31 +472,20 @@ describe("main", () => {
       return Promise.resolve({ stdout: "", stderr: "", exitCode: 1 });
     });
 
-    try {
-      await openURLs(
-        ["https://example.com/1", "https://example.com/2"],
-        "win32",
-        mockExec
-      );
-      expect(spawnSpy).toHaveBeenCalledTimes(1);
-      expect(spawnSpy).toHaveBeenLastCalledWith(
-        [
-          "C:\\Program Files\\BraveSoftware\\Brave-Browser\\Application\\brave.exe",
-          "--new-window",
-          "https://example.com/1",
-          "https://example.com/2",
-        ],
-        { stdout: "ignore", stderr: "ignore" }
-      );
-    } finally {
-      spawnSpy.mockRestore();
-    }
+    await openURLs(
+      ["https://example.com/1", "https://example.com/2"],
+      "win32",
+      mockExec
+    );
+    expect(spawnMock).toHaveBeenCalledTimes(1);
+    expect(spawnMock).toHaveBeenLastCalledWith(
+      "C:\\Program Files\\BraveSoftware\\Brave-Browser\\Application\\brave.exe",
+      ["--new-window", "https://example.com/1", "https://example.com/2"],
+      { stdio: "ignore", windowsHide: true }
+    );
   });
 
   test("openURLs batches all URLs in single command on linux with detected browser", async () => {
-    const spawnSpy = spyOn(Bun, "spawn").mockReturnValue(
-      {} as ReturnType<typeof Bun.spawn>
-    );
     const mockExec = mock(() =>
       Promise.resolve({
         stdout: "google-chrome.desktop\n",
@@ -525,34 +494,20 @@ describe("main", () => {
       })
     );
 
-    try {
-      await openURLs(
-        ["https://example.com/1", "https://example.com/2"],
-        "linux",
-        mockExec
-      );
-      expect(spawnSpy).toHaveBeenCalledTimes(1);
-      expect(spawnSpy).toHaveBeenLastCalledWith(
-        [
-          "google-chrome",
-          "--new-window",
-          "https://example.com/1",
-          "https://example.com/2",
-        ],
-        {
-          stdout: "ignore",
-          stderr: "ignore",
-        }
-      );
-    } finally {
-      spawnSpy.mockRestore();
-    }
+    await openURLs(
+      ["https://example.com/1", "https://example.com/2"],
+      "linux",
+      mockExec
+    );
+    expect(spawnMock).toHaveBeenCalledTimes(1);
+    expect(spawnMock).toHaveBeenLastCalledWith(
+      "google-chrome",
+      ["--new-window", "https://example.com/1", "https://example.com/2"],
+      { stdio: "ignore", windowsHide: true }
+    );
   });
 
   test("openURLs uses detected browser with --new-window on linux", async () => {
-    const spawnSpy = spyOn(Bun, "spawn").mockReturnValue(
-      {} as ReturnType<typeof Bun.spawn>
-    );
     const mockExec = mock(() =>
       Promise.resolve({
         stdout: "firefox.desktop\n",
@@ -561,67 +516,40 @@ describe("main", () => {
       })
     );
 
-    try {
-      await openURLs(["https://example.com/3"], "linux", mockExec);
-      expect(spawnSpy).toHaveBeenLastCalledWith(
-        ["firefox", "--new-window", "https://example.com/3"],
-        {
-          stdout: "ignore",
-          stderr: "ignore",
-        }
-      );
-    } finally {
-      spawnSpy.mockRestore();
-    }
+    await openURLs(["https://example.com/3"], "linux", mockExec);
+    expect(spawnMock).toHaveBeenLastCalledWith(
+      "firefox",
+      ["--new-window", "https://example.com/3"],
+      { stdio: "ignore", windowsHide: true }
+    );
   });
 
   test("openURLs falls back to xdg-open on linux when detection fails", async () => {
-    const spawnSpy = spyOn(Bun, "spawn").mockReturnValue(
-      {} as ReturnType<typeof Bun.spawn>
-    );
     const failExec = mock(() =>
       Promise.resolve({ stdout: "", stderr: "", exitCode: 1 })
     );
 
-    try {
-      await openURLs(["https://example.com/3"], "linux", failExec);
-      expect(spawnSpy).toHaveBeenLastCalledWith(
-        ["xdg-open", "https://example.com/3"],
-        {
-          stdout: "ignore",
-          stderr: "ignore",
-        }
-      );
-    } finally {
-      spawnSpy.mockRestore();
-    }
+    await openURLs(["https://example.com/3"], "linux", failExec);
+    expect(spawnMock).toHaveBeenLastCalledWith(
+      "xdg-open",
+      ["https://example.com/3"],
+      { stdio: "ignore", windowsHide: true }
+    );
   });
 
   test("openURLs uses browser override when provided on win32", async () => {
-    const spawnSpy = spyOn(Bun, "spawn").mockReturnValue(
-      {} as ReturnType<typeof Bun.spawn>
+    await openURLs(
+      ["https://example.com/1", "https://example.com/2"],
+      "win32",
+      undefined,
+      "C:\\Program Files\\BraveSoftware\\Brave-Browser\\Application\\brave.exe"
     );
-
-    try {
-      await openURLs(
-        ["https://example.com/1", "https://example.com/2"],
-        "win32",
-        undefined,
-        "C:\\Program Files\\BraveSoftware\\Brave-Browser\\Application\\brave.exe"
-      );
-      expect(spawnSpy).toHaveBeenCalledTimes(1);
-      expect(spawnSpy).toHaveBeenLastCalledWith(
-        [
-          "C:\\Program Files\\BraveSoftware\\Brave-Browser\\Application\\brave.exe",
-          "--new-window",
-          "https://example.com/1",
-          "https://example.com/2",
-        ],
-        { stdout: "ignore", stderr: "ignore" }
-      );
-    } finally {
-      spawnSpy.mockRestore();
-    }
+    expect(spawnMock).toHaveBeenCalledTimes(1);
+    expect(spawnMock).toHaveBeenLastCalledWith(
+      "C:\\Program Files\\BraveSoftware\\Brave-Browser\\Application\\brave.exe",
+      ["--new-window", "https://example.com/1", "https://example.com/2"],
+      { stdio: "ignore", windowsHide: true }
+    );
   });
 
   test("does not display PRs when list is empty", async () => {
@@ -642,6 +570,7 @@ describe("main", () => {
       expect(spawnSpy).toHaveBeenCalledWith(["open", "https://example.com"], {
         stdout: "ignore",
         stderr: "ignore",
+        windowsHide: true,
       });
     } finally {
       spawnSpy.mockRestore();
@@ -649,14 +578,11 @@ describe("main", () => {
   });
 
   test("openURLNodejs uses child_process spawn", async () => {
-    // Use cross-platform command that exists
-    const testCmd =
-      process.platform === "win32"
-        ? ["cmd", "/c", "echo", "test"]
-        : ["echo", "test"];
-
-    await openURLNodejs(testCmd);
-    // If it succeeds, that's fine
+    await openURLNodejs(["echo", "test"]);
+    expect(spawnMock).toHaveBeenCalledWith("echo", ["test"], {
+      stdio: "ignore",
+      windowsHide: true,
+    });
   });
 
   test("openURLs handles empty URL list without calling detectBrowser", async () => {
