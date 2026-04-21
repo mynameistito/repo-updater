@@ -8,10 +8,10 @@ import {
   spyOn,
   test,
 } from "bun:test";
+import { spawn as realSpawn } from "node:child_process";
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { spawn as realSpawn } from "node:child_process";
 import { Result } from "better-result";
 import { CommandFailedError } from "../src/errors.ts";
 import type { RepoResult } from "../src/runner.ts";
