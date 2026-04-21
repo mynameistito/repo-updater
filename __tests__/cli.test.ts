@@ -380,6 +380,7 @@ describe("main", () => {
         {
           stdout: "ignore",
           stderr: "ignore",
+          windowsHide: true,
         }
       );
     } finally {
@@ -402,6 +403,7 @@ describe("main", () => {
         {
           stdout: "ignore",
           stderr: "ignore",
+          windowsHide: true,
         }
       );
     } finally {
@@ -433,6 +435,7 @@ describe("main", () => {
         {
           stdout: "ignore",
           stderr: "ignore",
+          windowsHide: true,
         }
       );
     } finally {
@@ -457,12 +460,12 @@ describe("main", () => {
       expect(spawnSpy).toHaveBeenNthCalledWith(
         1,
         ["cmd", "/c", "start", "", "https://example.com/1"],
-        { stdout: "ignore", stderr: "ignore" }
+        { stdout: "ignore", stderr: "ignore", windowsHide: true }
       );
       expect(spawnSpy).toHaveBeenNthCalledWith(
         2,
         ["cmd", "/c", "start", "", "https://example.com/2"],
-        { stdout: "ignore", stderr: "ignore" }
+        { stdout: "ignore", stderr: "ignore", windowsHide: true }
       );
     } finally {
       spawnSpy.mockRestore();
@@ -506,7 +509,7 @@ describe("main", () => {
           "https://example.com/1",
           "https://example.com/2",
         ],
-        { stdout: "ignore", stderr: "ignore" }
+        { stdout: "ignore", stderr: "ignore", windowsHide: true }
       );
     } finally {
       spawnSpy.mockRestore();
@@ -542,6 +545,7 @@ describe("main", () => {
         {
           stdout: "ignore",
           stderr: "ignore",
+          windowsHide: true,
         }
       );
     } finally {
@@ -568,6 +572,7 @@ describe("main", () => {
         {
           stdout: "ignore",
           stderr: "ignore",
+          windowsHide: true,
         }
       );
     } finally {
@@ -590,6 +595,7 @@ describe("main", () => {
         {
           stdout: "ignore",
           stderr: "ignore",
+          windowsHide: true,
         }
       );
     } finally {
@@ -617,7 +623,7 @@ describe("main", () => {
           "https://example.com/1",
           "https://example.com/2",
         ],
-        { stdout: "ignore", stderr: "ignore" }
+        { stdout: "ignore", stderr: "ignore", windowsHide: true }
       );
     } finally {
       spawnSpy.mockRestore();
@@ -642,6 +648,7 @@ describe("main", () => {
       expect(spawnSpy).toHaveBeenCalledWith(["open", "https://example.com"], {
         stdout: "ignore",
         stderr: "ignore",
+        windowsHide: true,
       });
     } finally {
       spawnSpy.mockRestore();
