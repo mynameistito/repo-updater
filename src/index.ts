@@ -255,7 +255,7 @@ async function handlePRDisplay(prUrls: string[]) {
  * @param cmd - The browser command and arguments.
  */
 export function openURLBun(cmd: string[]): void {
-  Bun.spawn(cmd, { stdout: "ignore", stderr: "ignore" });
+  Bun.spawn(cmd, { stdout: "ignore", stderr: "ignore", windowsHide: true });
 }
 
 /**
@@ -265,7 +265,7 @@ export function openURLBun(cmd: string[]): void {
  */
 export function openURLBunSync(cmd: string[]): number | null {
   try {
-    const proc = Bun.spawnSync(cmd, { stdout: "ignore", stderr: "ignore" });
+    const proc = Bun.spawnSync(cmd, { stdout: "ignore", stderr: "ignore", windowsHide: true });
     return proc.exitCode;
   } catch (err) {
     console.error(`openURLBunSync failed for ${cmd.join(" ")}:`, err);
@@ -284,6 +284,7 @@ export async function openURLNodejs(cmd: string[]): Promise<void> {
   const child = spawn(cmd[0], cmd.slice(1), {
     detached: true,
     stdio: "ignore",
+    windowsHide: true,
   });
   child.unref();
 }
