@@ -1,0 +1,23 @@
+__tests__/cli.test.ts
+  f1b814c87132ce77 383,406,438,463,468,512,548,575,598,626,651
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.2",
+  "base_commit_sha": "76e321e1ed4e0f836ea8a9494c44baae4e4b93b6",
+  "prompts": {
+    "f1b814c87132ce77": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ad2442cc-bc12-47c3-8aed-ea25b26cd447",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Tito",
+      "messages": [],
+      "total_additions": 11,
+      "total_deletions": 4,
+      "accepted_lines": 11,
+      "overriden_lines": 0
+    }
+  }
+}
