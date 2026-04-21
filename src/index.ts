@@ -278,15 +278,16 @@ export function openURLBunSync(cmd: string[]): number | null {
 }
 
 /**
- * Opens a URL using Node.js `child_process.spawn` with `detached: true`
- * and `stdio: "ignore"`.
+ * Opens a URL using Node.js `child_process.spawn` with `stdio: "ignore"`.
  *
  * @param cmd - The browser command and arguments.
  */
 export async function openURLNodejs(cmd: string[]): Promise<void> {
   const { spawn } = await import("node:child_process");
+  // Do NOT use detached: true — DETACHED_PROCESS causes CREATE_NO_WINDOW
+  // (windowsHide) to be ignored on Windows, letting cmd.exe allocate a new
+  // console window and making ShellExecuteEx appear suspicious (UAC prompt).
   const child = spawn(cmd[0], cmd.slice(1), {
-    detached: true,
     stdio: "ignore",
     windowsHide: true,
   });
