@@ -265,7 +265,11 @@ export function openURLBun(cmd: string[]): void {
  */
 export function openURLBunSync(cmd: string[]): number | null {
   try {
-    const proc = Bun.spawnSync(cmd, { stdout: "ignore", stderr: "ignore", windowsHide: true });
+    const proc = Bun.spawnSync(cmd, {
+      stdout: "ignore",
+      stderr: "ignore",
+      windowsHide: true,
+    });
     return proc.exitCode;
   } catch (err) {
     console.error(`openURLBunSync failed for ${cmd.join(" ")}:`, err);
