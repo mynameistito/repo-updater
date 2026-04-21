@@ -1,0 +1,25 @@
+src/index.ts
+  f1b814c87132ce77 281,287-289
+src/runner.ts
+  f1b814c87132ce77 227,260
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.2",
+  "base_commit_sha": "e751642adf450ffab85a99c890bbe9d5fd31cfb2",
+  "prompts": {
+    "f1b814c87132ce77": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ad2442cc-bc12-47c3-8aed-ea25b26cd447",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Tito",
+      "messages": [],
+      "total_additions": 6,
+      "total_deletions": 3,
+      "accepted_lines": 6,
+      "overriden_lines": 0
+    }
+  }
+}
