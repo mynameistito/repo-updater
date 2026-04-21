@@ -612,11 +612,7 @@ export async function openURLs(
   const commands = buildOpenCommands(urls, platform, browserInfo);
 
   for (const cmd of commands) {
-    if (typeof Bun === "undefined") {
-      openURLNodejs(cmd);
-    } else {
-      openURLBun(cmd);
-    }
+    await openURLNodejs(cmd);
   }
 }
 
