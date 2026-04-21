@@ -1,0 +1,23 @@
+.changeset/brave-fox-ember.md
+  76c6fb7f70b989e4 1-5
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.2",
+  "base_commit_sha": "e78dd94b0c710c4ebe9454ac9405a656c3848273",
+  "prompts": {
+    "76c6fb7f70b989e4": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1917bab1-64c6-41aa-9ef9-89ac342d9d59",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Tito",
+      "messages": [],
+      "total_additions": 5,
+      "total_deletions": 0,
+      "accepted_lines": 5,
+      "overriden_lines": 0
+    }
+  }
+}
