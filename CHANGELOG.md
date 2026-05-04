@@ -1,5 +1,16 @@
 # repo-updater
 
+## 0.7.4
+
+### Patch Changes
+
+- da9ac79: Updated dependencies:
+  - @clack/prompts: ^1.2.0 → ^1.3.0
+  - better-result: ^2.8.2 → ^2.9.0
+- 47893fb: Updated dependencies:
+  - better-result: ^2.9.0 → ^2.9.1
+  - yaml: ^2.8.3 → ^2.8.4
+
 ## 0.7.3
 
 ### Patch Changes
