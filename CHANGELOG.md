@@ -1,5 +1,12 @@
 # repo-updater
 
+## 0.7.5
+
+### Patch Changes
+
+- c7552be: Updated dependencies:
+  - better-result: ^2.9.1 → ^2.9.2
+
 ## 0.7.4
 
 ### Patch Changes
