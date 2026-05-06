@@ -1,0 +1,23 @@
+_test_spawn.mjs
+  bc6eb2353bee1093 1-6
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.4",
+  "base_commit_sha": "7a0895ba12c76276fd796966c410e836c604110e",
+  "prompts": {
+    "bc6eb2353bee1093": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "66f8200d-f2e4-437f-a99f-6fbaa357307f",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Tito",
+      "messages": [],
+      "total_additions": 6,
+      "total_deletions": 0,
+      "accepted_lines": 6,
+      "overriden_lines": 0
+    }
+  }
+}
