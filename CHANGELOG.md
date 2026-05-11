@@ -1,5 +1,13 @@
 # repo-updater
 
+## 0.7.6
+
+### Patch Changes
+
+- 16e4c6c: Add regression coverage and an opt-in local smoke test for opening PR URLs with a configured browser.
+- e360904: Updated dependencies:
+  - yaml: ^2.8.4 → ^2.9.0
+
 ## 0.7.5
 
 ### Patch Changes
