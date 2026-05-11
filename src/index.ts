@@ -291,7 +291,48 @@ export async function openURLNodejs(cmd: string[]): Promise<void> {
     stdio: "ignore",
     windowsHide: true,
   });
-  child.unref();
+
+  await new Promise<void>((resolve, reject) => {
+    let settled = false;
+
+    const settle = (error?: Error) => {
+      if (settled) {
+        return;
+      }
+      settled = true;
+      clearTimeout(timeout);
+      child.unref();
+      if (error) {
+        reject(error);
+      } else {
+        resolve();
+      }
+    };
+
+    const timeout = setTimeout(() => {
+      settle(
+        new Error(`Timed out launching browser command: ${cmd.join(" ")}`)
+      );
+    }, OPEN_URL_SPAWN_TIMEOUT_MS);
+
+    child.once("error", (error) => {
+      settle(error);
+    });
+
+    child.once("spawn", () => {
+      setTimeout(settle, OPEN_URL_SPAWN_GRACE_MS);
+    });
+
+    child.once("close", (code) => {
+      if (code && !settled) {
+        settle(
+          new Error(
+            `Browser launch command exited early with code ${code}: ${cmd.join(" ")}`
+          )
+        );
+      }
+    });
+  });
 }
 
 /**
@@ -317,6 +358,10 @@ const MACOS_FIREFOX_REGEX =
 const REG_COMMAND_REGEX = /\(Default\)\s+REG_SZ\s+"?([^"]+\.exe)"?/i;
 /** Matches `.exe` file extension in a Windows path. */
 const EXE_SUFFIX_REGEX = /\.exe$/i;
+/** Maximum time to wait for a browser process to report successful spawn. */
+const OPEN_URL_SPAWN_TIMEOUT_MS = 5000;
+/** Small grace period after spawn so Windows has time to hand off the URL. */
+const OPEN_URL_SPAWN_GRACE_MS = 500;
 
 /** Maps Windows HTTP handler prog IDs to browser executable names. */
 const windowsProgIdMap: Record<string, string> = {

@@ -9,6 +9,7 @@ import {
   test,
 } from "bun:test";
 import { spawn as realSpawn } from "node:child_process";
+import { EventEmitter } from "node:events";
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -63,7 +64,10 @@ const capturedSpawn = realSpawn;
 const spawnMock = mock(
   (cmd: string, args: string[], opts?: Parameters<typeof realSpawn>[2]) => {
     if (opts && "stdio" in opts && opts.stdio === "ignore") {
-      return { unref: mock(noop) } as unknown as ReturnType<typeof realSpawn>;
+      const child = new EventEmitter() as EventEmitter & { unref: () => void };
+      child.unref = mock(noop);
+      queueMicrotask(() => child.emit("spawn"));
+      return child as unknown as ReturnType<typeof realSpawn>;
     }
     return capturedSpawn(cmd, args, opts as Parameters<typeof realSpawn>[2]);
   }
@@ -347,6 +351,27 @@ describe("main", () => {
     expect(noteMock).toHaveBeenCalled();
     expect(confirmMock).toHaveBeenCalled();
     expect(spawnMock).toHaveBeenCalled();
+  });
+
+  test("uses browser from config file when opening PR URLs", async () => {
+    const url = "https://github.com/owner/repo/pull/1";
+    const browser =
+      "C:\\Program Files\\BraveSoftware\\Brave-Browser\\Application\\brave.exe";
+    const configPath = join(tempDir, "config.json");
+    writeFileSync(configPath, JSON.stringify({ repos: [tempDir], browser }));
+    const prUpdate = mock((opts: { repo: string }) =>
+      okResult(opts.repo, "pr-created", url)
+    );
+    confirmMock.mockImplementation(() => Promise.resolve(true));
+
+    await main(["--config", configPath], prUpdate);
+
+    expect(logMock.info).toHaveBeenCalledWith(`Using browser: ${browser}`);
+    expect(spawnMock).toHaveBeenCalledTimes(1);
+    expect(spawnMock).toHaveBeenLastCalledWith(browser, ["--new-window", url], {
+      stdio: "ignore",
+      windowsHide: true,
+    });
   });
 
   test("does not open browser when declined", async () => {
