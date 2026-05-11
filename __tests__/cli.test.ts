@@ -349,6 +349,27 @@ describe("main", () => {
     expect(spawnMock).toHaveBeenCalled();
   });
 
+  test("uses browser from config file when opening PR URLs", async () => {
+    const url = "https://github.com/owner/repo/pull/1";
+    const browser =
+      "C:\\Program Files\\BraveSoftware\\Brave-Browser\\Application\\brave.exe";
+    const configPath = join(tempDir, "config.json");
+    writeFileSync(configPath, JSON.stringify({ repos: [tempDir], browser }));
+    const prUpdate = mock((opts: { repo: string }) =>
+      okResult(opts.repo, "pr-created", url)
+    );
+    confirmMock.mockImplementation(() => Promise.resolve(true));
+
+    await main(["--config", configPath], prUpdate);
+
+    expect(logMock.info).toHaveBeenCalledWith(`Using browser: ${browser}`);
+    expect(spawnMock).toHaveBeenCalledTimes(1);
+    expect(spawnMock).toHaveBeenLastCalledWith(browser, ["--new-window", url], {
+      stdio: "ignore",
+      windowsHide: true,
+    });
+  });
+
   test("does not open browser when declined", async () => {
     const url = "https://github.com/owner/repo/pull/1";
     const prUpdate = mock((opts: { repo: string }) =>
