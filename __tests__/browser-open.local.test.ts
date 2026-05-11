@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { spawn } from "node:child_process";
 import { existsSync } from "node:fs";
+import { extname, isAbsolute } from "node:path";
 import { loadConfig } from "../src/config.ts";
 
 const RUN_ENV = "REPO_UPDATER_OPEN_BROWSER_TEST";
@@ -10,6 +11,7 @@ const DEFAULT_URL = "https://example.com/?repo-updater-browser-test=1";
 const LAUNCH_TIMEOUT_MS = 5000;
 const TRUTHY_ENV_VALUES = new Set(["1", "true", "yes"]);
 const WINDOWS_ABSOLUTE_PATH_REGEX = /^[A-Z]:\\/i;
+const ALLOWED_URL_PROTOCOLS = new Set(["http:", "https:"]);
 
 const shouldRun = TRUTHY_ENV_VALUES.has(
   (process.env[RUN_ENV] ?? "").toLowerCase()
@@ -37,6 +39,19 @@ function getBrowserOverride(): string {
   return config.value.browser;
 }
 
+function getTestUrl(): string {
+  const rawUrl = process.env[URL_ENV] ?? DEFAULT_URL;
+  const url = new URL(rawUrl);
+
+  if (!ALLOWED_URL_PROTOCOLS.has(url.protocol)) {
+    throw new Error(
+      `${URL_ENV} must use an http: or https: URL, received: ${rawUrl}`
+    );
+  }
+
+  return url.href;
+}
+
 function isFilesystemPath(value: string): boolean {
   return (
     WINDOWS_ABSOLUTE_PATH_REGEX.test(value) ||
@@ -45,34 +60,39 @@ function isFilesystemPath(value: string): boolean {
   );
 }
 
-function buildLocalOpenCommand(
-  browser: string,
-  url: string
-): { args: string[]; cmd: string; waitForExit: boolean } {
-  if (process.platform === "win32") {
-    return {
-      cmd: "cmd",
-      args: ["/c", "start", "", browser, "--new-window", url],
-      waitForExit: true,
-    };
+function validateBrowserExecutable(browser: string): string {
+  if (!browser) {
+    throw new Error(`${BROWSER_ENV} or config browser must not be empty.`);
   }
 
-  if (process.platform === "darwin" && !isFilesystemPath(browser)) {
-    return {
-      cmd: "open",
-      args: ["-na", browser, "--args", "--new-window", url],
-      waitForExit: true,
-    };
+  if (!(isFilesystemPath(browser) && isAbsolute(browser))) {
+    throw new Error(
+      `${BROWSER_ENV} or config browser must be an absolute executable path for this local smoke test.`
+    );
   }
 
-  return { cmd: browser, args: ["--new-window", url], waitForExit: false };
+  if (!existsSync(browser)) {
+    throw new Error(`Configured browser executable does not exist: ${browser}`);
+  }
+
+  if (
+    process.platform === "win32" &&
+    extname(browser).toLowerCase() !== ".exe"
+  ) {
+    throw new Error(
+      `Configured Windows browser must be a .exe file: ${browser}`
+    );
+  }
+
+  return browser;
 }
 
 async function openBrowserForLocalTest(browser: string, url: string) {
-  const command = buildLocalOpenCommand(browser, url);
+  const browserExecutable = validateBrowserExecutable(browser);
+  const browserArgs = ["--new-window", url];
 
   await new Promise<void>((resolve, reject) => {
-    const child = spawn(command.cmd, command.args, {
+    const child = spawn(browserExecutable, browserArgs, {
       stdio: "ignore",
       windowsHide: true,
     });
@@ -84,9 +104,7 @@ async function openBrowserForLocalTest(browser: string, url: string) {
       }
       settled = true;
       clearTimeout(timeout);
-      if (!command.waitForExit) {
-        child.unref();
-      }
+      child.unref();
       if (error) {
         reject(error);
       } else {
@@ -97,7 +115,7 @@ async function openBrowserForLocalTest(browser: string, url: string) {
     const timeout = setTimeout(() => {
       settle(
         new Error(
-          `Timed out launching browser command: ${command.cmd} ${command.args.join(" ")}`
+          `Timed out launching browser command: ${browserExecutable} ${browserArgs.join(" ")}`
         )
       );
     }, LAUNCH_TIMEOUT_MS);
@@ -106,23 +124,19 @@ async function openBrowserForLocalTest(browser: string, url: string) {
       settle(error);
     });
 
-    if (command.waitForExit) {
-      child.once("close", (code) => {
-        if (code === 0) {
-          settle();
-        } else {
-          settle(
-            new Error(
-              `Browser launch command failed with exit code ${code}: ${command.cmd} ${command.args.join(" ")}`
-            )
-          );
-        }
-      });
-    } else {
-      child.once("spawn", () => {
-        setTimeout(settle, 500);
-      });
-    }
+    child.once("spawn", () => {
+      setTimeout(settle, 500);
+    });
+
+    child.once("close", (code) => {
+      if (code && !settled) {
+        settle(
+          new Error(
+            `Browser launch command exited early with code ${code}: ${browserExecutable} ${browserArgs.join(" ")}`
+          )
+        );
+      }
+    });
   });
 }
 
@@ -131,13 +145,7 @@ describe("local browser opening", () => {
     `opens a real browser window when ${RUN_ENV}=1`,
     async () => {
       const browser = getBrowserOverride();
-      const url = process.env[URL_ENV] ?? DEFAULT_URL;
-
-      if (isFilesystemPath(browser) && !existsSync(browser)) {
-        throw new Error(
-          `Configured browser executable does not exist: ${browser}`
-        );
-      }
+      const url = getTestUrl();
 
       await openBrowserForLocalTest(browser, url);
 
