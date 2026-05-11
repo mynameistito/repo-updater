@@ -9,6 +9,7 @@ import {
   test,
 } from "bun:test";
 import { spawn as realSpawn } from "node:child_process";
+import { EventEmitter } from "node:events";
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -63,7 +64,10 @@ const capturedSpawn = realSpawn;
 const spawnMock = mock(
   (cmd: string, args: string[], opts?: Parameters<typeof realSpawn>[2]) => {
     if (opts && "stdio" in opts && opts.stdio === "ignore") {
-      return { unref: mock(noop) } as unknown as ReturnType<typeof realSpawn>;
+      const child = new EventEmitter() as EventEmitter & { unref: () => void };
+      child.unref = mock(noop);
+      queueMicrotask(() => child.emit("spawn"));
+      return child as unknown as ReturnType<typeof realSpawn>;
     }
     return capturedSpawn(cmd, args, opts as Parameters<typeof realSpawn>[2]);
   }
