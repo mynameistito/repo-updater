@@ -259,25 +259,6 @@ export function openURLBun(cmd: string[]): void {
 }
 
 /**
- * Opens a URL using Bun's native `Bun.spawnSync`.
- *
- * @param cmd - The browser command and arguments.
- */
-export function openURLBunSync(cmd: string[]): number | null {
-  try {
-    const proc = Bun.spawnSync(cmd, {
-      stdout: "ignore",
-      stderr: "ignore",
-      windowsHide: true,
-    });
-    return proc.exitCode;
-  } catch (err) {
-    console.error(`openURLBunSync failed for ${cmd.join(" ")}:`, err);
-    return null;
-  }
-}
-
-/**
  * Opens a URL using Node.js `child_process.spawn` with `stdio: "ignore"`.
  *
  * @param cmd - The browser command and arguments.
@@ -488,26 +469,17 @@ async function detectWindowsBrowser(
     ],
     "."
   );
-  if (cmdResult.exitCode !== 0) {
-    // Fallback to known browser names
-    if (progId.startsWith("FirefoxURL")) {
-      return { browser: "firefox" };
+  if (cmdResult.exitCode === 0) {
+    const cmdMatch = cmdResult.stdout.match(REG_COMMAND_REGEX);
+    if (cmdMatch) {
+      return { browser: cmdMatch[1], path: cmdMatch[1] };
     }
-    for (const [prefix, exe] of Object.entries(windowsProgIdMap)) {
-      if (progId.startsWith(prefix)) {
-        return { browser: exe };
-      }
-    }
-    return null;
   }
 
-  // Extract the executable path from the command
-  const cmdMatch = cmdResult.stdout.match(REG_COMMAND_REGEX);
-  if (cmdMatch) {
-    return { browser: cmdMatch[1], path: cmdMatch[1] };
-  }
+  return fallbackBrowserFromProgId(progId);
+}
 
-  // Fallback to browser name
+function fallbackBrowserFromProgId(progId: string): { browser: string } | null {
   if (progId.startsWith("FirefoxURL")) {
     return { browser: "firefox" };
   }
