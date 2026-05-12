@@ -25,6 +25,7 @@ import {
   validateRepos,
 } from "./config.ts";
 import { execBun, execNodejs, updateRepo } from "./runner.ts";
+import { ensureWindowsManifest } from "./windows-manifest.ts";
 
 /**
  * Prints CLI usage information and available flags to standard output.
@@ -689,6 +690,12 @@ export async function main(
   argv?: string[],
   updateFn: typeof updateRepo = updateRepo
 ) {
+  // Drop external asInvoker manifest next to the bun-generated `.exe` shim on
+  // Windows so subsequent launches do not trigger UAC. First launch under bun
+  // still UACs (OS evaluates the binary before any user code runs); from then
+  // on it is silent. No-op on non-Windows. See windows-manifest.ts for context.
+  ensureWindowsManifest();
+
   const args = parseArgs(argv ?? process.argv.slice(2));
 
   if (args.help) {

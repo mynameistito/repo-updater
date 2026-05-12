@@ -14,7 +14,7 @@
  *
  * Cheap on non-Windows: the platform check is the very first statement.
  */
-import { existsSync, utimesSync, writeFileSync } from "node:fs";
+import { utimesSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
 
@@ -72,20 +72,25 @@ export function ensureWindowsManifest(): number {
   }
   let patched = 0;
   for (const exe of getCandidateShimPaths()) {
+    const manifestPath = `${exe}.manifest`;
     try {
-      if (!existsSync(exe)) {
-        continue;
-      }
-      const manifestPath = `${exe}.manifest`;
-      if (existsSync(manifestPath)) {
-        continue;
-      }
-      writeFileSync(manifestPath, MANIFEST, "utf8");
+      // Atomic create — `wx` fails with EEXIST if manifest already present,
+      // so we never overwrite and there is no TOCTOU window. ENOENT here
+      // means the shim's parent dir does not exist (package manager not
+      // installed on this machine), which is the common skip path.
+      writeFileSync(manifestPath, MANIFEST, { encoding: "utf8", flag: "wx" });
+    } catch {
+      // Already exists, parent dir missing, or write denied. Non-fatal.
+      continue;
+    }
+    try {
+      // Bump shim mtime so Windows invalidates its cached elevation decision.
+      // If the shim vanished between write and now, this throws and we skip.
       const now = new Date();
       utimesSync(exe, now, now);
       patched += 1;
     } catch {
-      // Non-fatal. Skip and try next candidate.
+      // Shim gone or unreadable. Manifest is harmless on its own; move on.
     }
   }
   return patched;
