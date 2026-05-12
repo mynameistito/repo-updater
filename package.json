@@ -1,6 +1,6 @@
 {
   "name": "repo-updater",
-  "version": "0.7.6",
+  "version": "0.7.8",
   "description": "CLI tool to mass-update dependencies across multiple git repositories with auto package manager detection (npm, pnpm, yarn, Bun)",
   "type": "module",
   "license": "MIT",
@@ -41,7 +41,7 @@
   "scripts": {
     "typecheck": "tsgo --noEmit",
     "start": "bun run src/cli.ts",
-    "test": "bun test",
+    "test": "bun test; node .github/setup.js",
     "test:node": "vitest run",
     "check": "ultracite check",
     "fix": "ultracite fix",
@@ -52,22 +52,23 @@
     "version": "changeset version && bun run sync:jsr && bunx ultracite fix deno.json"
   },
   "dependencies": {
-    "@clack/prompts": "^1.3.0",
+    "@clack/prompts": "^1.5.0",
+    "@types/node": "25.9.1",
     "better-result": "^2.9.2",
     "yaml": "^2.9.0"
   },
   "devDependencies": {
-    "@biomejs/biome": "^2.4.15",
+    "@biomejs/biome": "^2.4.16",
     "@changesets/cli": "^2.31.0",
-    "@types/bun": "^1.3.13",
-    "@typescript/native-preview": "^7.0.0-dev.20260511.1",
-    "lefthook": "^2.1.6",
-    "publint": "^0.3.20",
-    "tsdown": "^0.22.0",
+    "@types/bun": "^1.3.14",
+    "@typescript/native-preview": "^7.0.0-dev.20260601.1",
+    "lefthook": "^2.1.9",
+    "publint": "^0.3.21",
+    "tsdown": "^0.22.1",
     "typescript": "^6.0.3",
-    "ultracite": "^7.7.0",
-    "v8r": "^6.0.0",
-    "vitest": "^4.1.6"
+    "ultracite": "^7.8.1",
+    "v8r": "^6.1.0",
+    "vitest": "^4.1.8"
   },
   "overrides": {
     "minimatch": "^10.2.3",
