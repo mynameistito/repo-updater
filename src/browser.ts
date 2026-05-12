@@ -62,6 +62,11 @@ const linuxDesktopMap: Record<string, string> = {
  * @param cmd - The browser command and arguments.
  */
 export function openURLBun(cmd: string[]): void {
+  if (typeof Bun === "undefined") {
+    throw new Error(
+      "openURLBun called outside Bun runtime; use openURLNodejs."
+    );
+  }
   Bun.spawn(cmd, { stdout: "ignore", stderr: "ignore", windowsHide: true });
 }
 
@@ -170,9 +175,13 @@ async function getWindowsDefaultBrowserPath(
 async function detectWindowsBrowser(
   execFn: ExecFn
 ): Promise<{ browser: string; path?: string } | null> {
-  const browserPath = await getWindowsDefaultBrowserPath(execFn);
-  if (browserPath) {
-    return { browser: browserPath, path: browserPath };
+  try {
+    const browserPath = await getWindowsDefaultBrowserPath(execFn);
+    if (browserPath) {
+      return { browser: browserPath, path: browserPath };
+    }
+  } catch {
+    // Fall through to registry fallback.
   }
 
   const result = await execFn(

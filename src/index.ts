@@ -276,6 +276,21 @@ async function handlePRDisplay(prUrls: string[]) {
  * await main(["--dry-run", "./my-repo"], myUpdateFn);
  * ```
  */
+async function maybeOpenPRs(prUrls: string[], browser?: string) {
+  const shouldOpen = await handlePRDisplay(prUrls);
+  if (!shouldOpen) {
+    return;
+  }
+  log.info(`Using browser: ${browser ?? "auto-detected"}`);
+  try {
+    await openURLs(prUrls, process.platform, undefined, browser);
+  } catch (err) {
+    log.warn(
+      `Failed to open ${prUrls.length} PR URL(s) in browser ${browser ?? "(auto)"}: ${err instanceof Error ? err.message : String(err)}`
+    );
+  }
+}
+
 export async function main(
   argv?: string[],
   updateFn: typeof updateRepo = updateRepo
@@ -339,15 +354,7 @@ export async function main(
   });
 
   if (prUrls.length > 0) {
-    const shouldOpen = await handlePRDisplay(prUrls);
-    if (shouldOpen) {
-      if (browser) {
-        log.info(`Using browser: ${browser}`);
-      } else {
-        log.info("Using browser: auto-detected");
-      }
-      await openURLs(prUrls, process.platform, undefined, browser);
-    }
+    await maybeOpenPRs(prUrls, browser);
   } else if (!args.dryRun) {
     log.info("No pull requests were created.");
   }
