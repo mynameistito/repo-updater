@@ -656,11 +656,11 @@ export async function openURLs(
     : await detectBrowser(platform, execFn);
   const commands = buildOpenCommands(urls, platform, browserInfo);
 
-  // Route through openURLNodejs unconditionally. Under Bun, this still uses
-  // Bun's node:child_process implementation, which honours `windowsHide`
-  // when stdio is "ignore" so no console window flashes for browser launch.
-  // The Windows UAC prompt at startup is handled separately via the external
-  // application manifest written by scripts/install-windows-manifest.mjs.
+  // Always route through openURLNodejs regardless of runtime. On Windows,
+  // Bun's node:child_process ignores windowsHide and triggers UAC prompts,
+  // so cli.ts re-execs under Node.js and all spawns must stay on the Node
+  // path. The POSIX perf impact of skipping the Bun spawn path is negligible.
+  // Do not revert this to a conditional branch between Bun and Node spawn.
   for (const cmd of commands) {
     await openURLNodejs(cmd);
   }

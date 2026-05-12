@@ -60,39 +60,6 @@ pnpm install repo-updater -g                                   # with pnpm
 deno install -g -n repo-updater jsr:@mynameistito/repo-updater/cli # with Deno
 ```
 
-### Windows: UAC prompt on launch
-
-Windows' Installer Detection heuristic auto-elevates unsigned `.exe` files whose name contains `install`, `setup`, `update`, or `patch`. The bin shim created by `bun add -g` matches `update` and triggers a UAC prompt at startup.
-
-The package's `postinstall` writes an external `repo-updater.exe.manifest` next to the shim (declaring `asInvoker`) which suppresses the prompt. This runs automatically for **npm / pnpm / yarn** global installs.
-
-For **Bun**, lifecycle scripts are skipped unless the package is trusted. Either:
-
-1. Install via npm/pnpm/yarn instead, **or**
-2. Run the suppression script manually after `bun add -g repo-updater`:
-
-   ```powershell
-   node (Join-Path (npm root -g) "repo-updater\scripts\install-windows-manifest.mjs")
-   ```
-
-   Or, if Node is not installed, drop the manifest with PowerShell directly:
-
-   ```powershell
-   $exe = (Get-Command repo-updater).Source
-   @'
-   <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-   <assembly xmlns="urn:schemas-microsoft-com:asm.v1" manifestVersion="1.0">
-     <trustInfo xmlns="urn:schemas-microsoft-com:asm.v3">
-       <security><requestedPrivileges>
-         <requestedExecutionLevel level="asInvoker" uiAccess="false"/>
-       </requestedPrivileges></security>
-     </trustInfo>
-   </assembly>
-   '@ | Set-Content "$exe.manifest" -Encoding UTF8
-   # Bump exe mtime so Windows invalidates its cached elevation decision:
-   (Get-Item $exe).LastWriteTime = Get-Date
-   ```
-
 ## Usage
 
 ```text
