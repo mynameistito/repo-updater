@@ -1,0 +1,19 @@
+.changeset/refactor-code-quality-cleanup.md
+  s_4af924ebda7874::t_966d70a6d7c20f 1-10
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.4",
+  "base_commit_sha": "5d911c4c46e59bf2d45df1c37af9c503f1fd74ad",
+  "prompts": {},
+  "sessions": {
+    "s_4af924ebda7874": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a83d7739-9bb4-413c-99bd-99751ba13fc7",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Tito <github@mynameistito.com>"
+    }
+  }
+}
