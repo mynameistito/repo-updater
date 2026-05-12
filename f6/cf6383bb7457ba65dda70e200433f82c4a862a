@@ -1,0 +1,25 @@
+src/index.ts
+  s_f987e078014e98::t_b3e3e5e2a96ee6 693-698
+  s_f987e078014e98::t_96f93117a2cd66 28
+src/windows-manifest.ts
+  s_f987e078014e98::t_c9ed1e686d9718 17
+  s_f987e078014e98::t_04170d6da4c352 75,77-88,93
+scripts/install-windows-manifest.mjs
+  s_f987e078014e98::t_12d9d7a8f06cbc 13-30
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.4",
+  "base_commit_sha": "f6cf6383bb7457ba65dda70e200433f82c4a862a",
+  "prompts": {},
+  "sessions": {
+    "s_f987e078014e98": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "88297fc9-9f2e-4878-a3ed-d6680acb2cee",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Tito <github@mynameistito.com>"
+    }
+  }
+}
