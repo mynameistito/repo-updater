@@ -15,6 +15,7 @@
   "imports": {
     "@clack/prompts": "npm:@clack/prompts@^1.3.0",
     "better-result": "npm:better-result@^2.9.2",
-    "yaml": "npm:yaml@^2.9.0"
+    "yaml": "npm:yaml@^2.9.0",
+    "@types/node": "npm:@types/node@22.19.15"
   }
 }
