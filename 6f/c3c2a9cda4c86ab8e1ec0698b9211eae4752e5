@@ -1,0 +1,35 @@
+src/cli.ts
+  s_f8a6bcef077790::t_7dc2471ecde301 10,12-14
+src/index.ts
+  s_f8a6bcef077790::t_900c9f93876744 659-663
+scripts/install-windows-manifest.mjs
+  s_f8a6bcef077790::t_2f4389a8d1929b 1-88
+package.json
+  s_f8a6bcef077790::t_e1c47334b20c98 50
+  s_f8a6bcef077790::t_41cdd4691de5d9 38-39
+  s_f8a6bcef077790::t_c866c2409d37c6 56
+src/windows-manifest.ts
+  s_f8a6bcef077790::t_22a43268328641 1-30,33-80,82-87
+  s_f8a6bcef077790::t_14eff84c8d6f4d 81
+  s_f8a6bcef077790::t_43367dbb74d60e 31-32
+README.md
+  s_f8a6bcef077790::t_2fb09164d1e2f4 63-76
+.changeset/fix-windows-uac-shim-manifest.md
+  s_f8a6bcef077790::t_74ebc14ac13f33 1-7
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.4",
+  "base_commit_sha": "6fc3c2a9cda4c86ab8e1ec0698b9211eae4752e5",
+  "prompts": {},
+  "sessions": {
+    "s_f8a6bcef077790": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "412ce7d9-3c72-4318-aa51-023041420f0f",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Tito <github@mynameistito.com>"
+    }
+  }
+}
