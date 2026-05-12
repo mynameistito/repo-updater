@@ -60,6 +60,20 @@ pnpm install repo-updater -g                                   # with pnpm
 deno install -g -n repo-updater jsr:@mynameistito/repo-updater/cli # with Deno
 ```
 
+### Windows + `bun add -g` note
+
+Bun skips `postinstall` lifecycle scripts by default. The package ships a postinstall that writes a `repo-updater.exe.manifest` next to the global bin shim — without it, Windows Installer Detection auto-elevates the shim (the filename contains "update") and triggers a UAC prompt plus a console flash on every launch.
+
+Two ways to handle it under bun:
+
+```sh
+bun pm trust repo-updater     # run the postinstall now
+# — or —
+repo-updater --help           # first launch self-heals; one UAC prompt, then silent
+```
+
+npm / pnpm / yarn run the postinstall automatically — no extra step.
+
 ## Usage
 
 ```text
