@@ -26,11 +26,12 @@ src/
 |------|------|---------------|
 | CLI bootstrap (Bun/Node) | `cli.ts` | `main().catch()` → `process.exit(1)` |
 | CLI bootstrap (Deno) | `deno-cli.ts` | `main(Deno.args)` with `declare const Deno` |
-| Orchestration | `index.ts` | `main()`, `processRepo()`, `resolveRepos()`, `openURLs()`, browser detection |
+| Orchestration | `index.ts` | `main()`, `processRepo()`, `resolveRepos()` (re-exports browser API) |
+| Browser launch | `browser.ts` | `detectBrowser()`, `openURLs()`, `openURLBun()`, `openURLNodejs()` |
 | Update workflow | `runner.ts` | `updateRepo()`, `detectPackageManager()`, `performCleanup()`, exec abstraction |
 | CLI args | `args.ts` | `parseArgs()`, `getDate()` |
 | Config | `config.ts` | `loadConfig()`, `validateRepos()` |
-| Errors | `errors.ts` | `CommandFailedError`, `ConfigNotFoundError`, `InvalidInputError` |
+| Errors | `errors.ts` | `CommandFailedError`, `ConfigNotFoundError`, `InvalidInputError`, `CleanupError` |
 | Changesets | `changesets.ts` | `hasChangesets()`, `snapshotDeps()`, `diffDeps()`, `getChangesetFiles()`, `getPackageName()`, `writeChangesetFile()`, `snapshotWorkspaceDeps()`, `diffWorkspaceDeps()`, `writeWorkspaceChangesetFile()` |
 | Workspaces | `workspaces.ts` | `resolveWorkspaceGlobs()`, `getWorkspacePackages()`, `detectWorkspaces()` |
 | Package JSON | `package-json.ts` | `readPackageJson()` |
