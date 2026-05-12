@@ -48,19 +48,18 @@ export function selfHealWindowsManifest(): void {
   }
 
   const manifestPath = `${shimPath}.manifest`;
-  if (existsSync(manifestPath)) {
-    return;
-  }
-
   try {
-    writeFileSync(manifestPath, MANIFEST_XML);
-    // Bump mtime so Windows invalidates its cached elevation decision and
-    // re-evaluates with the manifest on the next launch.
+    // `wx` fails if the file exists. This is the atomic "create-if-absent"
+    // primitive — no TOCTOU window between an existence check and the write.
+    writeFileSync(manifestPath, MANIFEST_XML, { flag: "wx" });
+    // Manifest is new; bump mtime so Windows invalidates its cached
+    // elevation decision and re-evaluates with the manifest on next launch.
     const st = statSync(shimPath);
     utimesSync(shimPath, st.atime, new Date());
   } catch {
-    // Read-only install, permission denied, antivirus lock — give up
-    // silently. User can rerun manually via `bun pm trust repo-updater`.
+    // EEXIST: manifest already in place — common case after first launch.
+    // EACCES / EPERM / EBUSY: read-only install or antivirus lock.
+    // Either way, self-heal is best-effort — swallow and move on.
   }
 }
 

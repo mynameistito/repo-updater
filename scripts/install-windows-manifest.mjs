@@ -78,6 +78,9 @@ for (const dir of candidateBinDirs()) {
     const st = statSync(exe);
     utimesSync(exe, st.atime, new Date());
     wroteAny = true;
+    // Stop after the first successful shim — PATH may contain unrelated
+    // copies (e.g. npm + bun globals) we don't want to mutate.
+    break;
   } catch {
     // Permission denied or similar — skip silently.
   }
