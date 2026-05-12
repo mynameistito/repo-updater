@@ -1,0 +1,22 @@
+scripts/install-windows-manifest.mjs
+  s_f8a6bcef077790::t_10bf023feb5d10 81-83
+src/windows-manifest.ts
+  s_f8a6bcef077790::t_46c41c0d9c269a 52-56,60
+  s_f8a6bcef077790::t_5cfc34d3663d45 61-62
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.4",
+  "base_commit_sha": "8ea7e2c4d64b41af97e4e9810cc5d8e58ff34bc8",
+  "prompts": {},
+  "sessions": {
+    "s_f8a6bcef077790": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "412ce7d9-3c72-4318-aa51-023041420f0f",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Tito <github@mynameistito.com>"
+    }
+  }
+}
