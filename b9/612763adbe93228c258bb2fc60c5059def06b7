@@ -1,0 +1,22 @@
+README.md
+  s_2cef326b81a520::t_06c50c35756829 92-93
+scripts/install-windows-manifest.mjs
+  s_2cef326b81a520::t_18275cb78f2103 13
+  s_2cef326b81a520::t_d20ab4667c1d0f 69-72
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.4",
+  "base_commit_sha": "b9612763adbe93228c258bb2fc60c5059def06b7",
+  "prompts": {},
+  "sessions": {
+    "s_2cef326b81a520": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b59d55ac-21e3-47cd-badc-f1739b823e85",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Tito <github@mynameistito.com>"
+    }
+  }
+}
