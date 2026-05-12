@@ -4,6 +4,7 @@ export default defineConfig({
   entry: {
     index: "src/index.ts",
     cli: "src/cli.ts",
+    "windows-manifest": "src/windows-manifest.ts",
   },
   format: ["esm"],
   dts: true,
