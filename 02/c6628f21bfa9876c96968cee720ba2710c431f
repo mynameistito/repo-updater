@@ -1,0 +1,23 @@
+src/runner.ts
+  s_4af924ebda7874::t_4df637c922d0a0 23-27
+  s_4af924ebda7874::t_20da395c200e5e 352-354,366,368,371-372,376-380,387,392-395,404-407,413-416,418-429
+  s_4af924ebda7874::t_34796e6955fce1 732,741-747
+src/errors.ts
+  s_4af924ebda7874::t_f411938c8ec178 88-111
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.4",
+  "base_commit_sha": "02c6628f21bfa9876c96968cee720ba2710c431f",
+  "prompts": {},
+  "sessions": {
+    "s_4af924ebda7874": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a83d7739-9bb4-413c-99bd-99751ba13fc7",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Tito <github@mynameistito.com>"
+    }
+  }
+}
