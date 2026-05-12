@@ -1,5 +1,5 @@
 ---
-"repo-updater": patch
+"repo-updater": minor
 ---
 
 Internal code quality cleanup.

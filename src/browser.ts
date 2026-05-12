@@ -277,6 +277,10 @@ function buildOpenCommands(
   browserInfo: { browser: string; path?: string } | null
 ): string[][] {
   if (platform === "darwin") {
+    // Three strategies, in order:
+    //   1. browserInfo.browser is an absolute non-.app path → exec the binary directly.
+    //   2. .app bundle path or named app → `open -na <app> --args --new-window <urls>`.
+    //   3. No browserInfo → AppleScript fallback via escapeForAppleScript.
     if (browserInfo?.browser) {
       if (
         browserInfo.browser.startsWith("/") &&

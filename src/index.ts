@@ -346,7 +346,7 @@ export async function main(
       } else {
         log.info("Using browser: auto-detected");
       }
-      await openURLs(prUrls, undefined, undefined, browser);
+      await openURLs(prUrls, process.platform, undefined, browser);
     }
   } else if (!args.dryRun) {
     log.info("No pull requests were created.");
