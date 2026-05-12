@@ -89,6 +89,8 @@ For **Bun**, lifecycle scripts are skipped unless the package is trusted. Either
      </trustInfo>
    </assembly>
    '@ | Set-Content "$exe.manifest" -Encoding UTF8
+   # Bump exe mtime so Windows invalidates its cached elevation decision:
+   (Get-Item $exe).LastWriteTime = Get-Date
    ```
 
 ## Usage

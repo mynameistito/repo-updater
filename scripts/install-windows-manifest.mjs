@@ -10,7 +10,7 @@
  * Locates shims in known global install prefixes for npm, pnpm, yarn, bun.
  * Failures are non-fatal: postinstall must never block the user's install.
  */
-import { existsSync, writeFileSync } from "node:fs";
+import { existsSync, utimesSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
 
@@ -66,6 +66,10 @@ for (const exe of candidates) {
   const manifestPath = `${exe}.manifest`;
   try {
     writeFileSync(manifestPath, MANIFEST, "utf8");
+    // Bump the exe's mtime so Windows invalidates its cached elevation
+    // decision and re-reads the external manifest on next launch.
+    const now = new Date();
+    utimesSync(exe, now, now);
     written += 1;
     console.log(`repo-updater: wrote ${manifestPath} (UAC suppression)`);
   } catch (err) {
