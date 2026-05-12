@@ -83,6 +83,7 @@
       "types": "./dist/cli.d.mts",
       "import": "./dist/cli.mjs"
     },
+    "./windows-manifest": "./dist/windows-manifest.mjs",
     "./package.json": "./package.json"
   }
 }
