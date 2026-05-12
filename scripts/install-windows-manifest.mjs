@@ -47,7 +47,9 @@ const candidates = [
   process.env.npm_config_prefix
     ? join(process.env.npm_config_prefix, "repo-updater.exe")
     : null,
-  process.env.PNPM_HOME ? join(process.env.PNPM_HOME, "repo-updater.exe") : null,
+  process.env.PNPM_HOME
+    ? join(process.env.PNPM_HOME, "repo-updater.exe")
+    : null,
   process.env.BUN_INSTALL
     ? join(process.env.BUN_INSTALL, "bin", "repo-updater.exe")
     : null,
@@ -74,7 +76,7 @@ for (const exe of candidates) {
     console.log(`repo-updater: wrote ${manifestPath} (UAC suppression)`);
   } catch (err) {
     console.warn(
-      `repo-updater: could not write ${manifestPath}: ${(err instanceof Error ? err.message : String(err))}`
+      `repo-updater: could not write ${manifestPath}: ${err instanceof Error ? err.message : String(err)}`
     );
   }
 }
