@@ -1,0 +1,27 @@
+src/windows-manifest.ts
+  s_2cef326b81a520::t_fb73a76914b3ad 1-92
+src/cli.ts
+  s_2cef326b81a520::t_54c9ac4d53596c 10-16
+scripts/install-windows-manifest.mjs
+  s_2cef326b81a520::t_c19c4111b2e2de 5-7,9-11,13,15-16,18
+.changeset/windows-uac-self-heal.md
+  s_2cef326b81a520::t_de331a9e820bd3 1-11
+tsdown.config.ts
+  s_2cef326b81a520::t_d1fc391ba7df4c 7
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.4",
+  "base_commit_sha": "4bf179aa63706972682b64f8e590d4692332e834",
+  "prompts": {},
+  "sessions": {
+    "s_2cef326b81a520": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b59d55ac-21e3-47cd-badc-f1739b823e85",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Tito <github@mynameistito.com>"
+    }
+  }
+}
