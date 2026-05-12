@@ -1,0 +1,28 @@
+.changeset/fix-windows-uac-and-terminal-flash.md
+  s_2cef326b81a520::t_743ba80a3f6d2d 1-8
+package.json
+  s_2cef326b81a520::t_b3e10bc3967498 38-39
+  s_2cef326b81a520::t_ddbeb47af90181 50
+README.md
+  s_2cef326b81a520::t_3ba170058497ef 63-93
+src/index.ts
+  s_2cef326b81a520::t_58ee2a66ac3fe4 659-663
+scripts/install-windows-manifest.mjs
+  s_2cef326b81a520::t_5f794b9e995333 1-82
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.4",
+  "base_commit_sha": "ce2199e1a6368bf680b606c3c694cd0b6be16fc2",
+  "prompts": {},
+  "sessions": {
+    "s_2cef326b81a520": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b59d55ac-21e3-47cd-badc-f1739b823e85",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Tito <github@mynameistito.com>"
+    }
+  }
+}
