@@ -1,0 +1,25 @@
+src/browser.ts
+  s_4af924ebda7874::t_e8dfe9da1bbad4 1-342
+src/index.ts
+  s_4af924ebda7874::t_9a691e8236549a 6,20,27-28,30-36
+  s_4af924ebda7874::t_c4e68bdb0590ad 29
+src/AGENTS.md
+  s_4af924ebda7874::t_8efc7d1659b826 29-30
+  s_4af924ebda7874::t_bda931621e3fda 34
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.4",
+  "base_commit_sha": "581b2ca5e821186b0a3ac9f20db2d3e2fb5e1a0c",
+  "prompts": {},
+  "sessions": {
+    "s_4af924ebda7874": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a83d7739-9bb4-413c-99bd-99751ba13fc7",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Tito <github@mynameistito.com>"
+    }
+  }
+}
