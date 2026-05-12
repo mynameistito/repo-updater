@@ -20,7 +20,11 @@ import {
   writeChangesetFile,
   writeWorkspaceChangesetFile,
 } from "./changesets.ts";
-import { CommandFailedError, InvalidInputError } from "./errors.ts";
+import {
+  CleanupError,
+  CommandFailedError,
+  InvalidInputError,
+} from "./errors.ts";
 import type { WorkspaceConfig } from "./workspaces.ts";
 import { detectWorkspaces } from "./workspaces.ts";
 
@@ -345,7 +349,9 @@ interface CleanupOptions {
 
 /**
  * Removes a failed update branch and resets the working directory to the
- * default branch.
+ * default branch. Best-effort: every step runs regardless of prior failures.
+ * Returns a {@link CleanupError} aggregating any failed steps so the caller
+ * can surface a single signal to the user.
  *
  * @param options - The {@link CleanupOptions} specifying repo, branch, and executor.
  */
@@ -357,34 +363,36 @@ async function performCleanup({
   execFn,
   repo,
   changesetFile,
-}: CleanupOptions): Promise<void> {
+}: CleanupOptions): Promise<Result<void, CleanupError>> {
   if (!branchCreated) {
-    return;
+    return Result.ok();
   }
+
+  const failures: { step: string; message: string }[] = [];
 
   if (changesetFile && existsSync(changesetFile)) {
     try {
       unlinkSync(changesetFile);
-    } catch {
-      console.warn(
-        `Cleanup: Could not remove changeset file: ${changesetFile}`
-      );
+    } catch (err) {
+      failures.push({
+        step: "remove-changeset",
+        message: err instanceof Error ? err.message : String(err),
+      });
     }
   }
 
   // Hard reset (not `checkout -- .`) so staged changes from `git add -A` are also discarded before branch switch.
   const resetResult = await execFn(["git", "reset", "--hard", "HEAD"], repo);
   if (resetResult.isErr()) {
-    console.warn(
-      `Cleanup: Failed to reset worktree: ${resetResult.error.message}`
-    );
+    failures.push({ step: "reset", message: resetResult.error.message });
   }
 
   const checkoutResult = await execFn(["git", "checkout", defaultBranch], repo);
   if (checkoutResult.isErr()) {
-    console.warn(
-      `Cleanup: Failed to checkout ${defaultBranch}: ${checkoutResult.error.message}`
-    );
+    failures.push({
+      step: `checkout ${defaultBranch}`,
+      message: checkoutResult.error.message,
+    });
   }
 
   if (branchPushed) {
@@ -393,18 +401,32 @@ async function performCleanup({
       repo
     );
     if (deleteRemoteResult.isErr()) {
-      console.warn(
-        `Cleanup: Could not delete remote branch ${branch}: ${deleteRemoteResult.error.message}`
-      );
+      failures.push({
+        step: "delete-remote",
+        message: deleteRemoteResult.error.message,
+      });
     }
   }
 
   const deleteResult = await execFn(["git", "branch", "-D", branch], repo);
   if (deleteResult.isErr()) {
-    console.warn(
-      `Cleanup: Failed to delete branch ${branch}: ${deleteResult.error.message}`
-    );
+    failures.push({
+      step: "delete-local",
+      message: deleteResult.error.message,
+    });
   }
+
+  if (failures.length === 0) {
+    return Result.ok();
+  }
+
+  return Result.err(
+    new CleanupError({
+      message: `Cleanup of ${repo} left ${failures.length} step(s) incomplete; manual intervention may be required.`,
+      repo,
+      failures,
+    })
+  );
 }
 
 /**
@@ -707,7 +729,7 @@ export function updateRepo(
       });
     } finally {
       if (!succeeded) {
-        await performCleanup({
+        const cleanupResult = await performCleanup({
           defaultBranch,
           branch,
           branchCreated,
@@ -716,6 +738,13 @@ export function updateRepo(
           repo,
           changesetFile: changesetFilePath,
         });
+        if (cleanupResult.isErr()) {
+          const { message, failures } = cleanupResult.error;
+          const detail = failures
+            .map((f) => `  - ${f.step}: ${f.message}`)
+            .join("\n");
+          console.error(`${message}\n${detail}`);
+        }
       }
     }
   });

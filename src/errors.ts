@@ -85,3 +85,27 @@ export const InvalidInputError: TaggedErrorClass<
 }>();
 /** Instance type for {@link InvalidInputError}. */
 export type InvalidInputError = InstanceType<typeof InvalidInputError>;
+
+/**
+ * Aggregated failure from {@link performCleanup}. Cleanup runs every step
+ * best-effort; any non-empty `failures` list means the repo may be in a
+ * partially-cleaned state and needs manual attention.
+ *
+ * @property message - Human-readable summary.
+ * @property repo - Repository path that failed cleanup.
+ * @property failures - Per-step failure records.
+ */
+export const CleanupError: TaggedErrorClass<
+  "CleanupError",
+  {
+    message: string;
+    repo: string;
+    failures: { step: string; message: string }[];
+  }
+> = TaggedError("CleanupError")<{
+  message: string;
+  repo: string;
+  failures: { step: string; message: string }[];
+}>();
+/** Instance type for {@link CleanupError}. */
+export type CleanupError = InstanceType<typeof CleanupError>;
