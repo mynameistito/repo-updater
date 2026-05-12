@@ -35,7 +35,8 @@
     "node": ">=22.6.0"
   },
   "files": [
-    "dist"
+    "dist",
+    "scripts/install-windows-manifest.mjs"
   ],
   "scripts": {
     "typecheck": "tsgo --noEmit",
@@ -46,6 +47,7 @@
     "fix": "ultracite fix",
     "build": "tsdown",
     "sync:jsr": "bun scripts/sync-jsr-version.ts",
+    "postinstall": "node scripts/install-windows-manifest.mjs",
     "prepublishOnly": "bun run build && bun run typecheck",
     "version": "changeset version && bun run sync:jsr && bunx ultracite fix deno.json"
   },
