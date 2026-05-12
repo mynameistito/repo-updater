@@ -1,0 +1,23 @@
+src/browser.ts
+  s_31cbcb5149e37c::t_6b887dbdfc89b4 280-283
+.changeset/refactor-code-quality-cleanup.md
+  s_31cbcb5149e37c::t_70c7b8dd1e6a52 2
+src/index.ts
+  s_31cbcb5149e37c::t_e6f9dc9e48d93e 349
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.4",
+  "base_commit_sha": "76e93856721f6aa12c5d492b467d13c4621aa9d3",
+  "prompts": {},
+  "sessions": {
+    "s_31cbcb5149e37c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fe6f8e75-6dec-432c-a1c5-6a6fabefca7d",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Tito <github@mynameistito.com>"
+    }
+  }
+}
