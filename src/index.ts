@@ -431,13 +431,11 @@ async function getWindowsDefaultBrowserPath(
 async function detectWindowsBrowser(
   execFn: ExecFn
 ): Promise<{ browser: string; path?: string } | null> {
-  // First, try to get the actual browser path using PowerShell
   const browserPath = await getWindowsDefaultBrowserPath(execFn);
   if (browserPath) {
     return { browser: browserPath, path: browserPath };
   }
 
-  // Fallback to registry detection
   const result = await execFn(
     [
       "reg",
@@ -459,7 +457,6 @@ async function detectWindowsBrowser(
 
   const progId = match[1];
 
-  // Get the actual executable path from the ProgId class
   const cmdResult = await execFn(
     [
       "reg",
@@ -566,7 +563,6 @@ function buildOpenCommands(
 ): string[][] {
   if (platform === "darwin") {
     if (browserInfo?.browser) {
-      // If the browser is a direct executable path, invoke it directly
       if (
         browserInfo.browser.startsWith("/") &&
         !browserInfo.browser.endsWith(".app")
@@ -577,7 +573,6 @@ function buildOpenCommands(
         ["open", "-na", browserInfo.browser, "--args", "--new-window", ...urls],
       ];
     }
-    // No detected browser — use osascript to open all URLs together
     const script = urls
       .map((u) => `open location "${escapeForAppleScript(u)}"`)
       .join("\n");
@@ -587,15 +582,12 @@ function buildOpenCommands(
   if (platform === "win32") {
     const browserPath = browserInfo?.path;
     if (browserPath) {
-      // Pass all URLs in a single command so they open in one window
       return [[browserPath, "--new-window", ...urls]];
     }
-    // Fallback to cmd start for each URL
     return urls.map((url) => ["cmd", "/c", "start", "", url]);
   }
 
   if (browserInfo) {
-    // Linux: pass all URLs in a single command
     return [[browserInfo.browser, "--new-window", ...urls]];
   }
 

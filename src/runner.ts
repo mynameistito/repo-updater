@@ -372,9 +372,7 @@ async function performCleanup({
     }
   }
 
-  // Hard-reset index + worktree to HEAD so the branch switch doesn't fail.
-  // `git checkout -- .` only restores the worktree from the index, which is
-  // insufficient when `git add -A` has already staged changes.
+  // Hard reset (not `checkout -- .`) so staged changes from `git add -A` are also discarded before branch switch.
   const resetResult = await execFn(["git", "reset", "--hard", "HEAD"], repo);
   if (resetResult.isErr()) {
     console.warn(
