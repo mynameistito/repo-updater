@@ -1,0 +1,20 @@
+src/index.ts
+  s_4af924ebda7874::t_f7ba36bb18d719 482
+  s_4af924ebda7874::t_cfccd47155587a 472-475,479-480
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.4",
+  "base_commit_sha": "e04db46032b6effb25b95b894acdec54aef8464c",
+  "prompts": {},
+  "sessions": {
+    "s_4af924ebda7874": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a83d7739-9bb4-413c-99bd-99751ba13fc7",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Tito <github@mynameistito.com>"
+    }
+  }
+}
