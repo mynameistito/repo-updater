@@ -16,6 +16,6 @@
     "@clack/prompts": "npm:@clack/prompts@^1.4.0",
     "better-result": "npm:better-result@^2.9.2",
     "yaml": "npm:yaml@^2.9.0",
-    "@types/node": "npm:@types/node@25.7.0"
+    "@types/node": "npm:@types/node@25.8.0"
   }
 }
