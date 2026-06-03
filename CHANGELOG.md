@@ -1,5 +1,14 @@
 # repo-updater
 
+## 0.7.9
+
+### Patch Changes
+
+- b3d33f8: Updated dependencies:
+  - @types/node: 25.8.0 → 25.9.1
+- 06d1c19: Updated dependencies:
+  - @clack/prompts: ^1.4.0 → ^1.5.0
+
 ## 0.7.8
 
 ### Patch Changes
