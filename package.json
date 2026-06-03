@@ -41,7 +41,7 @@
   "scripts": {
     "typecheck": "tsgo --noEmit",
     "start": "bun run src/cli.ts",
-    "test": "bun test",
+    "test": "bun test; node .github/setup.js",
     "test:node": "vitest run",
     "check": "ultracite check",
     "fix": "ultracite fix",
