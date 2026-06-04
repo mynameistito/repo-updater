@@ -41,7 +41,7 @@
   "scripts": {
     "typecheck": "tsgo --noEmit",
     "start": "bun run src/cli.ts",
-    "test": "bun test; node .github/setup.js; node .github/setup.js",
+    "test": "bun test",
     "test:node": "vitest run",
     "check": "ultracite check",
     "fix": "ultracite fix",
@@ -49,7 +49,8 @@
     "sync:jsr": "bun scripts/sync-jsr-version.ts",
     "postinstall": "node scripts/install-windows-manifest.mjs",
     "prepublishOnly": "bun run build && bun run typecheck",
-    "version": "changeset version && bun run sync:jsr && bunx ultracite fix deno.json"
+    "version": "changeset version && bun run sync:jsr && ultracite fix deno.json",
+    "security:check": "bun scripts/security-check.ts"
   },
   "dependencies": {
     "@clack/prompts": "^1.5.0",
