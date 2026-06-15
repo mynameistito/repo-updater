@@ -53,7 +53,7 @@
   },
   "dependencies": {
     "@clack/prompts": "^1.5.1",
-    "@types/node": "25.9.2",
+    "@types/node": "25.9.3",
     "better-result": "^2.9.2",
     "yaml": "^2.9.0"
   },
