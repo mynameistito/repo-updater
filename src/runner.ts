@@ -706,13 +706,16 @@ export const updateRepo = (
 
     // Detect default branch dynamically
     let defaultBranch = "main";
-    const defaultBranchResult = yield* Result.await(
-      execFn(["git", "symbolic-ref", "refs/remotes/origin/HEAD"], repo)
+    const defaultBranchResult = await execFn(
+      ["git", "symbolic-ref", "refs/remotes/origin/HEAD"],
+      repo
     );
-    const defaultBranchMatch =
-      defaultBranchResult.stdout.match(DEFAULT_BRANCH_REGEX);
-    if (defaultBranchMatch) {
-      [, defaultBranch] = defaultBranchMatch;
+    if (defaultBranchResult.isOk()) {
+      const defaultBranchMatch =
+        defaultBranchResult.value.stdout.match(DEFAULT_BRANCH_REGEX);
+      if (defaultBranchMatch) {
+        [, defaultBranch] = defaultBranchMatch;
+      }
     }
 
     console.log(`[info] Using default branch: ${defaultBranch}`);
