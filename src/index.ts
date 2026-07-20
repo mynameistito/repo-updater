@@ -7,7 +7,10 @@
  * cross-platform browser detection and URL opening utilities.
  */
 
-import { basename } from "node:path";
+import { once } from "node:events";
+import path from "node:path";
+import { setTimeout as delay } from "node:timers/promises";
+
 import {
   confirm,
   intro,
@@ -17,19 +20,22 @@ import {
   outro,
   spinner,
 } from "@clack/prompts";
-import { getDate, type ParsedArgs, parseArgs } from "./args.ts";
-import {
-  type Config,
-  loadConfig,
-  saveBrowserToConfig,
-  validateRepos,
-} from "./config.ts";
+
+import { getDate, parseArgs } from "./args.ts";
+import type { ParsedArgs } from "./args.ts";
+import { loadConfig, saveBrowserToConfig, validateRepos } from "./config.ts";
+import type { Config } from "./config.ts";
 import { execBun, execNodejs, updateRepo } from "./runner.ts";
+
+/** Maximum time to wait for a browser process to report successful spawn. */
+const OPEN_URL_SPAWN_TIMEOUT_MS = 5000;
+/** Small grace period after spawn so Windows has time to hand off the URL. */
+const OPEN_URL_SPAWN_GRACE_MS = 500;
 
 /**
  * Prints CLI usage information and available flags to standard output.
  */
-export function printUsage() {
+export const printUsage = () => {
   console.log(`
 Usage: repo-updater [options] [repo paths...]
 
@@ -50,7 +56,7 @@ Examples:
   repo-updater -b "C:\\Program Files\\BraveSoftware\\Brave-Browser\\Application\\brave.exe"
   repo-updater E:\\GitHub\\org\\repo1          # Update specific repos
 `);
-}
+};
 
 /**
  * Resolves the list of repository paths from CLI arguments and configuration.
@@ -62,13 +68,13 @@ Examples:
  * @returns An object with `repos` and optional `config`, or `null` if
  *   no config was found and no positional arguments were given.
  */
-export function resolveRepos(
+export const resolveRepos = (
   args: ParsedArgs
-): { repos: string[]; config?: Config } | null {
+): { repos: string[]; config?: Config } | null => {
   if (args.positional.length > 0) {
     const configResult = loadConfig(args.configPath);
     const config = configResult.isOk() ? configResult.value : undefined;
-    return { repos: args.positional, config };
+    return { config, repos: args.positional };
   }
 
   const configResult = loadConfig(args.configPath);
@@ -88,8 +94,8 @@ export function resolveRepos(
     return null;
   }
 
-  return { repos: configResult.value.repos, config: configResult.value };
-}
+  return { config: configResult.value, repos: configResult.value.repos };
+};
 
 /**
  * Processes a single repository for dependency updates.
@@ -107,7 +113,7 @@ export function resolveRepos(
  * @param noWorkspaces - When `true`, skips workspace-aware updates.
  * @returns A result object with `repo`, `status`, and optional `prUrl`.
  */
-export async function processRepo(
+export const processRepo = async (
   repo: string,
   date: string,
   dryRun: boolean,
@@ -119,18 +125,18 @@ export async function processRepo(
   repo: string;
   status: "pr-created" | "no-changes" | "failed";
   prUrl?: string;
-}> {
-  const repoName = basename(repo);
+}> => {
+  const repoName = path.basename(repo);
   log.step(repoName);
 
   if (dryRun) {
     const result = await updateFn({
-      repo,
       date,
       dryRun: true,
       minor,
       noChangeset,
       noWorkspaces,
+      repo,
     });
     console.log();
     return result.isOk() ? result.value : { repo, status: "failed" };
@@ -140,12 +146,12 @@ export async function processRepo(
   s.start("Updating dependencies...");
 
   const result = await updateFn({
-    repo,
     date,
     dryRun: false,
     minor,
     noChangeset,
     noWorkspaces,
+    repo,
   });
 
   if (result.isErr()) {
@@ -172,19 +178,19 @@ export async function processRepo(
   }
 
   return result.value;
-}
+};
 
 /**
  * Aggregates all parameters needed to process a single repository.
  *
- * @property date - Date string for branch naming.
- * @property dryRun - Whether to simulate the update.
- * @property minor - Restrict to minor-range updates.
- * @property noChangeset - Skip changeset generation.
- * @property noWorkspaces - Skip workspace-aware logic.
- * @property prUrls - Shared array to collect created PR URLs.
- * @property updateFn - Custom update function override.
- * @property valid - Validated repository paths to process.
+ * @property {string} date - Date string for branch naming.
+ * @property {boolean} dryRun - Whether to simulate the update.
+ * @property {boolean} minor - Restrict to minor-range updates.
+ * @property {boolean} noChangeset - Skip changeset generation.
+ * @property {boolean} noWorkspaces - Skip workspace-aware logic.
+ * @property {string[]} prUrls - Shared array to collect created PR URLs.
+ * @property {typeof updateRepo} updateFn - Custom update function override.
+ * @property {string[]} valid - Validated repository paths to process.
  */
 interface RepoProcessingOptions {
   date: string;
@@ -202,7 +208,7 @@ interface RepoProcessingOptions {
  *
  * @param options - The {@link RepoProcessingOptions} for this repository.
  */
-async function handleRepoProcessing({
+const handleRepoProcessing = async ({
   valid,
   date,
   dryRun,
@@ -211,8 +217,13 @@ async function handleRepoProcessing({
   minor,
   noChangeset,
   noWorkspaces,
-}: RepoProcessingOptions) {
-  for (const repo of valid) {
+}: RepoProcessingOptions) => {
+  const processNext = async (index: number): Promise<void> => {
+    const repo = valid[index];
+    if (!repo) {
+      return;
+    }
+
     const result = await processRepo(
       repo,
       date,
@@ -225,15 +236,18 @@ async function handleRepoProcessing({
     if (result.prUrl) {
       prUrls.push(result.prUrl);
     }
-  }
-}
+    await processNext(index + 1);
+  };
+
+  await processNext(0);
+};
 
 /**
  * Displays collected PR URLs and offers to open them in the browser.
  *
  * @param prUrls - Array of PR URLs created during the run.
  */
-async function handlePRDisplay(prUrls: string[]) {
+const handlePRDisplay = async (prUrls: string[]) => {
   note(prUrls.join("\n"), "Pull Requests");
 
   const shouldOpen = await confirm({
@@ -246,7 +260,7 @@ async function handlePRDisplay(prUrls: string[]) {
   }
 
   return shouldOpen === true;
-}
+};
 
 /**
  * Opens a URL using Bun's native `Bun.spawn` (fire-and-forget, the
@@ -254,35 +268,35 @@ async function handlePRDisplay(prUrls: string[]) {
  *
  * @param cmd - The browser command and arguments.
  */
-export function openURLBun(cmd: string[]): void {
-  Bun.spawn(cmd, { stdout: "ignore", stderr: "ignore", windowsHide: true });
-}
+export const openURLBun = (cmd: string[]): void => {
+  Bun.spawn(cmd, { stderr: "ignore", stdout: "ignore", windowsHide: true });
+};
 
 /**
  * Opens a URL using Bun's native `Bun.spawnSync`.
  *
  * @param cmd - The browser command and arguments.
  */
-export function openURLBunSync(cmd: string[]): number | null {
+export const openURLBunSync = (cmd: string[]): number | null => {
   try {
     const proc = Bun.spawnSync(cmd, {
-      stdout: "ignore",
       stderr: "ignore",
+      stdout: "ignore",
       windowsHide: true,
     });
     return proc.exitCode;
-  } catch (err) {
-    console.error(`openURLBunSync failed for ${cmd.join(" ")}:`, err);
+  } catch (error) {
+    console.error(`openURLBunSync failed for ${cmd.join(" ")}:`, error);
     return null;
   }
-}
+};
 
 /**
  * Opens a URL using Node.js `child_process.spawn` with `stdio: "ignore"`.
  *
  * @param cmd - The browser command and arguments.
  */
-export async function openURLNodejs(cmd: string[]): Promise<void> {
+export const openURLNodejs = async (cmd: string[]): Promise<void> => {
   const { spawn } = await import("node:child_process");
   // Do NOT use detached: true — DETACHED_PROCESS causes CREATE_NO_WINDOW
   // (windowsHide) to be ignored on Windows, letting cmd.exe allocate a new
@@ -292,48 +306,38 @@ export async function openURLNodejs(cmd: string[]): Promise<void> {
     windowsHide: true,
   });
 
-  await new Promise<void>((resolve, reject) => {
-    let settled = false;
+  const abortController = new AbortController();
+  const signal = AbortSignal.any([
+    abortController.signal,
+    AbortSignal.timeout(OPEN_URL_SPAWN_TIMEOUT_MS),
+  ]);
 
-    const settle = (error?: Error) => {
-      if (settled) {
-        return;
-      }
-      settled = true;
-      clearTimeout(timeout);
-      child.unref();
-      if (error) {
-        reject(error);
-      } else {
-        resolve();
-      }
-    };
-
-    const timeout = setTimeout(() => {
-      settle(
-        new Error(`Timed out launching browser command: ${cmd.join(" ")}`)
-      );
-    }, OPEN_URL_SPAWN_TIMEOUT_MS);
-
-    child.once("error", (error) => {
-      settle(error);
-    });
-
-    child.once("spawn", () => {
-      setTimeout(settle, OPEN_URL_SPAWN_GRACE_MS);
-    });
-
-    child.once("close", (code) => {
-      if (code && !settled) {
-        settle(
-          new Error(
+  try {
+    await Promise.race([
+      once(child, "spawn", { signal }),
+      once(child, "close", { signal }).then(async ([code]) => {
+        if (code) {
+          throw new Error(
             `Browser launch command exited early with code ${code}: ${cmd.join(" ")}`
-          )
-        );
-      }
-    });
-  });
-}
+          );
+        }
+        await once(child, "spawn", { signal });
+      }),
+    ]);
+  } catch (error) {
+    if (error instanceof DOMException && error.name === "AbortError") {
+      throw new Error(`Timed out launching browser command: ${cmd.join(" ")}`, {
+        cause: error,
+      });
+    }
+    throw error;
+  } finally {
+    abortController.abort();
+  }
+
+  await delay(OPEN_URL_SPAWN_GRACE_MS);
+  child.unref();
+};
 
 /**
  * Function signature for executing shell commands.
@@ -348,36 +352,32 @@ export type ExecFn = (
 ) => Promise<{ stdout: string; stderr: string; exitCode: number }>;
 
 /** Matches a Windows registry prog ID value from `reg query` output. */
-const PROG_ID_REGEX = /ProgId\s+REG_SZ\s+(\S+)/;
+const PROG_ID_REGEX = /ProgId\s+REG_SZ\s+(?<progId>\S+)/u;
 /** Matches a `.desktop` file suffix string from `xdg-settings` output. */
-const DESKTOP_SUFFIX_REGEX = /\.desktop$/;
+const DESKTOP_SUFFIX_REGEX = /\.desktop$/u;
 /** Matches Firefox's bundle identifier in macOS defaults output. */
 const MACOS_FIREFOX_REGEX =
-  /LSHandlerURLScheme\s*=\s*https[\s\S]*?LSHandlerRoleAll\s*=\s*"?(org\.mozilla\.firefox)"?/;
+  /LSHandlerURLScheme\s*=\s*https[\s\S]*?LSHandlerRoleAll\s*=\s*"?(?<bundleId>org\.mozilla\.firefox)"?/u;
 /** Matches the HTTP handler prog ID from Windows registry output. */
-const REG_COMMAND_REGEX = /\(Default\)\s+REG_SZ\s+"?([^"]+\.exe)"?/i;
+const REG_COMMAND_REGEX = /\(Default\)\s+REG_SZ\s+"?(?<path>[^"]+\.exe)"?/iu;
 /** Matches `.exe` file extension in a Windows path. */
-const EXE_SUFFIX_REGEX = /\.exe$/i;
-/** Maximum time to wait for a browser process to report successful spawn. */
-const OPEN_URL_SPAWN_TIMEOUT_MS = 5000;
-/** Small grace period after spawn so Windows has time to hand off the URL. */
-const OPEN_URL_SPAWN_GRACE_MS = 500;
+const EXE_SUFFIX_REGEX = /\.exe$/iu;
 
 /** Maps Windows HTTP handler prog IDs to browser executable names. */
 const windowsProgIdMap: Record<string, string> = {
+  BraveHTML: "brave",
   ChromeHTML: "chrome",
   MSEdgeHTM: "msedge",
-  BraveHTML: "brave",
 };
 
 /** Maps `.desktop` file names to browser executable commands. */
 const linuxDesktopMap: Record<string, string> = {
-  "google-chrome": "google-chrome",
-  "google-chrome-stable": "google-chrome-stable",
-  firefox: "firefox",
+  "brave-browser": "brave-browser",
   chromium: "chromium",
   "chromium-browser": "chromium-browser",
-  "brave-browser": "brave-browser",
+  firefox: "firefox",
+  "google-chrome": "google-chrome",
+  "google-chrome-stable": "google-chrome-stable",
   "microsoft-edge": "microsoft-edge",
 };
 
@@ -388,9 +388,9 @@ const linuxDesktopMap: Record<string, string> = {
  * @param execFn - Command executor function.
  * @returns The browser command name, or `null` if undetermined.
  */
-async function detectMacosBrowser(
+const detectMacosBrowser = async (
   execFn: ExecFn
-): Promise<{ browser: string } | null> {
+): Promise<{ browser: string } | null> => {
   // Detect if Firefox is the default browser on macOS
   // Firefox enforces single-instance locking, so we need to know
   // whether to use `open -n` (new instance) or just `open`
@@ -411,7 +411,7 @@ async function detectMacosBrowser(
     // Fall through
   }
   return null;
-}
+};
 
 /**
  * Resolves the full executable path for a Windows browser from its registry prog ID.
@@ -419,9 +419,9 @@ async function detectMacosBrowser(
  * @param execFn - Command executor function.
  * @returns The absolute path to the browser executable, or `null` if not found.
  */
-async function getWindowsDefaultBrowserPath(
+const getWindowsDefaultBrowserPath = async (
   execFn: ExecFn
-): Promise<string | null> {
+): Promise<string | null> => {
   const psScript = `
     $progId = (Get-ItemProperty -Path "HKCU:\\Software\\Microsoft\\Windows\\Shell\\Associations\\UrlAssociations\\https\\UserChoice" -Name "ProgId" -ErrorAction SilentlyContinue).ProgId
     if ($progId) {
@@ -433,12 +433,16 @@ async function getWindowsDefaultBrowserPath(
     ["powershell", "-NoProfile", "-Command", psScript.trim()],
     "."
   );
-  const path = result.stdout.trim();
-  if (result.exitCode === 0 && path && EXE_SUFFIX_REGEX.test(path)) {
-    return path;
+  const executablePath = result.stdout.trim();
+  if (
+    result.exitCode === 0 &&
+    executablePath &&
+    EXE_SUFFIX_REGEX.test(executablePath)
+  ) {
+    return executablePath;
   }
   return null;
-}
+};
 
 /**
  * Detects the default browser on Windows by querying the registry for the
@@ -447,9 +451,9 @@ async function getWindowsDefaultBrowserPath(
  * @param execFn - Command executor function.
  * @returns The browser executable name, or `null` if undetermined.
  */
-async function detectWindowsBrowser(
+const detectWindowsBrowser = async (
   execFn: ExecFn
-): Promise<{ browser: string; path?: string } | null> {
+): Promise<{ browser: string; path?: string } | null> => {
   // First, try to get the actual browser path using PowerShell
   const browserPath = await getWindowsDefaultBrowserPath(execFn);
   if (browserPath) {
@@ -476,7 +480,10 @@ async function detectWindowsBrowser(
     return null;
   }
 
-  const progId = match[1];
+  const { progId } = match.groups ?? {};
+  if (!progId) {
+    return null;
+  }
 
   // Get the actual executable path from the ProgId class
   const cmdResult = await execFn(
@@ -504,7 +511,10 @@ async function detectWindowsBrowser(
   // Extract the executable path from the command
   const cmdMatch = cmdResult.stdout.match(REG_COMMAND_REGEX);
   if (cmdMatch) {
-    return { browser: cmdMatch[1], path: cmdMatch[1] };
+    const { path: commandPath } = cmdMatch.groups ?? {};
+    if (commandPath) {
+      return { browser: commandPath, path: commandPath };
+    }
   }
 
   // Fallback to browser name
@@ -517,7 +527,7 @@ async function detectWindowsBrowser(
     }
   }
   return null;
-}
+};
 
 /**
  * Detects the default browser on Linux by querying `xdg-settings get default-web-browser`.
@@ -525,9 +535,9 @@ async function detectWindowsBrowser(
  * @param execFn - Command executor function.
  * @returns The browser command name, or `null` if undetermined.
  */
-async function detectLinuxBrowser(
+const detectLinuxBrowser = async (
   execFn: ExecFn
-): Promise<{ browser: string } | null> {
+): Promise<{ browser: string } | null> => {
   try {
     const result = await execFn(
       ["xdg-settings", "get", "default-web-browser"],
@@ -542,7 +552,7 @@ async function detectLinuxBrowser(
   } catch {
     return null;
   }
-}
+};
 
 /**
  * Detects the default browser for the current operating system.
@@ -555,10 +565,10 @@ async function detectLinuxBrowser(
  * @param execFn - Optional command executor for testing.
  * @returns The detected browser command name, or `null` if detection fails.
  */
-export function detectBrowser(
+export const detectBrowser = (
   platform: string = process.platform,
   execFn: ExecFn = typeof Bun === "undefined" ? execNodejs : execBun
-): Promise<{ browser: string; path?: string } | null> {
+): Promise<{ browser: string; path?: string } | null> => {
   if (platform === "darwin") {
     return detectMacosBrowser(execFn).catch(() => null);
   }
@@ -567,7 +577,7 @@ export function detectBrowser(
     return detectWindowsBrowser(execFn).catch(() => null);
   }
   return detectLinuxBrowser(execFn).catch(() => null);
-}
+};
 
 /**
  * Escapes a string for safe interpolation into an AppleScript command.
@@ -575,9 +585,8 @@ export function detectBrowser(
  * @param s - The string to escape.
  * @returns The escaped string.
  */
-function escapeForAppleScript(s: string): string {
-  return s.replace(/\\/g, "\\\\").replace(/"/g, '\\"');
-}
+const escapeForAppleScript = (s: string): string =>
+  s.replaceAll("\\", "\\\\").replaceAll('"', '\\"');
 
 /**
  * Builds platform-specific command arrays for opening URLs in a browser.
@@ -587,11 +596,11 @@ function escapeForAppleScript(s: string): string {
  * @param browserInfo - The detected browser name and optional path.
  * @returns Array of command arrays to execute.
  */
-function buildOpenCommands(
+const buildOpenCommands = (
   urls: string[],
   platform: string,
   browserInfo: { browser: string; path?: string } | null
-): string[][] {
+): string[][] => {
   if (platform === "darwin") {
     if (browserInfo?.browser) {
       // If the browser is a direct executable path, invoke it directly
@@ -628,7 +637,7 @@ function buildOpenCommands(
   }
 
   return urls.map((url) => ["xdg-open", url]);
-}
+};
 
 /**
  * Opens one or more URLs in the system browser.
@@ -641,12 +650,12 @@ function buildOpenCommands(
  * @param execFn - Optional command executor for testing.
  * @param browserOverride - Override the auto-detected browser.
  */
-export async function openURLs(
+export const openURLs = async (
   urls: string[],
   platform: string = process.platform,
   execFn?: ExecFn,
   browserOverride?: string
-) {
+) => {
   if (urls.length === 0) {
     return;
   }
@@ -661,10 +670,18 @@ export async function openURLs(
   // it and spawns node.exe directly), so there's no Bun spawn path to worry
   // about. In dev (`bun run start`) Bun's node:child_process shim still
   // works, just without windowsHide — fine for local use.
-  for (const cmd of commands) {
+  const openNext = async (index: number): Promise<void> => {
+    const cmd = commands[index];
+    if (!cmd) {
+      return;
+    }
+
     await openURLNodejs(cmd);
-  }
-}
+    await openNext(index + 1);
+  };
+
+  await openNext(0);
+};
 
 /**
  * Main entry point for repo-updater.
@@ -685,10 +702,10 @@ export async function openURLs(
  * await main(["--dry-run", "./my-repo"], myUpdateFn);
  * ```
  */
-export async function main(
+export const main = async (
   argv?: string[],
   updateFn: typeof updateRepo = updateRepo
-) {
+) => {
   const args = parseArgs(argv ?? process.argv.slice(2));
 
   if (args.help) {
@@ -737,14 +754,14 @@ export async function main(
   }
 
   await handleRepoProcessing({
-    valid,
     date,
     dryRun: args.dryRun,
-    prUrls,
-    updateFn,
     minor: args.minor,
     noChangeset: args.noChangeset,
     noWorkspaces: args.noWorkspaces,
+    prUrls,
+    updateFn,
+    valid,
   });
 
   if (prUrls.length > 0) {
@@ -762,4 +779,4 @@ export async function main(
   }
 
   outro("Done!");
-}
+};

@@ -8,18 +8,20 @@
  */
 
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
-import { basename, join, relative } from "node:path";
+import path from "node:path";
+
 import { parse as parseYaml } from "yaml";
+
 import { readPackageJson } from "./package-json.ts";
 
-const TRAILING_WILDCARD_RE = /\/\*\*?$/;
+const TRAILING_WILDCARD_RE = /\/\*\*?$/u;
 
 /**
  * Describes a single workspace package discovered within a monorepo.
  *
- * @property name - The package name from its `package.json`.
- * @property path - Absolute path to the package directory.
- * @property relativePath - The package directory path relative to the repo root.
+ * @property {string} name - The package name from its `package.json`.
+ * @property {string} path - Absolute path to the package directory.
+ * @property {string} relativePath - The package directory path relative to the repo root.
  */
 export interface WorkspacePackage {
   name: string;
@@ -30,8 +32,8 @@ export interface WorkspacePackage {
 /**
  * Describes the workspace configuration for a repository.
  *
- * @property isWorkspace - Whether the repository uses workspace packages.
- * @property packages - Array of discovered {@link WorkspacePackage} entries.
+ * @property {boolean} isWorkspace - Whether the repository uses workspace packages.
+ * @property {WorkspacePackage[]} packages - Array of discovered {@link WorkspacePackage} entries.
  */
 export interface WorkspaceConfig {
   isWorkspace: boolean;
@@ -45,19 +47,19 @@ export interface WorkspaceConfig {
  * @returns Array of glob pattern strings, or `null` if no file exists or
  *   the file contains no valid `packages` array.
  */
-function parsePnpmWorkspaceYaml(repoPath: string): string[] | null {
-  const yamlPath = join(repoPath, "pnpm-workspace.yaml");
+const parsePnpmWorkspaceYaml = (repoPath: string): string[] | null => {
+  const yamlPath = path.join(repoPath, "pnpm-workspace.yaml");
   if (!existsSync(yamlPath)) {
     return null;
   }
   try {
-    const content = readFileSync(yamlPath, "utf8");
+    const content = readFileSync(yamlPath, "utf-8");
     const doc = parseYaml(content) as Record<string, unknown> | null;
     if (!doc || typeof doc !== "object") {
       return null;
     }
 
-    const packages = doc.packages;
+    const { packages } = doc;
     if (!Array.isArray(packages)) {
       return null;
     }
@@ -67,7 +69,7 @@ function parsePnpmWorkspaceYaml(repoPath: string): string[] | null {
   } catch {
     return null;
   }
-}
+};
 
 /**
  * Extracts workspace glob patterns from the repository, checking
@@ -78,7 +80,7 @@ function parsePnpmWorkspaceYaml(repoPath: string): string[] | null {
  * @returns Array of glob pattern strings, or `null` if no workspace
  *   configuration is found.
  */
-function getWorkspaceGlobs(repoPath: string): string[] | null {
+const getWorkspaceGlobs = (repoPath: string): string[] | null => {
   // Check pnpm-workspace.yaml first
   const pnpmGlobs = parsePnpmWorkspaceYaml(repoPath);
   if (pnpmGlobs) {
@@ -91,7 +93,7 @@ function getWorkspaceGlobs(repoPath: string): string[] | null {
     return null;
   }
 
-  const workspaces = pkg.workspaces;
+  const { workspaces } = pkg;
   if (Array.isArray(workspaces)) {
     // npm/yarn/bun: workspaces: ["packages/*", "apps/*"]
     const filtered = workspaces.filter(
@@ -114,7 +116,7 @@ function getWorkspaceGlobs(repoPath: string): string[] | null {
   }
 
   return null;
-}
+};
 
 /**
  * Lists immediate child directories of the given parent directory.
@@ -123,12 +125,12 @@ function getWorkspaceGlobs(repoPath: string): string[] | null {
  * @returns Array of absolute directory paths for each direct child directory,
  *   or an empty array on error.
  */
-function listChildDirs(parentDir: string): string[] {
+const listChildDirs = (parentDir: string): string[] => {
   try {
     const entries = readdirSync(parentDir);
     const dirs: string[] = [];
     for (const entry of entries) {
-      const fullPath = join(parentDir, entry);
+      const fullPath = path.join(parentDir, entry);
       try {
         if (statSync(fullPath).isDirectory()) {
           dirs.push(fullPath);
@@ -141,7 +143,7 @@ function listChildDirs(parentDir: string): string[] {
   } catch {
     return [];
   }
-}
+};
 
 /**
  * Recursively lists all directories under the given parent directory.
@@ -149,14 +151,13 @@ function listChildDirs(parentDir: string): string[] {
  * @param parentDir - Absolute path to the directory to scan.
  * @returns Array of absolute directory paths for all descendant directories.
  */
-function listDirsRecursive(parentDir: string): string[] {
+const listDirsRecursive = (parentDir: string): string[] => {
   const results: string[] = [];
   for (const dir of listChildDirs(parentDir)) {
-    results.push(dir);
-    results.push(...listDirsRecursive(dir));
+    results.push(dir, ...listDirsRecursive(dir));
   }
   return results;
-}
+};
 
 /**
  * Resolves a single workspace glob pattern to concrete directory paths.
@@ -168,9 +169,9 @@ function listDirsRecursive(parentDir: string): string[] {
  * @returns Array of absolute directory paths matching the glob, or an empty
  *   array if the parent directory does not exist.
  */
-function resolveGlob(repoPath: string, glob: string): string[] {
+const resolveGlob = (repoPath: string, glob: string): string[] => {
   const cleaned = glob.replace(TRAILING_WILDCARD_RE, "");
-  const parentDir = join(repoPath, cleaned);
+  const parentDir = path.join(repoPath, cleaned);
 
   if (!existsSync(parentDir)) {
     return [];
@@ -190,17 +191,17 @@ function resolveGlob(repoPath: string, glob: string): string[] {
   } catch {
     return [];
   }
-}
+};
 
 /**
  * Resolves workspace glob patterns to concrete directory paths.
  * Negation patterns (starting with `!`) are applied as exclusion filters
  * after all inclusion globs are resolved. Duplicates are de-duplicated.
  */
-export function resolveWorkspaceGlobs(
+export const resolveWorkspaceGlobs = (
   repoPath: string,
   globs: string[]
-): string[] {
+): string[] => {
   const seen = new Set<string>();
   const dirs: string[] = [];
   const excluded = new Set<string>();
@@ -228,13 +229,13 @@ export function resolveWorkspaceGlobs(
   }
 
   return dirs;
-}
+};
 
 /** Returns workspace packages found in the given directories, sorted by name. */
-export function getWorkspacePackages(
+export const getWorkspacePackages = (
   repoPath: string,
   dirs: string[]
-): WorkspacePackage[] {
+): WorkspacePackage[] => {
   const packages: WorkspacePackage[] = [];
 
   for (const dir of dirs) {
@@ -243,19 +244,19 @@ export function getWorkspacePackages(
       continue;
     }
 
-    const name = typeof pkg.name === "string" ? pkg.name : basename(dir);
+    const name = typeof pkg.name === "string" ? pkg.name : path.basename(dir);
     packages.push({
       name,
       path: dir,
-      relativePath: relative(repoPath, dir),
+      relativePath: path.relative(repoPath, dir),
     });
   }
 
-  return packages.sort((a, b) => a.name.localeCompare(b.name));
-}
+  return packages.toSorted((a, b) => a.name.localeCompare(b.name));
+};
 
 /** Detects whether a repo is a monorepo with workspaces and returns its packages. */
-export function detectWorkspaces(repoPath: string): WorkspaceConfig {
+export const detectWorkspaces = (repoPath: string): WorkspaceConfig => {
   const globs = getWorkspaceGlobs(repoPath);
   if (!globs || globs.length === 0) {
     return { isWorkspace: false, packages: [] };
@@ -269,4 +270,4 @@ export function detectWorkspaces(repoPath: string): WorkspaceConfig {
   }
 
   return { isWorkspace: true, packages };
-}
+};

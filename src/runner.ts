@@ -5,9 +5,12 @@
  * dependency updates, Git branch management, PR creation, changeset
  * generation, and workspace-aware updates across multiple repositories.
  */
+import { once } from "node:events";
 import { existsSync, unlinkSync } from "node:fs";
-import { join } from "node:path";
+import path from "node:path";
+
 import { Result } from "better-result";
+
 import type { DepSnapshot } from "./changesets.ts";
 import {
   diffDeps,
@@ -25,9 +28,9 @@ import type { WorkspaceConfig } from "./workspaces.ts";
 import { detectWorkspaces } from "./workspaces.ts";
 
 /** Matches the default branch line from `git symbolic-ref` output. */
-const DEFAULT_BRANCH_REGEX = /refs\/remotes\/origin\/(.+)$/;
+const DEFAULT_BRANCH_REGEX = /refs\/remotes\/origin\/(?<branch>.+)$/u;
 /** Matches a calendar date in `YYYY-MM-DD` format. */
-const DATE_FORMAT_REGEX = /^\d{4}-\d{2}-\d{2}$/;
+const DATE_FORMAT_REGEX = /^\d{4}-\d{2}-\d{2}$/u;
 
 /**
  * Validates that a string conforms to `YYYY-MM-DD` calendar date format.
@@ -35,7 +38,7 @@ const DATE_FORMAT_REGEX = /^\d{4}-\d{2}-\d{2}$/;
  * @param date - The date string to validate.
  * @returns `true` if the date is valid.
  */
-function isValidCalendarDate(date: string): boolean {
+const isValidCalendarDate = (date: string): boolean => {
   if (!DATE_FORMAT_REGEX.test(date)) {
     return false;
   }
@@ -46,7 +49,7 @@ function isValidCalendarDate(date: string): boolean {
     d.getUTCMonth() === month - 1 &&
     d.getUTCDate() === day
   );
-}
+};
 
 /**
  * Supported package managers for dependency updates.
@@ -64,9 +67,9 @@ export type PackageManager = "npm" | "pnpm" | "yarn" | "bun";
  * @param repoPath - Absolute path to the repository root.
  * @returns The detected {@link PackageManager}.
  */
-export function detectPackageManager(repoPath: string): PackageManager {
+export const detectPackageManager = (repoPath: string): PackageManager => {
   // Check in priority order (most specific lock files first)
-  const checks: Array<{ file: string; pm: PackageManager }> = [
+  const checks: { file: string; pm: PackageManager }[] = [
     { file: "bun.lock", pm: "bun" },
     { file: "pnpm-lock.yaml", pm: "pnpm" },
     { file: "yarn.lock", pm: "yarn" },
@@ -74,12 +77,13 @@ export function detectPackageManager(repoPath: string): PackageManager {
   ];
 
   for (const { file, pm } of checks) {
-    if (existsSync(join(repoPath, file))) {
+    if (existsSync(path.join(repoPath, file))) {
       return pm;
     }
   }
-  return "npm"; // fallback
-}
+  // Fall back when no recognized lockfile exists.
+  return "npm";
+};
 
 /**
  * Returns the CLI command array to update root dependencies.
@@ -88,24 +92,27 @@ export function detectPackageManager(repoPath: string): PackageManager {
  * @param minor - When `true`, restricts updates to the current minor range.
  * @returns The command tokens to pass to {@link exec}.
  */
-export function getUpdateCommand(pm: PackageManager, minor = false): string[] {
+export const getUpdateCommand = (
+  pm: PackageManager,
+  minor = false
+): string[] => {
   if (minor) {
     const commands: Record<PackageManager, string[]> = {
+      bun: ["bun", "update"],
       npm: ["npm", "update"],
       pnpm: ["pnpm", "update"],
       yarn: ["yarn", "upgrade"],
-      bun: ["bun", "update"],
     };
     return commands[pm];
   }
   const commands: Record<PackageManager, string[]> = {
+    bun: ["bun", "update", "--latest"],
     npm: ["npx", "--yes", "npm-check-updates", "--upgrade"],
     pnpm: ["pnpm", "update", "--latest"],
     yarn: ["yarn", "upgrade", "--latest"],
-    bun: ["bun", "update", "--latest"],
   };
   return commands[pm];
-}
+};
 
 /**
  * Returns the CLI command array to install dependencies after an update.
@@ -113,15 +120,15 @@ export function getUpdateCommand(pm: PackageManager, minor = false): string[] {
  * @param pm - The detected {@link PackageManager}.
  * @returns The command tokens to pass to {@link exec}.
  */
-export function getInstallCommand(pm: PackageManager): string[] {
+export const getInstallCommand = (pm: PackageManager): string[] => {
   const commands: Record<PackageManager, string[]> = {
+    bun: ["bun", "install"],
     npm: ["npm", "install"],
     pnpm: ["pnpm", "install"],
     yarn: ["yarn", "install"],
-    bun: ["bun", "install"],
   };
   return commands[pm];
-}
+};
 
 /**
  * Returns the CLI command array to update workspace dependencies.
@@ -134,12 +141,14 @@ export function getInstallCommand(pm: PackageManager): string[] {
  * @param minor - When `true`, restricts updates to the current minor range.
  * @returns The command tokens to pass to `exec`.
  */
-export function getWorkspaceUpdateCommand(
+export const getWorkspaceUpdateCommand = (
   pm: PackageManager,
   minor = false
-): string[] {
+): string[] => {
   if (minor) {
     const commands: Record<PackageManager, string[]> = {
+      // Bun update already handles workspaces natively.
+      bun: ["bun", "update"],
       npm: ["npm", "update", "--workspaces"],
       pnpm: ["pnpm", "update", "-r"],
       yarn: [
@@ -151,24 +160,24 @@ export function getWorkspaceUpdateCommand(
         "minor",
         "--workspaces",
       ],
-      bun: ["bun", "update"], // bun update already handles workspaces natively
     };
     return commands[pm];
   }
   const commands: Record<PackageManager, string[]> = {
+    // Bun update already handles workspaces natively.
+    bun: ["bun", "update", "--latest"],
     npm: ["npx", "--yes", "npm-check-updates", "--upgrade", "--workspaces"],
     pnpm: ["pnpm", "update", "--latest", "-r"],
     yarn: ["npx", "--yes", "npm-check-updates", "--upgrade", "--workspaces"],
-    bun: ["bun", "update", "--latest"], // bun update already handles workspaces natively
   };
   return commands[pm];
-}
+};
 
 /**
  * Captures the output of a spawned child process.
  *
- * @property stdout - Standard output captured as a string.
- * @property stderr - Standard error captured as a string.
+ * @property {string} stdout - Standard output captured as a string.
+ * @property {string} stderr - Standard error captured as a string.
  */
 export interface ExecOutput {
   stderr: string;
@@ -178,9 +187,9 @@ export interface ExecOutput {
 /**
  * Describes the result of processing a single repository.
  *
- * @property repo - The repository path that was processed.
- * @property prUrl - The URL of the created pull request, if applicable.
- * @property status - Whether a PR was created or no changes were detected.
+ * @property {string} repo - The repository path that was processed.
+ * @property {string | undefined} prUrl - The URL of the created pull request, if applicable.
+ * @property {"pr-created" | "no-changes"} status - Whether a PR was created or no changes were detected.
  */
 export interface RepoResult {
   prUrl?: string;
@@ -191,10 +200,10 @@ export interface RepoResult {
 /**
  * Internal error wrapping a failed child process execution.
  *
- * @property message - Human-readable error description including the exit code.
- * @property stdout - Captured standard output.
- * @property stderr - Captured standard error output.
- * @property exitCode - The process exit code.
+ * @property {string} message - Human-readable error description including the exit code.
+ * @property {string} stdout - Captured standard output.
+ * @property {string} stderr - Captured standard error output.
+ * @property {number} exitCode - The process exit code.
  */
 class ExecError extends Error {
   stdout: string;
@@ -203,6 +212,7 @@ class ExecError extends Error {
 
   constructor(stdout: string, stderr: string, exitCode: number) {
     super(`Process exited with code ${exitCode}`);
+    this.name = "ExecError";
     this.stdout = stdout;
     this.stderr = stderr;
     this.exitCode = exitCode;
@@ -216,14 +226,14 @@ class ExecError extends Error {
  * @param cwd - The working directory for the command.
  * @returns The captured {@link ExecOutput} with exit code.
  */
-export async function execBun(
+export const execBun = async (
   cmd: string[],
   cwd: string
-): Promise<{ stdout: string; stderr: string; exitCode: number }> {
+): Promise<{ stdout: string; stderr: string; exitCode: number }> => {
   const proc = Bun.spawn(cmd, {
     cwd,
-    stdout: "pipe",
     stderr: "pipe",
+    stdout: "pipe",
     windowsHide: true,
   });
 
@@ -233,8 +243,8 @@ export async function execBun(
     proc.exited,
   ]);
 
-  return { stdout: stdout.trim(), stderr: stderr.trim(), exitCode };
-}
+  return { exitCode, stderr: stderr.trim(), stdout: stdout.trim() };
+};
 
 /**
  * Executes a command using Node.js `child_process.spawn` as a fallback
@@ -244,10 +254,10 @@ export async function execBun(
  * @param cwd - The working directory for the command.
  * @returns The captured {@link ExecOutput} with exit code.
  */
-export async function execNodejs(
+export const execNodejs = async (
   cmd: string[],
   cwd: string
-): Promise<{ stdout: string; stderr: string; exitCode: number }> {
+): Promise<{ stdout: string; stderr: string; exitCode: number }> => {
   const { spawn } = await import("node:child_process");
 
   let stdout = "";
@@ -260,26 +270,18 @@ export async function execNodejs(
     windowsHide: true,
   });
 
-  await new Promise<void>((resolve, reject) => {
-    childProcess.stdout?.on("data", (data) => {
-      stdout += data.toString();
-    });
-    childProcess.stderr?.on("data", (data) => {
-      stderr += data.toString();
-    });
-
-    childProcess.on("close", (code) => {
-      exitCode = code ?? 0;
-      resolve();
-    });
-
-    childProcess.on("error", (err) => {
-      reject(err);
-    });
+  childProcess.stdout?.on("data", (data) => {
+    stdout += data.toString();
+  });
+  childProcess.stderr?.on("data", (data) => {
+    stderr += data.toString();
   });
 
-  return { stdout: stdout.trim(), stderr: stderr.trim(), exitCode };
-}
+  const [code] = await once(childProcess, "close");
+  exitCode = (code as number | null) ?? 0;
+
+  return { exitCode, stderr: stderr.trim(), stdout: stdout.trim() };
+};
 
 /**
  * Executes a command, automatically selecting Bun or Node.js based on the
@@ -290,11 +292,19 @@ export async function execNodejs(
  * @returns `Ok` with the captured {@link ExecOutput}, or `Err` with a
  *   {@link CommandFailedError} if the process exits non-zero.
  */
-export function exec(
+export const exec = (
   cmd: string[],
   cwd: string
-): Promise<Result<ExecOutput, CommandFailedError>> {
-  return Result.tryPromise({
+): Promise<Result<ExecOutput, CommandFailedError>> =>
+  Result.tryPromise({
+    catch: (e) => {
+      const info = e instanceof ExecError ? e : null;
+      return new CommandFailedError({
+        command: cmd.join(" "),
+        message: `Command failed: ${cmd.join(" ")} (exit ${info?.exitCode ?? "unknown"})`,
+        stderr: info?.stderr ?? String(e),
+      });
+    },
     try: async () => {
       // Use Bun's spawn if available, fallback to child_process
       const result =
@@ -306,29 +316,20 @@ export function exec(
         throw new ExecError(result.stdout, result.stderr, result.exitCode);
       }
 
-      return { stdout: result.stdout, stderr: result.stderr };
-    },
-    catch: (e) => {
-      const info = e instanceof ExecError ? e : null;
-      return new CommandFailedError({
-        message: `Command failed: ${cmd.join(" ")} (exit ${info?.exitCode ?? "unknown"})`,
-        command: cmd.join(" "),
-        stderr: info?.stderr ?? String(e),
-      });
+      return { stderr: result.stderr, stdout: result.stdout };
     },
   });
-}
 
 /**
  * Options required for branch cleanup after a failed update.
  *
- * @property repo - Repository filesystem path.
- * @property branch - The branch name to delete.
- * @property branchCreated - Whether the branch was created locally.
- * @property branchPushed - Whether the branch was pushed to the remote.
- * @property changesetFile - Path to a changeset file to remove, if any.
- * @property defaultBranch - The repository's default branch to reset to.
- * @property execFn - Command executor function.
+ * @property {string} repo - Repository filesystem path.
+ * @property {string} branch - The branch name to delete.
+ * @property {boolean} branchCreated - Whether the branch was created locally.
+ * @property {boolean} branchPushed - Whether the branch was pushed to the remote.
+ * @property {string | undefined} changesetFile - Path to a changeset file to remove, if any.
+ * @property {string} defaultBranch - The repository's default branch to reset to.
+ * @property {(cmd: string[], cwd: string) => Promise<Result<ExecOutput, CommandFailedError>>} execFn - Command executor function.
  */
 interface CleanupOptions {
   branch: string;
@@ -349,7 +350,7 @@ interface CleanupOptions {
  *
  * @param options - The {@link CleanupOptions} specifying repo, branch, and executor.
  */
-async function performCleanup({
+const performCleanup = async ({
   defaultBranch,
   branch,
   branchCreated,
@@ -357,7 +358,7 @@ async function performCleanup({
   execFn,
   repo,
   changesetFile,
-}: CleanupOptions): Promise<void> {
+}: CleanupOptions): Promise<void> => {
   if (!branchCreated) {
     return;
   }
@@ -407,18 +408,18 @@ async function performCleanup({
       `Cleanup: Failed to delete branch ${branch}: ${deleteResult.error.message}`
     );
   }
-}
+};
 
 /**
  * Aggregates the state needed for changeset generation during a repo update.
  *
- * @property repo - Repository filesystem path.
- * @property isWorkspace - Whether the repo uses workspace packages.
- * @property noChangeset - Whether changeset generation was disabled.
- * @property depsBefore - Pre-update workspace dependency snapshot, or `null` for single-package repos.
- * @property singleDepsBefore - Pre-update root dependency snapshot, or `null` for workspace repos.
- * @property timestamp - Unix timestamp used in the changeset filename.
- * @property workspace - The detected {@link WorkspaceConfig}.
+ * @property {string} repo - Repository filesystem path.
+ * @property {boolean} isWorkspace - Whether the repo uses workspace packages.
+ * @property {boolean} noChangeset - Whether changeset generation was disabled.
+ * @property {Map<string, DepSnapshot> | null} depsBefore - Pre-update workspace dependency snapshot, or `null` for single-package repos.
+ * @property {DepSnapshot | null} singleDepsBefore - Pre-update root dependency snapshot, or `null` for workspace repos.
+ * @property {number} timestamp - Unix timestamp used in the changeset filename.
+ * @property {WorkspaceConfig} workspace - The detected {@link WorkspaceConfig}.
  */
 interface ChangesetContext {
   depsBefore: Map<string, DepSnapshot> | null;
@@ -446,7 +447,7 @@ interface ChangesetContext {
  *   no changeset is needed (changesets disabled, no dependency changes, or the
  *   target file already exists).
  */
-function handleChangesets(ctx: ChangesetContext): string | undefined {
+const handleChangesets = (ctx: ChangesetContext): string | undefined => {
   if (ctx.noChangeset || !hasChangesets(ctx.repo)) {
     return;
   }
@@ -456,7 +457,7 @@ function handleChangesets(ctx: ChangesetContext): string | undefined {
     return;
   }
 
-  const filePath = join(ctx.repo, ".changeset", targetFile);
+  const filePath = path.join(ctx.repo, ".changeset", targetFile);
 
   if (ctx.isWorkspace && ctx.depsBefore) {
     const depsAfter = snapshotWorkspaceDeps(ctx.repo, ctx.workspace.packages);
@@ -481,7 +482,7 @@ function handleChangesets(ctx: ChangesetContext): string | undefined {
     `[info] Wrote changeset: .changeset/dep-updates-${ctx.timestamp}.md`
   );
   return filePath;
-}
+};
 
 /**
  * Determines whether workspace-aware changeset handling should be used and
@@ -494,16 +495,16 @@ function handleChangesets(ctx: ChangesetContext): string | undefined {
  * @returns An object containing workspace configuration, update command, and
  *   pre-update dependency snapshots.
  */
-function prepareWorkspaceContext(
+const prepareWorkspaceContext = (
   repo: string,
   pm: PackageManager,
   minor: boolean,
   noWorkspaces: boolean
-) {
+) => {
   const workspace = noWorkspaces
     ? { isWorkspace: false, packages: [] }
     : detectWorkspaces(repo);
-  const isWorkspace = workspace.isWorkspace;
+  const { isWorkspace } = workspace;
 
   if (isWorkspace) {
     console.log(
@@ -519,221 +520,20 @@ function prepareWorkspaceContext(
     ? getWorkspaceUpdateCommand(pm, minor)
     : getUpdateCommand(pm, minor);
 
-  return { workspace, isWorkspace, depsBefore, singleDepsBefore, updateCmd };
-}
-
-/**
- * Performs a full dependency update cycle on a single repository.
- *
- * Clones the target branch from the default branch, runs the package manager
- * update command, installs dependencies, commits changes, pushes, and creates
- * a pull request via `gh pr create`. Supports changeset generation and
- * workspace-aware updates when enabled.
- *
- * @param options - Repository path, date, flags, and optional overrides.
- * @param options.repo - Repository filesystem path.
- * @param options.date - Date string in `YYYY-MM-DD` format (used in branch name and PR title).
- * @param options.dryRun - When `true`, prints the steps without executing them.
- * @param options.minor - When `true`, restricts updates to the current minor range.
- * @param options.noChangeset - When `true`, skips changeset file generation.
- * @param options.noWorkspaces - When `true`, disables workspace detection.
- * @param execFn - Optional command executor (defaults to {@link exec}).
- *   Useful for testing or custom runtime environments.
- * @returns `Ok` with the {@link RepoResult}, or `Err` with a
- *   {@link CommandFailedError} if any step fails. On failure the branch
- *   is cleaned up automatically.
- *
- * @example
- * ```ts
- * const result = await updateRepo({
- *   repo: "./my-repo",
- *   date: "2026-03-30",
- *   dryRun: false,
- *   minor: true,
- * });
- * if (result.isOk()) console.log("PR:", result.value.prUrl);
- * ```
- */
-export function updateRepo(
-  options: {
-    repo: string;
-    date: string;
-    dryRun: boolean;
-    minor?: boolean;
-    noChangeset?: boolean;
-    noWorkspaces?: boolean;
-  },
-  execFn = exec
-): Promise<Result<RepoResult, CommandFailedError | InvalidInputError>> {
-  const {
-    repo,
-    date,
-    dryRun,
-    minor = false,
-    noChangeset = false,
-    noWorkspaces = false,
-  } = options;
-
-  if (!isValidCalendarDate(date)) {
-    return Promise.resolve(
-      Result.err(
-        new InvalidInputError({
-          message: `Invalid date: "${date}" — expected a valid YYYY-MM-DD calendar date`,
-        })
-      )
-    );
-  }
-
-  // Add timestamp to branch name to avoid collisions when running multiple times in one day
-  const timestamp = Date.now();
-  const branch = `chore/dep-updates-${date}-${timestamp}`;
-
-  if (dryRun) {
-    return Promise.resolve(
-      dryRunRepo({
-        repo,
-        date,
-        branch,
-        minor,
-        timestamp,
-        noChangeset,
-        noWorkspaces,
-      })
-    );
-  }
-
-  return Result.gen(async function* () {
-    // Detect package manager
-    const pm = detectPackageManager(repo);
-    console.log(`[info] Detected package manager: ${pm}`);
-
-    // Detect default branch dynamically
-    let defaultBranch = "main";
-    const defaultBranchResult = yield* Result.await(
-      execFn(["git", "symbolic-ref", "refs/remotes/origin/HEAD"], repo)
-    );
-    const defaultBranchMatch =
-      defaultBranchResult.stdout.match(DEFAULT_BRANCH_REGEX);
-    if (defaultBranchMatch) {
-      defaultBranch = defaultBranchMatch[1];
-    }
-
-    console.log(`[info] Using default branch: ${defaultBranch}`);
-
-    let branchCreated = false;
-    let branchPushed = false;
-    let changesetFilePath: string | undefined;
-    let succeeded = false;
-    try {
-      yield* Result.await(execFn(["git", "checkout", defaultBranch], repo));
-      yield* Result.await(execFn(["git", "pull"], repo));
-      yield* Result.await(execFn(["git", "checkout", "-b", branch], repo));
-      branchCreated = true;
-
-      // Auto-detect workspaces unless opted out
-      const {
-        workspace,
-        isWorkspace,
-        depsBefore,
-        singleDepsBefore,
-        updateCmd,
-      } = prepareWorkspaceContext(repo, pm, minor, noWorkspaces);
-      yield* Result.await(execFn(updateCmd, repo));
-      yield* Result.await(execFn(getInstallCommand(pm), repo));
-
-      // Snapshot deps after update, diff, and optionally write changeset
-      try {
-        changesetFilePath = handleChangesets({
-          repo,
-          timestamp,
-          noChangeset,
-          isWorkspace,
-          workspace,
-          depsBefore,
-          singleDepsBefore,
-        });
-      } catch (e) {
-        const command = isWorkspace
-          ? "writeWorkspaceChangesetFile"
-          : "writeChangesetFile";
-        throw new CommandFailedError({
-          message: `Failed to ${command}: ${String(e)}`,
-          command,
-          stderr: String(e),
-        });
-      }
-
-      const status = yield* Result.await(
-        execFn(["git", "status", "--porcelain"], repo)
-      );
-
-      if (status.stdout === "") {
-        yield* Result.await(execFn(["git", "checkout", defaultBranch], repo));
-        yield* Result.await(execFn(["git", "branch", "-D", branch], repo));
-        succeeded = true;
-        return Result.ok({
-          repo,
-          status: "no-changes" as const,
-        });
-      }
-
-      yield* Result.await(execFn(["git", "add", "-A"], repo));
-      yield* Result.await(
-        execFn(["git", "commit", "-m", `dep updates ${date}`], repo)
-      );
-      yield* Result.await(
-        execFn(["git", "push", "-u", "origin", branch], repo)
-      );
-      branchPushed = true;
-
-      const pr = yield* Result.await(
-        execFn(
-          [
-            "gh",
-            "pr",
-            "create",
-            "--title",
-            `Dep Updates ${date}`,
-            "--body",
-            `Dep Updates ${date}`,
-          ],
-          repo
-        )
-      );
-
-      succeeded = true;
-      return Result.ok({
-        repo,
-        status: "pr-created" as const,
-        prUrl: pr.stdout,
-      });
-    } finally {
-      if (!succeeded) {
-        await performCleanup({
-          defaultBranch,
-          branch,
-          branchCreated,
-          branchPushed,
-          execFn,
-          repo,
-          changesetFile: changesetFilePath,
-        });
-      }
-    }
-  });
-}
+  return { depsBefore, isWorkspace, singleDepsBefore, updateCmd, workspace };
+};
 
 /**
  * Options for performing a dry-run dependency update.
  *
- * @property repo - Repository filesystem path.
- * @property date - Date string for the branch name and PR title.
- * @property branch - Pre-computed branch name.
- * @property defaultBranch - Assumed default branch (actual detected at runtime).
- * @property minor - Whether minor-only updates are requested.
- * @property noChangeset - Whether changeset generation was disabled.
- * @property noWorkspaces - Whether workspace detection was disabled.
- * @property timestamp - Unix timestamp for the changeset filename.
+ * @property {string} repo - Repository filesystem path.
+ * @property {string} date - Date string for the branch name and PR title.
+ * @property {string} branch - Pre-computed branch name.
+ * @property {string | undefined} defaultBranch - Assumed default branch (actual detected at runtime).
+ * @property {boolean | undefined} minor - Whether minor-only updates are requested.
+ * @property {boolean | undefined} noChangeset - Whether changeset generation was disabled.
+ * @property {boolean | undefined} noWorkspaces - Whether workspace detection was disabled.
+ * @property {number | undefined} timestamp - Unix timestamp for the changeset filename.
  */
 interface DryRunOptions {
   branch: string;
@@ -753,7 +553,7 @@ interface DryRunOptions {
  * @returns Always `Ok` with a synthetic {@link RepoResult} listing what
  *   would change.
  */
-function dryRunRepo({
+const dryRunRepo = ({
   repo,
   date,
   branch,
@@ -762,7 +562,7 @@ function dryRunRepo({
   timestamp = Date.now(),
   noChangeset = false,
   noWorkspaces = false,
-}: DryRunOptions): Result<RepoResult, CommandFailedError> {
+}: DryRunOptions): Result<RepoResult, CommandFailedError> => {
   const pm = detectPackageManager(repo);
   const workspace = noWorkspaces
     ? { isWorkspace: false, packages: [] }
@@ -813,8 +613,209 @@ function dryRunRepo({
   }
 
   return Result.ok({
+    prUrl: "https://github.com/example/repo/pull/0",
     repo,
     status: "pr-created" as const,
-    prUrl: "https://github.com/example/repo/pull/0",
   });
-}
+};
+
+/**
+ * Performs a full dependency update cycle on a single repository.
+ *
+ * Clones the target branch from the default branch, runs the package manager
+ * update command, installs dependencies, commits changes, pushes, and creates
+ * a pull request via `gh pr create`. Supports changeset generation and
+ * workspace-aware updates when enabled.
+ *
+ * @param options - Repository path, date, flags, and optional overrides.
+ * @param options.repo - Repository filesystem path.
+ * @param options.date - Date string in `YYYY-MM-DD` format (used in branch name and PR title).
+ * @param options.dryRun - When `true`, prints the steps without executing them.
+ * @param options.minor - When `true`, restricts updates to the current minor range.
+ * @param options.noChangeset - When `true`, skips changeset file generation.
+ * @param options.noWorkspaces - When `true`, disables workspace detection.
+ * @param execFn - Optional command executor (defaults to {@link exec}).
+ *   Useful for testing or custom runtime environments.
+ * @returns `Ok` with the {@link RepoResult}, or `Err` with a
+ *   {@link CommandFailedError} if any step fails. On failure the branch
+ *   is cleaned up automatically.
+ *
+ * @example
+ * ```ts
+ * const result = await updateRepo({
+ *   repo: "./my-repo",
+ *   date: "2026-03-30",
+ *   dryRun: false,
+ *   minor: true,
+ * });
+ * if (result.isOk()) console.log("PR:", result.value.prUrl);
+ * ```
+ */
+export const updateRepo = (
+  options: {
+    repo: string;
+    date: string;
+    dryRun: boolean;
+    minor?: boolean;
+    noChangeset?: boolean;
+    noWorkspaces?: boolean;
+  },
+  execFn = exec
+): Promise<Result<RepoResult, CommandFailedError | InvalidInputError>> => {
+  const {
+    repo,
+    date,
+    dryRun,
+    minor = false,
+    noChangeset = false,
+    noWorkspaces = false,
+  } = options;
+
+  if (!isValidCalendarDate(date)) {
+    return Promise.resolve(
+      Result.err(
+        new InvalidInputError({
+          message: `Invalid date: "${date}" — expected a valid YYYY-MM-DD calendar date`,
+        })
+      )
+    );
+  }
+
+  // Add timestamp to branch name to avoid collisions when running multiple times in one day
+  const timestamp = Date.now();
+  const branch = `chore/dep-updates-${date}-${timestamp}`;
+
+  if (dryRun) {
+    return Promise.resolve(
+      dryRunRepo({
+        branch,
+        date,
+        minor,
+        noChangeset,
+        noWorkspaces,
+        repo,
+        timestamp,
+      })
+    );
+  }
+
+  return Result.gen(async function* updateRepository() {
+    // Detect package manager
+    const pm = detectPackageManager(repo);
+    console.log(`[info] Detected package manager: ${pm}`);
+
+    // Detect default branch dynamically
+    let defaultBranch = "main";
+    const defaultBranchResult = yield* Result.await(
+      execFn(["git", "symbolic-ref", "refs/remotes/origin/HEAD"], repo)
+    );
+    const defaultBranchMatch =
+      defaultBranchResult.stdout.match(DEFAULT_BRANCH_REGEX);
+    if (defaultBranchMatch) {
+      [, defaultBranch] = defaultBranchMatch;
+    }
+
+    console.log(`[info] Using default branch: ${defaultBranch}`);
+
+    let branchCreated = false;
+    let branchPushed = false;
+    let changesetFilePath: string | undefined;
+    let succeeded = false;
+    try {
+      yield* Result.await(execFn(["git", "checkout", defaultBranch], repo));
+      yield* Result.await(execFn(["git", "pull"], repo));
+      yield* Result.await(execFn(["git", "checkout", "-b", branch], repo));
+      branchCreated = true;
+
+      // Auto-detect workspaces unless opted out
+      const {
+        workspace,
+        isWorkspace,
+        depsBefore,
+        singleDepsBefore,
+        updateCmd,
+      } = prepareWorkspaceContext(repo, pm, minor, noWorkspaces);
+      yield* Result.await(execFn(updateCmd, repo));
+      yield* Result.await(execFn(getInstallCommand(pm), repo));
+
+      // Snapshot deps after update, diff, and optionally write changeset
+      try {
+        changesetFilePath = handleChangesets({
+          depsBefore,
+          isWorkspace,
+          noChangeset,
+          repo,
+          singleDepsBefore,
+          timestamp,
+          workspace,
+        });
+      } catch (error) {
+        const command = isWorkspace
+          ? "writeWorkspaceChangesetFile"
+          : "writeChangesetFile";
+        throw new CommandFailedError({
+          command,
+          message: `Failed to ${command}: ${String(error)}`,
+          stderr: String(error),
+        });
+      }
+
+      const status = yield* Result.await(
+        execFn(["git", "status", "--porcelain"], repo)
+      );
+
+      if (status.stdout === "") {
+        yield* Result.await(execFn(["git", "checkout", defaultBranch], repo));
+        yield* Result.await(execFn(["git", "branch", "-D", branch], repo));
+        succeeded = true;
+        return Result.ok({
+          repo,
+          status: "no-changes" as const,
+        });
+      }
+
+      yield* Result.await(execFn(["git", "add", "-A"], repo));
+      yield* Result.await(
+        execFn(["git", "commit", "-m", `dep updates ${date}`], repo)
+      );
+      yield* Result.await(
+        execFn(["git", "push", "-u", "origin", branch], repo)
+      );
+      branchPushed = true;
+
+      const pr = yield* Result.await(
+        execFn(
+          [
+            "gh",
+            "pr",
+            "create",
+            "--title",
+            `Dep Updates ${date}`,
+            "--body",
+            `Dep Updates ${date}`,
+          ],
+          repo
+        )
+      );
+
+      succeeded = true;
+      return Result.ok({
+        prUrl: pr.stdout,
+        repo,
+        status: "pr-created" as const,
+      });
+    } finally {
+      if (!succeeded) {
+        await performCleanup({
+          branch,
+          branchCreated,
+          branchPushed,
+          changesetFile: changesetFilePath,
+          defaultBranch,
+          execFn,
+          repo,
+        });
+      }
+    }
+  });
+};

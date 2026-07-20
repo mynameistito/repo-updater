@@ -12,31 +12,23 @@
  * it (cli.test.ts) are excluded from the vitest run via vitest.config.ts and
  * continue to run under `bun test`.
  */
-import {
-  afterAll as _afterAll,
-  afterEach as _afterEach,
-  beforeAll as _beforeAll,
-  beforeEach as _beforeEach,
-  describe as _describe,
-  expect as _expect,
-  it as _it,
-  test as _test,
-  vi,
-} from "vitest";
+import { vi } from "vitest";
 
-export const afterAll = _afterAll;
-export const afterEach = _afterEach;
-export const beforeAll = _beforeAll;
-export const beforeEach = _beforeEach;
-export const describe = _describe;
-export const expect = _expect;
-export const it = _it;
-export const test = _test;
+export {
+  afterAll,
+  afterEach,
+  beforeAll,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  test,
+} from "vitest";
 // Note: Bun's `Mock<T>` and vitest's `MockInstance` differ slightly in their
 // type signatures; cast explicitly if you need to assign to one of those types.
-function mock(...args: Parameters<typeof vi.fn>) {
-  return vi.fn(...args);
-}
+const mock = <T extends (...args: never[]) => unknown>(
+  ...args: Parameters<typeof vi.fn<T>>
+) => vi.fn<T>(...args);
 mock.module = (..._args: unknown[]): never => {
   throw new Error(
     "mock.module() is not supported in the Vitest/Node.js shim. " +

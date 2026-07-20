@@ -4,7 +4,7 @@
  * Utility for reading and parsing {@code package.json} files from a directory.
  */
 import { existsSync, readFileSync } from "node:fs";
-import { join } from "node:path";
+import path from "node:path";
 
 /**
  * Reads and parses the {@code package.json} from the given directory.
@@ -12,14 +12,19 @@ import { join } from "node:path";
  * @param dir - Absolute or relative path to the directory containing {@code package.json}.
  * @returns The parsed JSON object, or {@code null} if the file does not exist or cannot be parsed.
  */
-export function readPackageJson(dir: string): Record<string, unknown> | null {
-  const pkgPath = join(dir, "package.json");
+export const readPackageJson = (
+  dir: string
+): Record<string, unknown> | null => {
+  const pkgPath = path.join(dir, "package.json");
   if (!existsSync(pkgPath)) {
     return null;
   }
   try {
-    return JSON.parse(readFileSync(pkgPath, "utf8")) as Record<string, unknown>;
+    return JSON.parse(readFileSync(pkgPath, "utf-8")) as Record<
+      string,
+      unknown
+    >;
   } catch {
     return null;
   }
-}
+};

@@ -20,9 +20,8 @@ The tool snapshots the dependency versions before and after the update, diffs th
 ---
 "my-package": patch
 ---
-
 Updated dependencies:
-- dep: 1.2.3 → 1.4.0
+  - dep: 1.2.3 → 1.4.0
 ```
 
 In a workspace repo, the changeset covers every package that changed. The frontmatter lists all affected packages, and the body has per-package sections:

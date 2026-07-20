@@ -23,7 +23,7 @@ src/
 ## WHERE TO LOOK
 
 | Task | File | Key Functions |
-|------|------|---------------|
+| --- | --- | --- |
 | CLI bootstrap (Bun/Node) | `cli.ts` | `main().catch()` → `process.exit(1)` |
 | CLI bootstrap (Deno) | `deno-cli.ts` | `main(Deno.args)` with `declare const Deno` |
 | Orchestration | `index.ts` | `main()`, `processRepo()`, `resolveRepos()`, `openURLs()`, browser detection |
@@ -37,12 +37,12 @@ src/
 
 ## CONVENTIONS
 
-- __exports:__ `index.ts` exports `main()` as public API; `cli.ts` is entry wrapper
-- __Error handling:__ All errors use `TaggedError` from `better-result`
-- __Async pattern:__ `Result.gen()` for async operations with error propagation (`yield* Result.await()`)
-- __Exec abstraction:__ `exec()` wraps Bun/Node spawn, returns `Result<ExecOutput, CommandFailedError>`
-- __Runtime branching:__ `typeof Bun === "undefined"` — no build-time conditionals
-- __Dependency injection:__ `main(argv?, updateFn?)` replaces the entire `updateRepo` call; `updateRepo(opts, execFn?)` has a separate `execFn` parameter (default: `exec`) for mocking the shell
+- **exports:** `index.ts` exports `main()` as public API; `cli.ts` is entry wrapper
+- **Error handling:** All errors use `TaggedError` from `better-result`
+- **Async pattern:** `Result.gen()` for async operations with error propagation (`yield* Result.await()`)
+- **Exec abstraction:** `exec()` wraps Bun/Node spawn, returns `Result<ExecOutput, CommandFailedError>`
+- **Runtime branching:** `typeof Bun === "undefined"` — no build-time conditionals
+- **Dependency injection:** `main(argv?, updateFn?)` replaces the entire `updateRepo` call; `updateRepo(opts, execFn?)` has a separate `execFn` parameter (default: `exec`) for mocking the shell
 
 ## ANTI-PATTERNS
 

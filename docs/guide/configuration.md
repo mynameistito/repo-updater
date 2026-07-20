@@ -8,10 +8,7 @@ The config file is a JSON object with a `repos` array and an optional `browser` 
 
 ```json
 {
-  "repos": [
-    "C:\\Users\\you\\projects\\app-one",
-    "/home/you/repos/library-two"
-  ]
+  "repos": ["C:\\Users\\you\\projects\\app-one", "/home/you/repos/library-two"]
 }
 ```
 
@@ -19,9 +16,7 @@ Adding a browser preference:
 
 ```json
 {
-  "repos": [
-    "/home/you/repos/my-project"
-  ],
+  "repos": ["/home/you/repos/my-project"],
   "browser": "firefox"
 }
 ```
@@ -64,7 +59,7 @@ You can set it in the config file, or pass it once with the `-b` flag, which wri
 These are the flags the tool accepts. Check the main README for fuller descriptions.
 
 | Flag | Description |
-|------|-------------|
+| --- | --- |
 | `-h`, `--help` | Print usage information |
 | `-n`, `--dry-run` | Print what the tool would do, without making changes |
 | `-m`, `--minor` | Use conservative `npm update` instead of upgrading to latest versions |

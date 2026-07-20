@@ -9,14 +9,14 @@
 /**
  * Represents the fully parsed CLI arguments.
  *
- * @property browser - Override the auto-detected browser for opening PR URLs.
- * @property configPath - Explicit path to a config file, overriding default search.
- * @property dryRun - When `true`, prints what would happen without making changes.
- * @property help - When `true`, prints usage information and exits.
- * @property minor - When `true`, restricts dependency updates to the current minor range.
- * @property noChangeset - When `true`, skips changeset file generation after updates.
- * @property noWorkspaces - When `true`, skips workspace-aware update logic.
- * @property positional - Remaining non-flag arguments, interpreted as repo paths.
+ * @property {string | undefined} browser - Override the auto-detected browser for opening PR URLs.
+ * @property {string | undefined} configPath - Explicit path to a config file, overriding default search.
+ * @property {boolean} dryRun - When `true`, prints what would happen without making changes.
+ * @property {boolean} help - When `true`, prints usage information and exits.
+ * @property {boolean} minor - When `true`, restricts dependency updates to the current minor range.
+ * @property {boolean} noChangeset - When `true`, skips changeset file generation after updates.
+ * @property {boolean} noWorkspaces - When `true`, skips workspace-aware update logic.
+ * @property {string[]} positional - Remaining non-flag arguments, interpreted as repo paths.
  */
 export interface ParsedArgs {
   browser: string | undefined;
@@ -37,14 +37,14 @@ type BooleanFlag = "help" | "dryRun" | "minor" | "noChangeset" | "noWorkspaces";
  * canonical {@link BooleanFlag} key.
  */
 const BOOLEAN_FLAGS: Record<string, BooleanFlag> = {
-  "-h": "help",
-  "--help": "help",
-  "-n": "dryRun",
   "--dry-run": "dryRun",
-  "-m": "minor",
+  "--help": "help",
   "--minor": "minor",
   "--no-changeset": "noChangeset",
   "--no-workspaces": "noWorkspaces",
+  "-h": "help",
+  "-m": "minor",
+  "-n": "dryRun",
 };
 
 /**
@@ -64,10 +64,10 @@ const BOOLEAN_FLAGS: Record<string, BooleanFlag> = {
  * // args.dryRun === true, args.minor === true, args.positional === ["./my-repo"]
  * ```
  */
-export function parseArgs(argv: string[]): ParsedArgs {
+export const parseArgs = (argv: string[]): ParsedArgs => {
   const flags: Record<BooleanFlag, boolean> = {
-    help: false,
     dryRun: false,
+    help: false,
     minor: false,
     noChangeset: false,
     noWorkspaces: false,
@@ -103,7 +103,7 @@ export function parseArgs(argv: string[]): ParsedArgs {
   }
 
   return { ...flags, browser, configPath, positional };
-}
+};
 
 /**
  * Returns the current local date formatted as `YYYY-MM-DD`.
@@ -112,10 +112,10 @@ export function parseArgs(argv: string[]): ParsedArgs {
  *
  * @returns The date string in ISO calendar format.
  */
-export function getDate(): string {
+export const getDate = (): string => {
   const now = new Date();
   const dd = String(now.getDate()).padStart(2, "0");
   const mm = String(now.getMonth() + 1).padStart(2, "0");
   const yyyy = now.getFullYear();
   return `${yyyy}-${mm}-${dd}`;
-}
+};

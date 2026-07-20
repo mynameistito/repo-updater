@@ -1,4 +1,4 @@
-# __tests__/ KNOWLEDGE BASE
+# **tests**/ KNOWLEDGE BASE
 
 ## OVERVIEW
 
@@ -21,7 +21,7 @@ __tests__/
 ## WHERE TO LOOK
 
 | Task | File | Notes |
-|------|------|-------|
+| --- | --- | --- |
 | Runner tests | `runner.test.ts` | Mock exec injection, command tracking, workspace + non-workspace paths |
 | Config tests | `config.test.ts` | Config validation, default branch fallback |
 | CLI tests | `cli.test.ts` | `mock.module()` for `@clack/prompts` — **Bun-only** |
@@ -54,13 +54,18 @@ await updateRepo({ repo, date, dryRun: false }, mockExec);
 
 // Command-tracking mock
 const executedCmds: string[][] = [];
-const trackingExec = (cmd, cwd) => { executedCmds.push(cmd); return baseMock(cmd, cwd); };
+const trackingExec = (cmd, cwd) => {
+  executedCmds.push(cmd);
+  return baseMock(cmd, cwd);
+};
 
 // Deterministic file naming
 const dateNowSpy = spyOn(Date, "now").mockReturnValue(9_999_999_999_999);
 
 // process.exit spy (cli.test.ts only)
-exitSpy = spyOn(process, "exit").mockImplementation(() => { throw new Error("exit"); });
+exitSpy = spyOn(process, "exit").mockImplementation(() => {
+  throw new Error("exit");
+});
 await expect(main(["--help"], noopUpdate)).rejects.toThrow("exit");
 ```
 

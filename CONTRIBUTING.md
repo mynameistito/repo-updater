@@ -140,7 +140,7 @@ bun run test:node
 - [ ] `bun test` and `bun run test:node` both pass
 - [ ] `bun run typecheck` passes
 - [ ] Changeset added (if user-facing)
-- [ ] PR description explains *what* and *why*, not just *what*
+- [ ] PR description explains _what_ and _why_, not just _what_
 
 ## AI-Assisted Contributions
 

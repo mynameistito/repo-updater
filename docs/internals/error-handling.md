@@ -26,7 +26,7 @@ The `const` holds the class. The `type` alias (same name) holds the instance typ
 ## The five error classes
 
 | Class | Properties | Where used |
-|---|---|---|
+| --- | --- | --- |
 | `CommandFailedError` | `message`, `command`, `stderr` | `src/runner.ts`, when a subprocess exits non-zero |
 | `ConfigNotFoundError` | `message` | `src/config.ts`, when no config file exists at any searched path |
 | `ConfigParseError` | `message` | `src/config.ts`, when config JSON is malformed or missing required fields |
@@ -156,18 +156,24 @@ async function performCleanup({
     try {
       unlinkSync(changesetFile);
     } catch {
-      console.warn(`Cleanup: Could not remove changeset file: ${changesetFile}`);
+      console.warn(
+        `Cleanup: Could not remove changeset file: ${changesetFile}`
+      );
     }
   }
 
   const resetResult = await execFn(["git", "reset", "--hard", "HEAD"], repo);
   if (resetResult.isErr()) {
-    console.warn(`Cleanup: Failed to reset worktree: ${resetResult.error.message}`);
+    console.warn(
+      `Cleanup: Failed to reset worktree: ${resetResult.error.message}`
+    );
   }
 
   const checkoutResult = await execFn(["git", "checkout", defaultBranch], repo);
   if (checkoutResult.isErr()) {
-    console.warn(`Cleanup: Failed to checkout ${defaultBranch}: ${checkoutResult.error.message}`);
+    console.warn(
+      `Cleanup: Failed to checkout ${defaultBranch}: ${checkoutResult.error.message}`
+    );
   }
 
   if (branchPushed) {
@@ -176,13 +182,17 @@ async function performCleanup({
       repo
     );
     if (deleteRemoteResult.isErr()) {
-      console.warn(`Cleanup: Could not delete remote branch ${branch}: ${deleteRemoteResult.error.message}`);
+      console.warn(
+        `Cleanup: Could not delete remote branch ${branch}: ${deleteRemoteResult.error.message}`
+      );
     }
   }
 
   const deleteResult = await execFn(["git", "branch", "-D", branch], repo);
   if (deleteResult.isErr()) {
-    console.warn(`Cleanup: Failed to delete branch ${branch}: ${deleteResult.error.message}`);
+    console.warn(
+      `Cleanup: Failed to delete branch ${branch}: ${deleteResult.error.message}`
+    );
   }
 }
 ```

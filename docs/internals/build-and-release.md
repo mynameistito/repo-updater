@@ -84,7 +84,7 @@ The `npm:` import map in `deno.json` handles the three runtime deps on the Deno 
 ## npm vs JSR
 
 | Aspect | npm | JSR |
-|---|---|---|
+| --- | --- | --- |
 | Published content | Compiled `.mjs` + `.d.mts` from tsdown | Raw `.ts` source files |
 | Output directory | `dist/` | `src/` |
 | Package name | `repo-updater` | `@mynameistito/repo-updater` |

@@ -110,7 +110,7 @@ The same source code runs on three runtimes without build-time conditionals.
 Bun and Node share the entry point `cli.ts`. The runtime is detected at call sites using the pattern:
 
 ```ts
-typeof Bun === "undefined"
+typeof Bun === "undefined";
 ```
 
 When this check is true, the code is running under Node and selects the Node path (e.g., `execNodejs` instead of `execBun`, or `openURLNodejs` instead of `openURLBun`). When false, the Bun runtime is available and its native APIs are used directly.
@@ -121,17 +121,17 @@ Deno uses a separate entry point, `deno-cli.ts`. It declares an ambient `Deno` t
 
 ### Root-only updates
 
-| Package manager | Latest mode | Minor mode |
-|---|---|---|
-| npm | `npx --yes npm-check-updates --upgrade` | `npm update` |
-| pnpm | `pnpm update --latest` | `pnpm update` |
-| yarn | `yarn upgrade --latest` | `yarn upgrade` |
-| bun | `bun update --latest` | `bun update` |
+| Package manager | Latest mode                             | Minor mode     |
+| --------------- | --------------------------------------- | -------------- |
+| npm             | `npx --yes npm-check-updates --upgrade` | `npm update`   |
+| pnpm            | `pnpm update --latest`                  | `pnpm update`  |
+| yarn            | `yarn upgrade --latest`                 | `yarn upgrade` |
+| bun             | `bun update --latest`                   | `bun update`   |
 
 ### Workspace (monorepo) updates
 
 | Package manager | Latest mode | Minor mode |
-|---|---|---|
+| --- | --- | --- |
 | npm | `npx --yes npm-check-updates --upgrade --workspaces` | `npm update --workspaces` |
 | pnpm | `pnpm update --latest -r` | `pnpm update -r` |
 | yarn | `npx --yes npm-check-updates --upgrade --workspaces` | `npx --yes npm-check-updates --upgrade --target minor --workspaces` |
@@ -141,12 +141,12 @@ Bun handles workspaces natively with `bun update`, so no separate workspace comm
 
 ### Install commands (shared across modes)
 
-| Package manager | Command |
-|---|---|
-| npm | `npm install` |
-| pnpm | `pnpm install` |
-| yarn | `yarn install` |
-| bun | `bun install` |
+| Package manager | Command        |
+| --------------- | -------------- |
+| npm             | `npm install`  |
+| pnpm            | `pnpm install` |
+| yarn            | `yarn install` |
+| bun             | `bun install`  |
 
 ### Lockfile detection
 

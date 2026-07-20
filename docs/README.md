@@ -17,15 +17,15 @@ Node and Deno work too. The compiled output runs on Node 22+, and the raw TypeSc
 
 ## Development commands
 
-| Command | What it does |
-|---|---|
-| `bun run typecheck` | Type-check with tsgo |
-| `bun test` | Run tests (Bun runner) |
+| Command             | What it does            |
+| ------------------- | ----------------------- |
+| `bun run typecheck` | Type-check with tsgo    |
+| `bun test`          | Run tests (Bun runner)  |
 | `bun run test:node` | Run tests (Vitest/Node) |
-| `bun run check` | Lint check (Ultracite) |
-| `bun run fix` | Auto-fix lint issues |
-| `bun run build` | Build dist/ with tsdown |
-| `bun run start` | Run the CLI |
+| `bun run check`     | Lint check (Ultracite)  |
+| `bun run fix`       | Auto-fix lint issues    |
+| `bun run build`     | Build dist/ with tsdown |
+| `bun run start`     | Run the CLI             |
 
 ## Using repo-updater
 

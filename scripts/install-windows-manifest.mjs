@@ -18,7 +18,7 @@
 //   node <global-bin>/../lib/node_modules/repo-updater/scripts/install-windows-manifest.mjs
 
 import { existsSync, statSync, utimesSync, writeFileSync } from "node:fs";
-import { delimiter, join } from "node:path";
+import path from "node:path";
 
 if (process.platform !== "win32") {
   process.exit(0);
@@ -38,25 +38,25 @@ const MANIFEST = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 </assembly>
 `;
 
-function* candidateBinDirs() {
+const candidateBinDirs = function* candidateBinDirs() {
   // npm / pnpm / yarn — set during lifecycle script execution
   if (process.env.npm_config_prefix) {
     yield process.env.npm_config_prefix;
   }
   // Bun global bin
   if (process.env.BUN_INSTALL) {
-    yield join(process.env.BUN_INSTALL, "bin");
+    yield path.join(process.env.BUN_INSTALL, "bin");
   }
   if (process.env.USERPROFILE) {
-    yield join(process.env.USERPROFILE, ".bun", "bin");
+    yield path.join(process.env.USERPROFILE, ".bun", "bin");
   }
   // PATH fallback — covers volta, fnm, custom installs
-  for (const dir of (process.env.PATH ?? "").split(delimiter)) {
+  for (const dir of (process.env.PATH ?? "").split(path.delimiter)) {
     if (dir) {
       yield dir;
     }
   }
-}
+};
 
 let wroteAny = false;
 const seen = new Set();
@@ -66,7 +66,7 @@ for (const dir of candidateBinDirs()) {
   }
   seen.add(dir);
 
-  const exe = join(dir, `${BIN_NAME}.exe`);
+  const exe = path.join(dir, `${BIN_NAME}.exe`);
   if (!existsSync(exe)) {
     continue;
   }
