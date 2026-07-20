@@ -13,14 +13,20 @@ import { selfHealWindowsManifest } from "./windows-manifest.ts";
 // manifest may not have been written. Self-heal on first invocation.
 selfHealWindowsManifest();
 
-main().catch((err) => {
-  if (err instanceof Error) {
-    console.error("Error:", err.message);
-    if (err.stack) {
-      console.error(err.stack);
+const run = async (): Promise<void> => {
+  try {
+    await main();
+  } catch (error) {
+    if (error instanceof Error) {
+      console.error("Error:", error.message);
+      if (error.stack) {
+        console.error(error.stack);
+      }
+    } else {
+      console.error("Uncaught error:", error);
     }
-  } else {
-    console.error("Uncaught error:", err);
+    process.exit(1);
   }
-  process.exit(1);
-});
+};
+
+await run();

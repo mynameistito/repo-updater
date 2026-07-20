@@ -1,133 +1,137 @@
-import { afterEach, beforeEach, describe, expect, test } from "bun:test";
+import * as BunTest from "bun:test";
+
 import { getDate, parseArgs } from "../src/args.ts";
 
 let originalConsoleError: typeof console.error;
 
-beforeEach(() => {
+BunTest.beforeEach(() => {
   originalConsoleError = console.error;
   console.error = () => {
     // Suppress console errors in tests
   };
 });
 
-afterEach(() => {
+BunTest.afterEach(() => {
   console.error = originalConsoleError;
 });
 
 /** Matches a `YYYY-MM-DD` date string. */
-const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
+const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/u;
 
-describe("parseArgs", () => {
-  test("--help sets help to true", () => {
+BunTest.describe("parseArgs", () => {
+  BunTest.test("--help sets help to true", () => {
     const args = parseArgs(["--help"]);
-    expect(args.help).toBe(true);
+    BunTest.expect(args.help).toBe(true);
   });
 
-  test("-h sets help to true", () => {
+  BunTest.test("-h sets help to true", () => {
     const args = parseArgs(["-h"]);
-    expect(args.help).toBe(true);
+    BunTest.expect(args.help).toBe(true);
   });
 
-  test("--dry-run sets dryRun to true", () => {
+  BunTest.test("--dry-run sets dryRun to true", () => {
     const args = parseArgs(["--dry-run"]);
-    expect(args.dryRun).toBe(true);
+    BunTest.expect(args.dryRun).toBe(true);
   });
 
-  test("-n sets dryRun to true", () => {
+  BunTest.test("-n sets dryRun to true", () => {
     const args = parseArgs(["-n"]);
-    expect(args.dryRun).toBe(true);
+    BunTest.expect(args.dryRun).toBe(true);
   });
 
-  test("-c sets configPath", () => {
+  BunTest.test("-c sets configPath", () => {
     const args = parseArgs(["-c", "my-config.json"]);
-    expect(args.configPath).toBe("my-config.json");
+    BunTest.expect(args.configPath).toBe("my-config.json");
   });
 
-  test("--config sets configPath", () => {
+  BunTest.test("--config sets configPath", () => {
     const args = parseArgs(["--config", "my-config.json"]);
-    expect(args.configPath).toBe("my-config.json");
+    BunTest.expect(args.configPath).toBe("my-config.json");
   });
 
-  test("positional arguments are collected", () => {
+  BunTest.test("positional arguments are collected", () => {
     const args = parseArgs(["/path/to/repo1", "/path/to/repo2"]);
-    expect(args.positional).toEqual(["/path/to/repo1", "/path/to/repo2"]);
+    BunTest.expect(args.positional).toEqual([
+      "/path/to/repo1",
+      "/path/to/repo2",
+    ]);
   });
 
-  test("--minor sets minor to true", () => {
+  BunTest.test("--minor sets minor to true", () => {
     const args = parseArgs(["--minor"]);
-    expect(args.minor).toBe(true);
+    BunTest.expect(args.minor).toBe(true);
   });
 
-  test("-m sets minor to true", () => {
+  BunTest.test("-m sets minor to true", () => {
     const args = parseArgs(["-m"]);
-    expect(args.minor).toBe(true);
+    BunTest.expect(args.minor).toBe(true);
   });
 
-  test("minor defaults to false", () => {
+  BunTest.test("minor defaults to false", () => {
     const args = parseArgs([]);
-    expect(args.minor).toBe(false);
+    BunTest.expect(args.minor).toBe(false);
   });
 
-  test("combined flags work together", () => {
+  BunTest.test("combined flags work together", () => {
     const args = parseArgs(["-n", "-c", "foo", "bar", "baz"]);
-    expect(args.dryRun).toBe(true);
-    expect(args.configPath).toBe("foo");
-    expect(args.positional).toEqual(["bar", "baz"]);
-    expect(args.help).toBe(false);
+    BunTest.expect(args.dryRun).toBe(true);
+    BunTest.expect(args.configPath).toBe("foo");
+    BunTest.expect(args.positional).toEqual(["bar", "baz"]);
+    BunTest.expect(args.help).toBe(false);
   });
 
-  test("leaves configPath undefined when -c is last argument", () => {
+  BunTest.test("leaves configPath undefined when -c is last argument", () => {
     const args = parseArgs(["-c"]);
-    expect(args.configPath).toBeUndefined();
+    BunTest.expect(args.configPath).toBeUndefined();
   });
 
-  test("ignores unknown flags", () => {
+  BunTest.test("ignores unknown flags", () => {
     const args = parseArgs(["--unknown"]);
-    expect(args.help).toBe(false);
-    expect(args.dryRun).toBe(false);
-    expect(args.configPath).toBeUndefined();
-    expect(args.positional).toEqual([]);
+    BunTest.expect(args.help).toBe(false);
+    BunTest.expect(args.dryRun).toBe(false);
+    BunTest.expect(args.configPath).toBeUndefined();
+    BunTest.expect(args.positional).toEqual([]);
   });
 
-  test("handles -c without value gracefully", () => {
+  BunTest.test("handles -c without value gracefully", () => {
     const args = parseArgs(["-c"]);
-    expect(args.configPath).toBeUndefined();
+    BunTest.expect(args.configPath).toBeUndefined();
   });
 
-  test("--no-changeset sets noChangeset to true", () => {
+  BunTest.test("--no-changeset sets noChangeset to true", () => {
     const args = parseArgs(["--no-changeset"]);
-    expect(args.noChangeset).toBe(true);
+    BunTest.expect(args.noChangeset).toBe(true);
   });
 
-  test("noChangeset defaults to false", () => {
+  BunTest.test("noChangeset defaults to false", () => {
     const args = parseArgs([]);
-    expect(args.noChangeset).toBe(false);
+    BunTest.expect(args.noChangeset).toBe(false);
   });
 
-  test("--no-workspaces sets noWorkspaces to true", () => {
+  BunTest.test("--no-workspaces sets noWorkspaces to true", () => {
     const args = parseArgs(["--no-workspaces"]);
-    expect(args.noWorkspaces).toBe(true);
+    BunTest.expect(args.noWorkspaces).toBe(true);
   });
 
-  test("noWorkspaces defaults to false", () => {
+  BunTest.test("noWorkspaces defaults to false", () => {
     const args = parseArgs([]);
-    expect(args.noWorkspaces).toBe(false);
+    BunTest.expect(args.noWorkspaces).toBe(false);
   });
 
-  test("--no-changeset and --no-workspaces work together", () => {
+  BunTest.test("--no-changeset and --no-workspaces work together", () => {
     const args = parseArgs([
       "--no-changeset",
       "--no-workspaces",
       "/path/to/repo",
     ]);
-    expect(args.noChangeset).toBe(true);
-    expect(args.noWorkspaces).toBe(true);
-    expect(args.positional).toEqual(["/path/to/repo"]);
+    BunTest.expect(args.noChangeset).toBe(true);
+    BunTest.expect(args.noWorkspaces).toBe(true);
+    BunTest.expect(args.positional).toEqual(["/path/to/repo"]);
   });
 });
 
-describe("getDate", () => {
-  test("returns date in YYYY-MM-DD format", () => {
+BunTest.describe("getDate", () => {
+  BunTest.test("returns date in YYYY-MM-DD format", () => {
     const now = new Date();
     const dd = String(now.getDate()).padStart(2, "0");
     const mm = String(now.getMonth() + 1).padStart(2, "0");
@@ -135,7 +139,7 @@ describe("getDate", () => {
     const expectedDateString = `${yyyy}-${mm}-${dd}`;
 
     const date = getDate();
-    expect(date).toMatch(DATE_PATTERN);
-    expect(date).toBe(expectedDateString);
+    BunTest.expect(date).toMatch(DATE_PATTERN);
+    BunTest.expect(date).toBe(expectedDateString);
   });
 });

@@ -8,7 +8,8 @@
  */
 
 import { existsSync, mkdirSync, readdirSync, writeFileSync } from "node:fs";
-import { join } from "node:path";
+import path from "node:path";
+
 import { readPackageJson } from "./package-json.ts";
 import type { WorkspacePackage } from "./workspaces.ts";
 
@@ -21,16 +22,14 @@ const DEPENDENCY_ARROW = "→";
  * Keys are dependency names, values are resolved version strings
  * (e.g. `"^1.2.3"` or `"workspace:*"`).
  */
-export interface DepSnapshot {
-  [pkg: string]: string;
-}
+export type DepSnapshot = Record<string, string>;
 
 /**
  * Describes a single dependency version change between two snapshots.
  *
- * @property name - The dependency package name.
- * @property from - The previous version string, or empty string for added deps.
- * @property to - The new version string, or empty string for removed deps.
+ * @property {string} name - The dependency package name.
+ * @property {string} from - The previous version string, or empty string for added deps.
+ * @property {string} to - The new version string, or empty string for removed deps.
  */
 export interface DepChange {
   from: string;
@@ -46,8 +45,8 @@ export interface DepChange {
  * @param repoPath - Absolute path to the repository root.
  * @returns `true` if the repo uses changesets.
  */
-export function hasChangesets(repoPath: string): boolean {
-  if (existsSync(join(repoPath, ".changeset", "config.json"))) {
+export const hasChangesets = (repoPath: string): boolean => {
+  if (existsSync(path.join(repoPath, ".changeset", "config.json"))) {
     return true;
   }
   const pkg = readPackageJson(repoPath);
@@ -60,7 +59,7 @@ export function hasChangesets(repoPath: string): boolean {
     devDeps !== null &&
     "@changesets/cli" in devDeps
   );
-}
+};
 
 /**
  * Captures the current `dependencies` versions from a package's `package.json`.
@@ -68,7 +67,7 @@ export function hasChangesets(repoPath: string): boolean {
  * @param repoPath - Absolute path to the package directory.
  * @returns A {@link DepSnapshot} mapping dependency names to version strings.
  */
-export function snapshotDeps(repoPath: string): DepSnapshot {
+export const snapshotDeps = (repoPath: string): DepSnapshot => {
   const pkg = readPackageJson(repoPath);
   if (!pkg) {
     return {};
@@ -80,7 +79,7 @@ export function snapshotDeps(repoPath: string): DepSnapshot {
       ? (pkg.dependencies as Record<string, string>)
       : {};
   return deps;
-}
+};
 
 /**
  * Computes the differences between two dependency snapshots.
@@ -92,7 +91,10 @@ export function snapshotDeps(repoPath: string): DepSnapshot {
  * @param after - The snapshot taken after the update.
  * @returns Sorted array of {@link DepChange} entries describing what changed.
  */
-export function diffDeps(before: DepSnapshot, after: DepSnapshot): DepChange[] {
+export const diffDeps = (
+  before: DepSnapshot,
+  after: DepSnapshot
+): DepChange[] => {
   const allKeys = new Set([...Object.keys(before), ...Object.keys(after)]);
   const changes: DepChange[] = [];
 
@@ -100,12 +102,12 @@ export function diffDeps(before: DepSnapshot, after: DepSnapshot): DepChange[] {
     const from = before[name] ?? "";
     const to = after[name] ?? "";
     if (from !== to) {
-      changes.push({ name, from, to });
+      changes.push({ from, name, to });
     }
   }
 
-  return changes.sort((a, b) => a.name.localeCompare(b.name));
-}
+  return changes.toSorted((a, b) => a.name.localeCompare(b.name));
+};
 
 /**
  * Lists existing changeset markdown files in the `.changeset` directory.
@@ -115,19 +117,19 @@ export function diffDeps(before: DepSnapshot, after: DepSnapshot): DepChange[] {
  * @param repoPath - Absolute path to the repository root.
  * @returns Sorted array of changeset file basenames (e.g. `["dep-updates-1234.md"]`).
  */
-export function getChangesetFiles(repoPath: string): string[] {
-  const changesetDir = join(repoPath, ".changeset");
+export const getChangesetFiles = (repoPath: string): string[] => {
+  const changesetDir = path.join(repoPath, ".changeset");
   if (!existsSync(changesetDir)) {
     return [];
   }
   try {
     return readdirSync(changesetDir)
       .filter((f) => f.endsWith(".md") && f !== "README.md")
-      .sort();
+      .toSorted();
   } catch {
     return [];
   }
-}
+};
 
 /**
  * Reads the `name` field from a package's `package.json`.
@@ -135,14 +137,14 @@ export function getChangesetFiles(repoPath: string): string[] {
  * @param repoPath - Absolute path to the package directory.
  * @returns The package name string, or `"unknown"` if unavailable.
  */
-export function getPackageName(repoPath: string): string {
+export const getPackageName = (repoPath: string): string => {
   const pkg = readPackageJson(repoPath);
   if (!pkg) {
     return "unknown";
   }
-  const name = pkg.name;
+  const { name } = pkg;
   return typeof name === "string" ? name : "unknown";
-}
+};
 
 /**
  * Writes a changeset markdown file documenting dependency version changes
@@ -156,17 +158,17 @@ export function getPackageName(repoPath: string): string {
  * @param changes - Array of {@link DepChange} entries to document.
  * @param timestamp - Unix timestamp used in the output filename.
  */
-export function writeChangesetFile(
+export const writeChangesetFile = (
   repoPath: string,
   packageName: string,
   changes: DepChange[],
   timestamp: number
-): void {
+): void => {
   if (changes.length === 0) {
     return;
   }
 
-  const changesetDir = join(repoPath, ".changeset");
+  const changesetDir = path.join(repoPath, ".changeset");
   if (!existsSync(changesetDir)) {
     mkdirSync(changesetDir, { recursive: true });
   }
@@ -181,17 +183,17 @@ export function writeChangesetFile(
   const content = `---\n"${packageName}": patch\n---\n\nUpdated dependencies:\n${bullets}\n`;
 
   writeFileSync(
-    join(changesetDir, `dep-updates-${timestamp}.md`),
+    path.join(changesetDir, `dep-updates-${timestamp}.md`),
     content,
-    "utf8"
+    "utf-8"
   );
-}
+};
 
 /** Snapshots `dependencies` for the root package and all workspace packages. */
-export function snapshotWorkspaceDeps(
+export const snapshotWorkspaceDeps = (
   repoPath: string,
   packages: WorkspacePackage[]
-): Map<string, DepSnapshot> {
+): Map<string, DepSnapshot> => {
   const snapshots = new Map<string, DepSnapshot>();
 
   // Include root package
@@ -212,13 +214,13 @@ export function snapshotWorkspaceDeps(
   }
 
   return snapshots;
-}
+};
 
 /** Diffs before/after workspace dependency snapshots, returning only packages with changes. */
-export function diffWorkspaceDeps(
+export const diffWorkspaceDeps = (
   before: Map<string, DepSnapshot>,
   after: Map<string, DepSnapshot>
-): Map<string, DepChange[]> {
+): Map<string, DepChange[]> => {
   const allNames = new Set([...before.keys(), ...after.keys()]);
   const result = new Map<string, DepChange[]>();
 
@@ -232,32 +234,32 @@ export function diffWorkspaceDeps(
   }
 
   return result;
-}
+};
 
 /** Writes a multi-package changeset file listing dependency changes per workspace package. */
-export function writeWorkspaceChangesetFile(
+export const writeWorkspaceChangesetFile = (
   repoPath: string,
   changedPackages: Map<string, DepChange[]>,
   timestamp: number
-): void {
+): void => {
   if (changedPackages.size === 0) {
     return;
   }
 
-  const changesetDir = join(repoPath, ".changeset");
+  const changesetDir = path.join(repoPath, ".changeset");
   if (!existsSync(changesetDir)) {
     mkdirSync(changesetDir, { recursive: true });
   }
 
   // Build frontmatter with all changed packages
   const frontmatterLines = [...changedPackages.keys()]
-    .sort()
+    .toSorted()
     .map((name) => `"${name}": patch`);
 
   // Build body with per-package change details
   const bodyParts: string[] = [];
-  for (const [name, changes] of [...changedPackages.entries()].sort((a, b) =>
-    a[0].localeCompare(b[0])
+  for (const [name, changes] of [...changedPackages.entries()].toSorted(
+    (a, b) => a[0].localeCompare(b[0])
   )) {
     const bullets = changes
       .map(
@@ -271,8 +273,8 @@ export function writeWorkspaceChangesetFile(
   const content = `---\n${frontmatterLines.join("\n")}\n---\n\nUpdated dependencies:\n${bodyParts.join("\n\n")}\n`;
 
   writeFileSync(
-    join(changesetDir, `dep-updates-${timestamp}.md`),
+    path.join(changesetDir, `dep-updates-${timestamp}.md`),
     content,
-    "utf8"
+    "utf-8"
   );
-}
+};

@@ -28,14 +28,36 @@ const MANIFEST_XML = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 </assembly>
 `;
 
-const TRAILING_SLASHES = /[\\/]+$/;
+const TRAILING_SLASHES = /[\\/]+$/u;
+
+const resolveShimPath = (): string | null => {
+  // The bun/npm shim spawns node and passes the resolved script path as
+  // argv[1]. The shim itself lives next to that script's eventual install
+  // directory, but its actual path isn't exposed via argv.
+  //
+  // Strategy: walk PATH for `repo-updater.exe`. This is the same heuristic
+  // the postinstall script uses, and it works regardless of which package
+  // manager produced the shim.
+  const BIN_NAME = "repo-updater.exe";
+  const dirs = (process.env.PATH ?? "").split(";");
+  for (const dir of dirs) {
+    if (!dir) {
+      continue;
+    }
+    const candidate = `${dir.replace(TRAILING_SLASHES, "")}\\${BIN_NAME}`;
+    if (existsSync(candidate)) {
+      return candidate;
+    }
+  }
+  return null;
+};
 
 /**
  * Writes a sidecar asInvoker manifest next to the parent process launcher
  * (the `.exe` shim that spawned this node process) if one is not already
  * present. Runs once at startup; cheap when the manifest exists.
  */
-export function selfHealWindowsManifest(): void {
+export const selfHealWindowsManifest = (): void => {
   if (process.platform !== "win32") {
     return;
   }
@@ -61,26 +83,4 @@ export function selfHealWindowsManifest(): void {
     // EACCES / EPERM / EBUSY: read-only install or antivirus lock.
     // Either way, self-heal is best-effort — swallow and move on.
   }
-}
-
-function resolveShimPath(): string | null {
-  // The bun/npm shim spawns node and passes the resolved script path as
-  // argv[1]. The shim itself lives next to that script's eventual install
-  // directory, but its actual path isn't exposed via argv.
-  //
-  // Strategy: walk PATH for `repo-updater.exe`. This is the same heuristic
-  // the postinstall script uses, and it works regardless of which package
-  // manager produced the shim.
-  const BIN_NAME = "repo-updater.exe";
-  const dirs = (process.env.PATH ?? "").split(";");
-  for (const dir of dirs) {
-    if (!dir) {
-      continue;
-    }
-    const candidate = `${dir.replace(TRAILING_SLASHES, "")}\\${BIN_NAME}`;
-    if (existsSync(candidate)) {
-      return candidate;
-    }
-  }
-  return null;
-}
+};

@@ -1,31 +1,31 @@
 import { defineConfig } from "tsdown";
 
 export default defineConfig({
-  entry: {
-    index: "src/index.ts",
-    cli: "src/cli.ts",
-  },
-  format: ["esm"],
-  dts: true,
   clean: true,
-  platform: "node",
-  target: "node22",
-  outDir: "dist",
-  exports: {
-    customExports(pkg) {
-      pkg["."] = {
-        types: "./dist/index.d.mts",
-        import: "./dist/index.mjs",
-      };
-      pkg["./cli"] = {
-        types: "./dist/cli.d.mts",
-        import: "./dist/cli.mjs",
-      };
-      return pkg;
-    },
-  },
-  publint: true,
   deps: {
     neverBundle: ["@clack/prompts", "better-result", "yaml"],
   },
+  dts: true,
+  entry: {
+    cli: "src/cli.ts",
+    index: "src/index.ts",
+  },
+  exports: {
+    customExports(pkg) {
+      pkg["."] = Object.fromEntries([
+        ["types", "./dist/index.d.mts"],
+        ["import", "./dist/index.mjs"],
+      ]);
+      pkg["./cli"] = Object.fromEntries([
+        ["types", "./dist/cli.d.mts"],
+        ["import", "./dist/cli.mjs"],
+      ]);
+      return pkg;
+    },
+  },
+  format: ["esm"],
+  outDir: "dist",
+  platform: "node",
+  publint: true,
+  target: "node22",
 });

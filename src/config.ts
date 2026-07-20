@@ -8,15 +8,17 @@
  */
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
-import { dirname, join } from "node:path";
+import path from "node:path";
+
 import { Result } from "better-result";
+
 import { ConfigNotFoundError, ConfigParseError } from "./errors.ts";
 
 /**
  * User configuration loaded from `repo-updater.config.json`.
  *
- * @property browser - Preferred browser for opening PR URLs (auto-detected if omitted).
- * @property repos - List of local filesystem paths to Git repositories to update.
+ * @property {string | undefined} browser - Preferred browser for opening PR URLs (auto-detected if omitted).
+ * @property {string[]} repos - List of local filesystem paths to Git repositories to update.
  */
 export interface Config {
   browser?: string;
@@ -34,16 +36,16 @@ const CONFIG_FILENAME = "repo-updater.config.json";
  *   working directory and global config directory are searched in order.
  * @returns The absolute path to the found config file, or `null` if none exists.
  */
-export function findConfigPath(configPath?: string): string | null {
+export const findConfigPath = (configPath?: string): string | null => {
   const candidates = configPath
     ? [configPath]
     : [
-        join(process.cwd(), CONFIG_FILENAME),
-        join(homedir(), ".config", "repo-updater", "config.json"),
+        path.join(process.cwd(), CONFIG_FILENAME),
+        path.join(homedir(), ".config", "repo-updater", "config.json"),
       ];
 
   return candidates.find((p) => existsSync(p)) ?? null;
-}
+};
 
 /**
  * Persists the given browser preference to the configuration file.
@@ -64,14 +66,18 @@ export function findConfigPath(configPath?: string): string | null {
  * if (Result.isOk(result)) console.log("Saved to", result.value);
  * ```
  */
-export function saveBrowserToConfig(
+export const saveBrowserToConfig = (
   browser: string,
   configPath?: string
-): Result<string, ConfigParseError> {
+): Result<string, ConfigParseError> => {
   const found = findConfigPath(configPath);
 
   if (found) {
     return Result.try({
+      catch: (e) =>
+        new ConfigParseError({
+          message: `Failed to update ${found}: ${e instanceof Error ? e.message : String(e)}`,
+        }),
       try: () => {
         const raw = JSON.parse(readFileSync(found, "utf-8")) as Record<
           string,
@@ -81,32 +87,29 @@ export function saveBrowserToConfig(
         writeFileSync(found, `${JSON.stringify(raw, null, 2)}\n`);
         return found;
       },
-      catch: (e) =>
-        new ConfigParseError({
-          message: `Failed to update ${found}: ${e instanceof Error ? e.message : String(e)}`,
-        }),
     });
   }
 
   // No config exists — create one at the explicit path or the default location
   const target =
-    configPath ?? join(homedir(), ".config", "repo-updater", "config.json");
+    configPath ??
+    path.join(homedir(), ".config", "repo-updater", "config.json");
 
   return Result.try({
+    catch: (e) =>
+      new ConfigParseError({
+        message: `Failed to create ${target}: ${e instanceof Error ? e.message : String(e)}`,
+      }),
     try: () => {
-      mkdirSync(dirname(target), { recursive: true });
+      mkdirSync(path.dirname(target), { recursive: true });
       writeFileSync(
         target,
         `${JSON.stringify({ browser, repos: [] }, null, 2)}\n`
       );
       return target;
     },
-    catch: (e) =>
-      new ConfigParseError({
-        message: `Failed to create ${target}: ${e instanceof Error ? e.message : String(e)}`,
-      }),
   });
-}
+};
 
 /**
  * Reads and validates a configuration file from the resolved path.
@@ -129,9 +132,9 @@ export function saveBrowserToConfig(
  * }
  * ```
  */
-export function loadConfig(
+export const loadConfig = (
   configPath?: string
-): Result<Config, ConfigNotFoundError | ConfigParseError> {
+): Result<Config, ConfigNotFoundError | ConfigParseError> => {
   const found = findConfigPath(configPath);
 
   if (!found) {
@@ -143,6 +146,10 @@ export function loadConfig(
   }
 
   return Result.try({
+    catch: (e) =>
+      new ConfigParseError({
+        message: `Failed to parse ${found}: ${e instanceof Error ? e.message : String(e)}`,
+      }),
     try: () => {
       const raw = JSON.parse(readFileSync(found, "utf-8")) as unknown;
 
@@ -167,12 +174,8 @@ export function loadConfig(
 
       return raw as Config;
     },
-    catch: (e) =>
-      new ConfigParseError({
-        message: `Failed to parse ${found}: ${e instanceof Error ? e.message : String(e)}`,
-      }),
   });
-}
+};
 
 /**
  * Partitions repository paths into valid, missing, and non-git directories.
@@ -185,11 +188,13 @@ export function loadConfig(
  *   `missing` (directories that do not exist), and `notGit` (directories
  *   that exist but are not Git repositories).
  */
-export function validateRepos(repos: string[]): {
+export const validateRepos = (
+  repos: string[]
+): {
   valid: string[];
   missing: string[];
   notGit: string[];
-} {
+} => {
   const valid: string[] = [];
   const missing: string[] = [];
   const notGit: string[] = [];
@@ -197,7 +202,7 @@ export function validateRepos(repos: string[]): {
   for (const repo of repos) {
     if (!existsSync(repo)) {
       missing.push(repo);
-    } else if (existsSync(join(repo, ".git"))) {
+    } else if (existsSync(path.join(repo, ".git"))) {
       valid.push(repo);
     } else {
       // Repo directory exists but is not a git repository
@@ -205,5 +210,5 @@ export function validateRepos(repos: string[]): {
     }
   }
 
-  return { valid, missing, notGit };
-}
+  return { missing, notGit, valid };
+};

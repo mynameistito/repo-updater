@@ -2,42 +2,49 @@
   "name": "repo-updater",
   "version": "0.7.8",
   "description": "CLI tool to mass-update dependencies across multiple git repositories with auto package manager detection (npm, pnpm, yarn, Bun)",
-  "type": "module",
+  "keywords": [
+    "automation",
+    "batch-update",
+    "bun",
+    "cli",
+    "dependencies",
+    "github",
+    "monorepo",
+    "npm",
+    "package-manager",
+    "pnpm",
+    "updater",
+    "yarn"
+  ],
+  "homepage": "https://github.com/mynameistito/repo-updater#readme",
+  "bugs": {
+    "url": "https://github.com/mynameistito/repo-updater/issues"
+  },
   "license": "MIT",
   "author": "mynameistito",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/mynameistito/repo-updater.git"
   },
-  "bugs": {
-    "url": "https://github.com/mynameistito/repo-updater/issues"
-  },
-  "homepage": "https://github.com/mynameistito/repo-updater#readme",
-  "keywords": [
-    "bun",
-    "npm",
-    "pnpm",
-    "yarn",
-    "dependencies",
-    "updater",
-    "cli",
-    "monorepo",
-    "automation",
-    "github",
-    "package-manager",
-    "batch-update"
-  ],
   "bin": {
     "repo-updater": "./dist/cli.mjs"
-  },
-  "engines": {
-    "bun": ">=1.0.0",
-    "node": ">=22.6.0"
   },
   "files": [
     "dist",
     "scripts/install-windows-manifest.mjs"
   ],
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.mts",
+      "import": "./dist/index.mjs"
+    },
+    "./cli": {
+      "types": "./dist/cli.d.mts",
+      "import": "./dist/cli.mjs"
+    },
+    "./package.json": "./package.json"
+  },
   "scripts": {
     "typecheck": "tsgo --noEmit",
     "start": "bun run src/cli.ts",
@@ -52,41 +59,36 @@
     "version": "changeset version && bun run sync:jsr && bunx ultracite fix deno.json"
   },
   "dependencies": {
-    "@clack/prompts": "^1.5.1",
-    "@types/node": "25.9.2",
-    "better-result": "^2.9.2",
+    "@clack/prompts": "^1.7.0",
+    "@types/node": "26.1.1",
+    "better-result": "^2.10.0",
     "yaml": "^2.9.0"
   },
   "devDependencies": {
-    "@biomejs/biome": "^2.4.16",
-    "@changesets/cli": "^2.31.0",
+    "@changesets/cli": "^2.31.1",
     "@types/bun": "^1.3.14",
-    "@typescript/native-preview": "^7.0.0-dev.20260609.1",
-    "lefthook": "^2.1.9",
+    "@typescript/native-preview": "^7.0.0-dev.20260707.2",
+    "lefthook": "^2.1.10",
+    "oxfmt": "^0.59.0",
+    "oxlint": "^1.74.0",
     "publint": "^0.3.21",
-    "tsdown": "^0.22.2",
-    "typescript": "^6.0.3",
-    "ultracite": "^7.8.2",
+    "tsdown": "^0.22.12",
+    "typescript": "^7.0.2",
+    "ultracite": "7.9.4",
     "v8r": "^6.1.0",
-    "vitest": "^4.1.8"
+    "vitest": "^4.1.10"
   },
   "overrides": {
-    "minimatch": "^10.2.3",
     "brace-expansion": "5.0.6",
     "fast-uri": "3.1.2",
+    "minimatch": "^10.2.3",
     "picomatch": ">=4.0.4",
     "postcss": ">=8.5.10",
     "vite": "7.3.5"
   },
-  "exports": {
-    ".": {
-      "types": "./dist/index.d.mts",
-      "import": "./dist/index.mjs"
-    },
-    "./cli": {
-      "types": "./dist/cli.d.mts",
-      "import": "./dist/cli.mjs"
-    },
-    "./package.json": "./package.json"
-  }
+  "engines": {
+    "bun": ">=1.0.0",
+    "node": ">=22.6.0"
+  },
+  "packageManager": "bun@1.3.14"
 }

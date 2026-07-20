@@ -1,11 +1,6 @@
 # repo-updater
 
-[![npm version](https://img.shields.io/npm/v/repo-updater)](https://www.npmjs.com/package/repo-updater)
-[![npm downloads](https://img.shields.io/npm/dm/repo-updater)](https://www.npmjs.com/package/repo-updater)
-[![CI](https://github.com/mynameistito/repo-updater/actions/workflows/ci.yml/badge.svg)](https://github.com/mynameistito/repo-updater/actions/workflows/ci.yml)
-[![License](https://img.shields.io/npm/l/repo-updater)](LICENSE)
-[![pkg.pr.new](https://pkg.pr.new/badge/mynameistito/repo-updater)](https://pkg.pr.new/mynameistito/repo-updater)
-
+[![npm version](https://img.shields.io/npm/v/repo-updater)](https://www.npmjs.com/package/repo-updater) [![npm downloads](https://img.shields.io/npm/dm/repo-updater)](https://www.npmjs.com/package/repo-updater) [![CI](https://github.com/mynameistito/repo-updater/actions/workflows/ci.yml/badge.svg)](https://github.com/mynameistito/repo-updater/actions/workflows/ci.yml) [![License](https://img.shields.io/npm/l/repo-updater)](LICENSE) [![pkg.pr.new](https://pkg.pr.new/badge/mynameistito/repo-updater)](https://pkg.pr.new/mynameistito/repo-updater)
 
 CLI tool that mass-updates dependencies across multiple git repositories using your preferred package manager ([npm](https://www.npmjs.com/), [pnpm](https://pnpm.io/), [yarn](https://yarnpkg.com/), or [Bun](https://bun.sh)). Automatically detects the package manager, commits changes, creates pull requests via [`gh`](https://cli.github.com), and opens all resulting PR URLs in the browser.
 
@@ -51,7 +46,6 @@ Replaces manually running a dependency update workflow in each repo one-by-one.
 - [Bun](https://bun.sh) ≥ 1.0.0, [Node.js](https://nodejs.org) ≥ 22.6.0, **or** [Deno](https://deno.land) ≥ 2.0.0
 
 ## Setup
-
 
 ```sh
 bun install repo-updater -g                                    # with Bun
@@ -216,19 +210,20 @@ Detection triggers on **either** condition:
 
 When detected, the tool diffs `dependencies` before and after the update. If any changed and the target changeset file doesn't already exist (e.g., from a previous run), it writes `.changeset/dep-updates-<timestamp>.md`:
 
-```markdown
+```text
 ---
 "my-lib": patch
 ---
 
 Updated dependencies:
+
 - react: 18.2.0 → 18.3.1
 - zod: 3.21.0 → 3.24.1
 ```
 
 For monorepos with workspaces, the changeset includes all workspace packages that had dependency changes:
 
-```markdown
+```plaintext
 ---
 "@scope/app": patch
 "@scope/utils": patch
@@ -236,9 +231,11 @@ For monorepos with workspaces, the changeset includes all workspace packages tha
 
 Updated dependencies:
 **@scope/app**:
+
 - react: 18.2.0 → 18.3.1
 
 **@scope/utils**:
+
 - lodash: 4.17.20 → 4.17.21
 ```
 

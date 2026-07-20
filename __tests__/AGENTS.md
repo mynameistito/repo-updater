@@ -1,4 +1,4 @@
-# __tests__/ KNOWLEDGE BASE
+# `__tests__/` KNOWLEDGE BASE
 
 ## OVERVIEW
 
@@ -21,7 +21,7 @@ __tests__/
 ## WHERE TO LOOK
 
 | Task | File | Notes |
-|------|------|-------|
+| --- | --- | --- |
 | Runner tests | `runner.test.ts` | Mock exec injection, command tracking, workspace + non-workspace paths |
 | Config tests | `config.test.ts` | Config validation, default branch fallback |
 | CLI tests | `cli.test.ts` | `mock.module()` for `@clack/prompts` — **Bun-only** |
@@ -30,9 +30,9 @@ __tests__/
 
 ## CONVENTIONS
 
-- **Import:** All tests use `import { ... } from "bun:test"` — Vitest alias rewrites this to the compat shim
+- **Import:** All tests use `import * as BunTest from "bun:test"` — Vitest alias rewrites this to the compat shim
 - **isBun detection:** Define locally per file: `const isBun = typeof globalThis.Bun !== "undefined"`
-- **Conditional skip:** `test.skipIf(!isBun)("...", () => ...)` for Bun-specific tests
+- **Conditional skip:** `BunTest.test.skipIf(!isBun)("...", () => ...)` for Bun-specific tests
 - **Temp dirs:** `mkdtempSync(join(tmpdir(), "prefix-"))` in `beforeEach`, `rmSync` in `afterEach`
 - **Mock exec:** Pass to `updateRepo(opts, mockExec)` — never spawn real processes
 - **Spy pattern:** `spyOn(console, "log").mockImplementation(() => {})` with `.mockRestore()`
@@ -54,13 +54,18 @@ await updateRepo({ repo, date, dryRun: false }, mockExec);
 
 // Command-tracking mock
 const executedCmds: string[][] = [];
-const trackingExec = (cmd, cwd) => { executedCmds.push(cmd); return baseMock(cmd, cwd); };
+const trackingExec = (cmd, cwd) => {
+  executedCmds.push(cmd);
+  return baseMock(cmd, cwd);
+};
 
 // Deterministic file naming
 const dateNowSpy = spyOn(Date, "now").mockReturnValue(9_999_999_999_999);
 
 // process.exit spy (cli.test.ts only)
-exitSpy = spyOn(process, "exit").mockImplementation(() => { throw new Error("exit"); });
+exitSpy = spyOn(process, "exit").mockImplementation(() => {
+  throw new Error("exit");
+});
 await expect(main(["--help"], noopUpdate)).rejects.toThrow("exit");
 ```
 

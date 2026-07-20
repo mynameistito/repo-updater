@@ -7,7 +7,7 @@ The test suite runs on two runtimes: Bun (primary) and Vitest on Node (secondary
 `__tests__/bun-test-compat.ts` re-exports Vitest equivalents under the same names that `bun:test` uses. The mapping:
 
 | bun:test export | Vitest equivalent | Notes |
-|---|---|---|
+| --- | --- | --- |
 | `test` | `vitest test` | Direct alias |
 | `describe` | `vitest describe` | Direct alias |
 | `expect` | `vitest expect` | Direct alias |
@@ -56,7 +56,7 @@ Deterministic filenames use `spyOn(Date, "now").mockReturnValue(9_999_999_999_99
 ## Test file summary
 
 | File | Lines | Tests | What it covers |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | `args.test.ts` | 141 | 18 | `parseArgs` (all flags, edge cases, flag combinations), `getDate` |
 | `config.test.ts` | 227 | 14 | `loadConfig` (valid, invalid, missing), `findConfigPath`, `saveBrowserToConfig`, `validateRepos` |
 | `errors.test.ts` | 89 | 10 | `TaggedError` construction, `.is()` type guards |

@@ -16,11 +16,10 @@ When a repo uses [Changesets](https://github.com/changesets/changesets) (it has 
 
 The tool snapshots the dependency versions before and after the update, diffs them, and generates a `.changeset/dep-updates-{timestamp}.md` file with a `patch` bump type. A single-dep repo produces a file like this:
 
-```yaml
+```text
 ---
 "my-package": patch
 ---
-
 Updated dependencies:
 - dep: 1.2.3 → 1.4.0
 ```

@@ -1,8 +1,6 @@
 # PROJECT KNOWLEDGE BASE
 
-**Generated:** 2026-03-30
-**Commit:** 3cd126d
-**Branch:** main
+**Generated:** 2026-03-30 **Commit:** 3cd126d **Branch:** main
 
 ## OVERVIEW
 
@@ -22,7 +20,7 @@ repo-updater/
 ## WHERE TO LOOK
 
 | Task | Location | Notes |
-|------|----------|-------|
+| --- | --- | --- |
 | CLI entry (Bun/Node) | `src/cli.ts` | Thin wrapper, calls `main()` |
 | CLI entry (Deno) | `src/deno-cli.ts` | Deno-specific entry with ambient `Deno` type |
 | Main orchestration | `src/index.ts` | `main()`, `processRepo()`, `resolveRepos()`, browser detection (`~300 lines`) |

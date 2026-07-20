@@ -200,7 +200,7 @@ Core repository update workflow. Handles package manager detection, dependency u
 Exported types:
 
 ```ts
-type PackageManager = "npm" | "pnpm" | "yarn" | "bun"
+type PackageManager = "npm" | "pnpm" | "yarn" | "bun";
 
 interface ExecOutput {
   stderr: string;
@@ -253,7 +253,7 @@ Exported types:
 type ExecFn = (
   cmd: string[],
   cwd: string
-) => Promise<{ stdout: string; stderr: string; exitCode: number }>
+) => Promise<{ stdout: string; stderr: string; exitCode: number }>;
 ```
 
 Exported functions:

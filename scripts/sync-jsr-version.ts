@@ -18,16 +18,16 @@ for (const [name, version] of Object.entries(deps)) {
 }
 deno.imports = updatedImports;
 
-function stringifyWithInlineArrays(obj: unknown, indent = 2): string {
+const stringifyWithInlineArrays = (obj: unknown, indent = 2): string => {
   const raw = JSON.stringify(obj, null, indent);
   // Collapse arrays of primitives (strings/numbers/booleans) onto one line
-  return raw.replace(
-    /\[\n\s+("(?:[^"\\]|\\.)*"(?:,\n\s+"(?:[^"\\]|\\.)*")*)\n\s+\]/g,
-    (_, inner) => {
-      const items = inner.replace(/\n\s+/g, " ");
-      return `[${items}]`;
+  return raw.replaceAll(
+    /\[\n\s+(?<items>"(?:[^"\\]|\\.)*"(?:,\n\s+"(?:[^"\\]|\\.)*")*)\n\s+\]/gu,
+    (_match, items: string) => {
+      const inlineItems = items.replaceAll(/\n\s+/gu, " ");
+      return `[${inlineItems}]`;
     }
   );
-}
+};
 
 writeFileSync("deno.json", `${stringifyWithInlineArrays(deno)}\n`);

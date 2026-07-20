@@ -8,24 +8,30 @@
  * Deno runtime rather than Node.
  */
 
+import { main } from "./index.ts";
+
 /** Ambient type declaration for the Deno global used by this entry point. */
 declare const Deno: {
   /** Command-line arguments passed to the script. */
   readonly args: string[];
   /** Terminate the process with the given status code. */
-  exit(code?: number): never;
+  exit: (code?: number) => never;
 };
 
-import { main } from "./index.ts";
-
-main(Deno.args).catch((err: unknown) => {
-  if (err instanceof Error) {
-    console.error("Error:", err.message);
-    if (err.stack) {
-      console.error(err.stack);
+const run = async (): Promise<void> => {
+  try {
+    await main(Deno.args);
+  } catch (error: unknown) {
+    if (error instanceof Error) {
+      console.error("Error:", error.message);
+      if (error.stack) {
+        console.error(error.stack);
+      }
+    } else {
+      console.error("Uncaught error:", error);
     }
-  } else {
-    console.error("Uncaught error:", err);
+    Deno.exit(1);
   }
-  Deno.exit(1);
-});
+};
+
+await run();

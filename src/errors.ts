@@ -6,18 +6,19 @@
  * `_tag` for type discrimination in `Result` error handling.
  */
 
-import { TaggedError, type TaggedErrorClass } from "better-result";
+import { TaggedError as createTaggedError } from "better-result";
+import type { TaggedErrorClass } from "better-result";
 
 /**
  * Error thrown when a required directory does not exist on the filesystem.
  *
- * @property message - Human-readable error description.
- * @property path - The directory path that was not found.
+ * @property {string} message - Human-readable error description.
+ * @property {string} path - The directory path that was not found.
  */
 export const DirectoryNotFoundError: TaggedErrorClass<
   "DirectoryNotFoundError",
   { message: string; path: string }
-> = TaggedError("DirectoryNotFoundError")<{
+> = createTaggedError("DirectoryNotFoundError")<{
   message: string;
   path: string;
 }>();
@@ -29,14 +30,14 @@ export type DirectoryNotFoundError = InstanceType<
 /**
  * Error thrown when a spawned child process exits with a non-zero code.
  *
- * @property message - Human-readable error description.
- * @property command - The full command string that was executed.
- * @property stderr - Captured standard error output from the failed process.
+ * @property {string} message - Human-readable error description.
+ * @property {string} command - The full command string that was executed.
+ * @property {string} stderr - Captured standard error output from the failed process.
  */
 export const CommandFailedError: TaggedErrorClass<
   "CommandFailedError",
   { message: string; command: string; stderr: string }
-> = TaggedError("CommandFailedError")<{
+> = createTaggedError("CommandFailedError")<{
   message: string;
   command: string;
   stderr: string;
@@ -47,12 +48,12 @@ export type CommandFailedError = InstanceType<typeof CommandFailedError>;
 /**
  * Error thrown when no configuration file can be found at any of the searched paths.
  *
- * @property message - Human-readable error description.
+ * @property {string} message - Human-readable error description.
  */
 export const ConfigNotFoundError: TaggedErrorClass<
   "ConfigNotFoundError",
   { message: string }
-> = TaggedError("ConfigNotFoundError")<{
+> = createTaggedError("ConfigNotFoundError")<{
   message: string;
 }>();
 /** Instance type for {@link ConfigNotFoundError}. */
@@ -61,12 +62,12 @@ export type ConfigNotFoundError = InstanceType<typeof ConfigNotFoundError>;
 /**
  * Error thrown when a configuration file exists but fails validation or JSON parsing.
  *
- * @property message - Human-readable error description.
+ * @property {string} message - Human-readable error description.
  */
 export const ConfigParseError: TaggedErrorClass<
   "ConfigParseError",
   { message: string }
-> = TaggedError("ConfigParseError")<{
+> = createTaggedError("ConfigParseError")<{
   message: string;
 }>();
 /** Instance type for {@link ConfigParseError}. */
@@ -75,12 +76,12 @@ export type ConfigParseError = InstanceType<typeof ConfigParseError>;
 /**
  * Error thrown when user-supplied input (CLI flags, config values) fails validation.
  *
- * @property message - Human-readable error description.
+ * @property {string} message - Human-readable error description.
  */
 export const InvalidInputError: TaggedErrorClass<
   "InvalidInputError",
   { message: string }
-> = TaggedError("InvalidInputError")<{
+> = createTaggedError("InvalidInputError")<{
   message: string;
 }>();
 /** Instance type for {@link InvalidInputError}. */
