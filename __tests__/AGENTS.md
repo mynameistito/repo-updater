@@ -1,4 +1,4 @@
-# **tests**/ KNOWLEDGE BASE
+# `__tests__/` KNOWLEDGE BASE
 
 ## OVERVIEW
 
@@ -30,9 +30,9 @@ __tests__/
 
 ## CONVENTIONS
 
-- **Import:** All tests use `import { ... } from "bun:test"` — Vitest alias rewrites this to the compat shim
+- **Import:** All tests use `import * as BunTest from "bun:test"` — Vitest alias rewrites this to the compat shim
 - **isBun detection:** Define locally per file: `const isBun = typeof globalThis.Bun !== "undefined"`
-- **Conditional skip:** `test.skipIf(!isBun)("...", () => ...)` for Bun-specific tests
+- **Conditional skip:** `BunTest.test.skipIf(!isBun)("...", () => ...)` for Bun-specific tests
 - **Temp dirs:** `mkdtempSync(join(tmpdir(), "prefix-"))` in `beforeEach`, `rmSync` in `afterEach`
 - **Mock exec:** Pass to `updateRepo(opts, mockExec)` — never spawn real processes
 - **Spy pattern:** `spyOn(console, "log").mockImplementation(() => {})` with `.mockRestore()`

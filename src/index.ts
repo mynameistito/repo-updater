@@ -324,6 +324,7 @@ export const openURLNodejs = async (cmd: string[]): Promise<void> => {
         await once(child, "spawn", { signal });
       }),
     ]);
+    await delay(OPEN_URL_SPAWN_GRACE_MS);
   } catch (error) {
     if (error instanceof DOMException && error.name === "AbortError") {
       throw new Error(`Timed out launching browser command: ${cmd.join(" ")}`, {
@@ -333,10 +334,8 @@ export const openURLNodejs = async (cmd: string[]): Promise<void> => {
     throw error;
   } finally {
     abortController.abort();
+    child.unref();
   }
-
-  await delay(OPEN_URL_SPAWN_GRACE_MS);
-  child.unref();
 };
 
 /**

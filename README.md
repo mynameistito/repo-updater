@@ -210,7 +210,7 @@ Detection triggers on **either** condition:
 
 When detected, the tool diffs `dependencies` before and after the update. If any changed and the target changeset file doesn't already exist (e.g., from a previous run), it writes `.changeset/dep-updates-<timestamp>.md`:
 
-```markdown
+```text
 ---
 "my-lib": patch
 ---
@@ -223,13 +223,14 @@ Updated dependencies:
 
 For monorepos with workspaces, the changeset includes all workspace packages that had dependency changes:
 
-```markdown
+```plaintext
 ---
 "@scope/app": patch
 "@scope/utils": patch
 ---
 
-Updated dependencies: **@scope/app**:
+Updated dependencies:
+**@scope/app**:
 
 - react: 18.2.0 → 18.3.1
 

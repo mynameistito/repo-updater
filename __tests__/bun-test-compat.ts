@@ -24,17 +24,14 @@ export {
   it,
   test,
 } from "vitest";
-// Note: Bun's `Mock<T>` and vitest's `MockInstance` differ slightly in their
-// type signatures; cast explicitly if you need to assign to one of those types.
-const mock = <T extends (...args: never[]) => unknown>(
-  ...args: Parameters<typeof vi.fn<T>>
-) => vi.fn<T>(...args);
-mock.module = (..._args: unknown[]): never => {
-  throw new Error(
-    "mock.module() is not supported in the Vitest/Node.js shim. " +
-      "Use vi.mock() or vi.doMock() instead."
-  );
-};
+const mock = Object.assign(vi.fn, {
+  module: (..._args: unknown[]): never => {
+    throw new Error(
+      "mock.module() is not supported in the Vitest/Node.js shim. " +
+        "Use vi.mock() or vi.doMock() instead."
+    );
+  },
+});
 
 export { mock };
 // Bound to `vi` so the `this` context is preserved when called as a standalone function.

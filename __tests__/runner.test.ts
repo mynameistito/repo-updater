@@ -371,7 +371,7 @@ BunTest.describe("updateRepo changeset integration", () => {
   const setupChangesetsRepo = (deps: Record<string, string>) => {
     writeFileSync(
       join(tempDir, "package.json"),
-      JSON.stringify({ dependencies: deps, name: "BunTest.test-lib" }),
+      JSON.stringify({ dependencies: deps, name: "test-lib" }),
       "utf-8"
     );
     mkdirSync(join(tempDir, ".changeset"), { recursive: true });
@@ -394,7 +394,7 @@ BunTest.describe("updateRepo changeset integration", () => {
           join(cwd, "package.json"),
           JSON.stringify({
             dependencies: updatedDeps,
-            name: "BunTest.test-lib",
+            name: "test-lib",
           }),
           "utf-8"
         );
@@ -404,7 +404,7 @@ BunTest.describe("updateRepo changeset integration", () => {
         return ok(updatedDeps ? "M package.json" : "");
       }
       if (cmd[0] === "gh" && cmd.includes("pr")) {
-        return ok("https://github.com/BunTest.test/repo/pull/1");
+        return ok("https://github.com/test/repo/pull/1");
       }
       return ok();
     };
@@ -431,7 +431,7 @@ BunTest.describe("updateRepo changeset integration", () => {
         join(tempDir, ".changeset", changesetFiles[0]),
         "utf-8"
       );
-      BunTest.expect(content).toContain('"BunTest.test-lib": patch');
+      BunTest.expect(content).toContain('"test-lib": patch');
       BunTest.expect(content).toContain("- react: 18.2.0 → 18.3.1");
     }
   );
@@ -458,7 +458,7 @@ BunTest.describe("updateRepo changeset integration", () => {
       join(tempDir, "package.json"),
       JSON.stringify({
         dependencies: { react: "18.2.0" },
-        name: "BunTest.test-lib",
+        name: "test-lib",
       }),
       "utf-8"
     );
@@ -492,7 +492,7 @@ BunTest.describe("updateRepo changeset integration", () => {
           join(cwd, "package.json"),
           JSON.stringify({
             dependencies: { react: "18.3.1" },
-            name: "BunTest.test-lib",
+            name: "test-lib",
           }),
           "utf-8"
         );
@@ -721,7 +721,7 @@ BunTest.describe("updateRepo workspace integration", () => {
         );
       }
       if (cmd[0] === "gh" && cmd.includes("pr")) {
-        return ok("https://github.com/BunTest.test/mono/pull/1");
+        return ok("https://github.com/test/mono/pull/1");
       }
       return ok();
     };
