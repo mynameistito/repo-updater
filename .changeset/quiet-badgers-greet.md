@@ -2,4 +2,4 @@
 "repo-updater": patch
 ---
 
-bumped pkgs
+bumped pkgs, migrated to oxlint/oxfmt
