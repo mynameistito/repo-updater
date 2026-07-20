@@ -12,14 +12,14 @@ export default defineConfig({
   },
   exports: {
     customExports(pkg) {
-      pkg["."] = {
-        import: "./dist/index.mjs",
-        types: "./dist/index.d.mts",
-      };
-      pkg["./cli"] = {
-        import: "./dist/cli.mjs",
-        types: "./dist/cli.d.mts",
-      };
+      pkg["."] = Object.fromEntries([
+        ["types", "./dist/index.d.mts"],
+        ["import", "./dist/index.mjs"],
+      ]);
+      pkg["./cli"] = Object.fromEntries([
+        ["types", "./dist/cli.d.mts"],
+        ["import", "./dist/cli.mjs"],
+      ]);
       return pkg;
     },
   },
