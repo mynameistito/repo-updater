@@ -121,6 +121,47 @@ BunTest.describe("updateRepo", () => {
   );
 
   BunTest.test(
+    "falls back to main when origin HEAD is not a symbolic ref",
+    async () => {
+      const executedCmds: string[][] = [];
+      const mockExec = (
+        cmd: string[],
+        _cwd: string
+      ): Promise<Result<ExecOutput, CommandFailedError>> => {
+        executedCmds.push(cmd);
+        if (
+          cmd[0] === "git" &&
+          cmd[1] === "symbolic-ref" &&
+          cmd[2] === "refs/remotes/origin/HEAD"
+        ) {
+          return Promise.resolve(
+            Result.err(
+              new CommandFailedError({
+                command: "git symbolic-ref refs/remotes/origin/HEAD",
+                message: "origin HEAD is not a symbolic ref",
+                stderr:
+                  "fatal: ref refs/remotes/origin/HEAD is not a symbolic ref",
+              })
+            )
+          );
+        }
+        if (cmd[0] === "git" && cmd[1] === "status") {
+          return ok();
+        }
+        return ok();
+      };
+
+      const result = await updateRepo(
+        { date: "2025-01-01", dryRun: false, repo: tempDir },
+        mockExec
+      );
+
+      BunTest.expect(result.isOk()).toBe(true);
+      BunTest.expect(executedCmds).toContainEqual(["git", "checkout", "main"]);
+    }
+  );
+
+  BunTest.test(
     "non-dry-run returns pr-created with URL when changes exist",
     async () => {
       const prUrl = "https://github.com/owner/repo/pull/42";
