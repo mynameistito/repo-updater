@@ -1,5 +1,21 @@
 # repo-updater
 
+## 0.7.9
+
+### Patch Changes
+
+- 212a619: Fix default-branch detection when `origin/HEAD` is not a symbolic ref.
+- b3d33f8: Updated dependencies:
+
+  - @types/node: 25.8.0 → 25.9.1
+
+- 06d1c19: Updated dependencies:
+
+  - @clack/prompts: ^1.4.0 → ^1.5.0
+
+- 1d6fb7e: Resolve transitive dependency audit findings with package overrides.
+- 4b28953: bumped pkgs, migrated to oxlint/oxfmt
+
 ## 0.7.8
 
 ### Patch Changes
