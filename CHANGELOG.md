@@ -1,5 +1,11 @@
 # repo-updater
 
+## 0.7.10
+
+### Patch Changes
+
+- eec2805: bumped pkgs
+
 ## 0.7.9
 
 ### Patch Changes
